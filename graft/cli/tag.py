@@ -14,7 +14,7 @@ from graft.constrained_graph import (
     SuccessorOfAncestorError,
     SuccessorsError,
 )
-from graft.draw import draw_hierarchical_digraph
+from graft.draw import draw_y
 from graft.io import (
     initialise_tag_hierarchy,
     initialise_task_tag_table,
@@ -199,6 +199,9 @@ def affix(uid: str, name: str):
     task_tag_table = load_task_tag_table()
 
     # TODO: Additional checks
+    #   - Superior tag already affixed
+    #   - Subourdinate tag already affixed
+    # TODO: Consider combined tag and task hierarchy interactions
     try:
         task_tag_table.add_task_tag_pair(task_uid=uid, tag_name=name)
     except TaskTagPairExistsError:
@@ -251,7 +254,14 @@ def draw():
         typer.echo("no tags")
         return
 
-    draw_hierarchical_digraph(digraph=tag_hierarchy)
+    task_tag_table = load_task_tag_table()
+    task_attributes_map = load_task_attributes_map()
+
+    draw_y(
+        tag_hierarchy=tag_hierarchy,
+        task_tag_table=task_tag_table,
+        task_attributes_map=task_attributes_map,
+    )
 
 
 @app.command()
