@@ -104,6 +104,7 @@ def draw_x(
     props = dict(boxstyle="square", facecolor="w")
 
     # place a text box in upper left in axes coords
+    # TODO: Fix ordering - 10 is appearing before 2 due to string format
     ax_right.text(
         0.05,
         0.985,
