@@ -74,6 +74,8 @@ class TaskAttributes:
     blocked: bool = False
     due_datetime: Optional[datetime.datetime] = None
     start_datetime: Optional[datetime.datetime] = None
+    created_datetime: datetime.datetime = datetime.datetime.today()
+    started_datetime: Optional[datetime.datetime] = None
 
     @classmethod
     def from_json_serializable_dict(cls, data: dict):
@@ -94,6 +96,14 @@ class TaskAttributes:
             )
             if data["start_datetime"]
             else None,
+            created_datetime=datetime.datetime.strptime(
+                data["created_datetime"], "%Y-%m-%d %H:%M:%S"
+            ),
+            started_datetime=datetime.datetime.strptime(
+                data["started_datetime"], "%Y-%m-%d %H:%M:%S"
+            )
+            if data["started_datetime"]
+            else None,
         )
 
     def to_json_serializable_dict(self) -> dict:
@@ -110,6 +120,10 @@ class TaskAttributes:
             "start_datetime": self.start_datetime.strftime("%Y-%m-%d %H:%M:%S")
             if self.start_datetime
             else None,
+            "created_datetime": self.created_datetime.strftime("%Y-%m-%d %H:%M:%S"),
+            "started_datetime": self.started_datetime.strftime("%Y-%m-%d %H:%M:%S")
+            if self.started_datetime
+            else None,
         }
 
     @property
@@ -125,6 +139,11 @@ class TaskAttributes:
 
         if self.progress is Progress.NOT_STARTED and progress is Progress.COMPLETED:
             raise NotStartedToCompletedError
+
+        if self.progress is Progress.NOT_STARTED and progress is Progress.IN_PROGRESS:
+            self.started_datetime = datetime.datetime.today()
+        elif progress is Progress.NOT_STARTED:
+            self.started_datetime = None
 
         self.progress = progress
 

@@ -25,6 +25,10 @@ class TaskTagPairDoesNotExistError(Exception):
 @dataclasses.dataclass
 class TaskTagTable:
     data: set[tuple[str, str]] = dataclasses.field(default_factory=set)
+    # TODO: Store in an adjacency-style file to save space
+    # TODO: Consider redoing as two dicts, task_tags_map and tag_tasks_map for
+    # faster lookups
+    #   - Can't use DiGraph due to potential task/tag name label overlap
 
     def get_tags_for_a_task(self, uid: str) -> Iterable[str]:
         """Get all tags for a task"""

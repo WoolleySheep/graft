@@ -102,3 +102,9 @@ def search(query: str):
     else:
         for tag in sorted(tags_matched_by_name):
             typer.echo(f"- {tag}")
+
+
+# TODO: Add export command
+# - Account for "." and associated manipulations
+
+# TODO: Add erase command

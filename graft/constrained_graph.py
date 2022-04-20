@@ -39,6 +39,7 @@ class EdgeIntroducesCycleError(Exception):
         self.source = source
         self.target = target
         # TODO: Save the cyclical section of the DiGraph, not the paths
+        #   - G.subgraph.copy() is your friend here
         # Assumption that adding the edge DOES introduce a cycle
         # Hence there must exist 1 or more paths from target to source
         self.paths = []
@@ -308,11 +309,10 @@ class ConstrainedGraph(nx.DiGraph):
         while nodes_to_check:
             node = nodes_to_check.pop()
             for successor in self.successors(node):
-                if successor in checked_nodes or successor in nodes_to_check:
-                    continue
                 if successor == source:
                     return True
-                nodes_to_check.add(successor)
+                if successor not in checked_nodes and successor not in nodes_to_check:
+                    nodes_to_check.add(successor)
 
             checked_nodes.add(node)
 

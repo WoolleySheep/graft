@@ -63,7 +63,7 @@ def ls():
 @app.command()
 def create():
     """create a new task"""
-    # Allow attributes to be specified as created
+    # TODO: Allow name to be specified as created
     uid = get_next_task_uid()
     typer.echo(f"creating a new task [{uid}]")
     task_attributes_map = load_task_attributes_map()
@@ -161,6 +161,8 @@ def progress(uid: str, progress: Progress):
         typer.echo(f"task [{uid}] cannot be moved from 'not started' to 'completed'")
         return
 
+    # TODO: Can't uncomplete a task if subsequent tasks have been started as a result
+
     save_task_attributes_map(task_attributes_map=task_attributes_map)
 
 
@@ -196,6 +198,7 @@ def duration(uid: str, duration: Optional[Duration] = typer.Argument(default=Non
 def block(uid: str):
     """block a task"""
     # TODO: Allow a blocking reason to be specified
+    # TODO: Decide if blocking will be allowed for non-concrete tasks
     typer.echo(f"blocking task [{uid}]")
     task_attributes_map = load_task_attributes_map()
     try:
@@ -370,7 +373,7 @@ def sub(uid1: str, uid2: str):
             f"tag [{uid2}] is already a subourdinate task of [{uid1}] along the following paths:"
         )
         for path in sorted(e.paths):
-            formatted_path = " -> ".join((f"[{tag}]" for tag in path))
+            formatted_path = " -> ".join((f"[{task}]" for task in path))
             typer.echo(f"- {formatted_path}")
         return
     except SuccessorOfAncestorError as e:
@@ -389,8 +392,7 @@ def sub(uid1: str, uid2: str):
             typer.echo(f"- {formatted_path}")
 
     # Clear progress of task 1 (knowing the current progress not started)
-    if attributes.progress:
-        attributes.clear_progress()
+    attributes.clear_progress()
     save_task_attributes_map(task_attributes_map=task_attributes_map)
 
     # TODO: Add non-hierarchy
@@ -442,6 +444,28 @@ def depend(uid1: str, uid2: str):
     except EdgeExistsError:
         typer.echo(f"task [{uid2}] is already dependent on task [{uid2}]")
         return
+    except DescendantError as e:
+        typer.echo(
+            f"task [{uid2}] is already a downstream task of [{uid1}] along the following paths:"
+        )
+        for path in sorted(e.paths):
+            formatted_path = " -> ".join((f"[{task}]" for task in path))
+            typer.echo(f"- {formatted_path}")
+        return
+    except SuccessorOfAncestorError as e:
+        typer.echo(
+            f"task [{uid2}] is already dependent on task [{uid1}]'s upstream tasks:"
+        )
+        for upstream_task in e.ancestors:
+            typer.echo(f"- {upstream_task}")
+        return
+    except EdgeIntroducesCycleError as e:
+        typer.echo(
+            f"making task [{uid2}] dependent on task [{uid1}] creates a cycle along the following paths:"
+        )
+        for path in sorted(e.paths):
+            formatted_path = " -> ".join((f"[{task}]" for task in path))
+            typer.echo(f"- {formatted_path}")
 
     save_task_dependencies(task_dependencies=task_dependencies)
 
@@ -501,8 +525,21 @@ def inspect(
     typer.echo(
         f"start datetime: {task_attributes_map[uid].start_datetime.strftime('%Y-%m-%d %H:%M:%S') if task_attributes_map[uid].start_datetime else None}"
     )
+    typer.echo(
+        f"created datetime: {task_attributes_map[uid].created_datetime.strftime('%Y-%m-%d %H:%M:%S')}"
+    )
+    typer.echo(
+        f"started datetime: {task_attributes_map[uid].started_datetime.strftime('%Y-%m-%d %H:%M:%S') if task_attributes_map[uid].started_datetime else None}"
+    )
 
     # TODO: Show network-dependent information
+    #   - progress (non-concrete tasks)
+    #   - Longest subourdinate task duration (non-concrete tasks)
+    #   - Latest upstream task start datetime
+    #   - Earliest upstream task due datetime
+    #   - Superior task priorities
+    #   - Active task status
+    #   - etc
 
     task_hierarchy = load_task_hierarchy()
 
