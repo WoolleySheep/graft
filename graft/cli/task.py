@@ -2,7 +2,6 @@ from datetime import datetime
 from typing import Optional
 
 import typer
-
 from graft.constrained_graph import (
     DescendantError,
     EdgeDoesNotExistError,
@@ -40,6 +39,11 @@ from graft.task_attributes import (
     TaskBlockedError,
     TaskCompletedError,
     TaskNotBlockedError,
+)
+from graft.task_network import (
+    SuperiorTaskPrioritiesError,
+    TaskDoesNotExistError,
+    TaskNetwork,
 )
 
 app = typer.Typer()
@@ -116,20 +120,43 @@ def description(uid: str, description: str):
 @app.command()
 def priority(uid: str, priority: Optional[Priority] = typer.Argument(default=None)):
     """set the priority of a task"""
-    # TODO: Add option to clear priority
+    # TODO: Add more descriptive typer hints
+    # TODO: Think of way to make 'clearing' behaviour more obvious
     if priority:
         typer.echo(f"setting priority of task [{uid}] to [{priority.value}]")
+        task_attributes_map = load_task_attributes_map()
+        task_hierarchy = load_task_hierarchy()
+        task_dependencies = load_task_dependencies()
+        task_network = TaskNetwork(
+            task_attributes_map=task_attributes_map,
+            task_hierarchy=task_hierarchy,
+            task_dependencies=task_dependencies,
+        )
+        try:
+            task_network.set_priority(uid=uid, priority=priority)
+        except TaskDoesNotExistError:
+            typer.echo(f"task [{uid}] does not exist")
+            return
+        except SuperiorTaskPrioritiesError as e:
+            typer.echo(f"task [{uid}] has superior tasks with priorities:")
+            for superior_uid in e.superior_tasks_with_priorities:
+                superior_name = task_attributes_map[superior_uid].name
+                superior_priority = task_attributes_map[superior_uid].priority
+                typer.echo(
+                    f"- {superior_uid}: [{superior_name}] - {superior_priority.value}"
+                )
+            return
+
     else:
         typer.echo(f"clearing priority of task [{uid}]")
-    task_attributes_map = load_task_attributes_map()
-    try:
-        attributes = task_attributes_map[uid]
-    except KeyError:
-        typer.echo(f"task [{uid}] does not exist")
-        return
+        task_attributes_map = load_task_attributes_map()
+        try:
+            attributes = task_attributes_map[uid]
+        except KeyError:
+            typer.echo(f"task [{uid}] does not exist")
+            return
 
-    # TODO: Check if priority allowed
-    attributes.priority = priority
+        attributes.priority = None
 
     save_task_attributes_map(task_attributes_map=task_attributes_map)
 

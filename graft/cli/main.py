@@ -11,6 +11,8 @@ from graft.io import (
 )
 from graft.ranking_algorithm import rank_tasks
 
+# TODO: Make graft installable and usable like httpie or git
+
 DESCRIPTION_DISPLAY_CHAR_BUFFER = 10
 
 app = typer.Typer()
@@ -77,7 +79,6 @@ def search(query: str):
             tasks_matched_by_description, key=lambda x: int(x[0])
         ):
             query_index = description.find(query)
-            buffer = 10
             start = max(0, query_index - DESCRIPTION_DISPLAY_CHAR_BUFFER)
             start_chars = "..." if start > 0 else ""
             end = min(
