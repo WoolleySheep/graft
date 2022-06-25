@@ -1,6 +1,7 @@
 from typing import Optional
 
 import typer
+
 from graft.constrained_graph import (
     DescendantError,
     EdgeDoesNotExistError,

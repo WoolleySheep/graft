@@ -14,6 +14,16 @@ class TaskDoesNotExistError(Exception):
         super().__init__(f"task [{uid}] does not exist", *args, **kwargs)
 
 
+class HierarchyExistsError(Exception):
+    def __init__(self, uid1: str, uid2: str, *args, **kwargs):
+        self.uid1 = uid1
+        self.uid2 = uid2
+
+        super().__init__(
+            f"hierarchy from [{uid1}] -> [{uid2}] already exists", *args, **kwargs
+        )
+
+
 class HasSuperTasksError(Exception):
     def __init__(self, uid: str, supertasks: Collection[str], *args, **kwargs):
         self.uid = uid
@@ -131,6 +141,13 @@ class TaskNetwork:
         self._task_dependencies.remove_node(node=uid)
 
     def add_hierarchy(self, uid1: str, uid2: str) -> None:
+        for uid in (uid1, uid2):
+            if uid not in self._task_attributes_map:
+                raise TaskDoesNotExistError(uid=uid)
+
+        if self._task_hierarchy.has_edge(source=uid1, target=uid2):
+            raise HierarchyExistsError(uid1=uid1, uid2=uid2)
+
         self._task_hierarchy.add_edge(source=uid1, target=uid2)
 
     def add_dependency(self, uid1: str, uid2: str) -> None:
