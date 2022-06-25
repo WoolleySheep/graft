@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Optional
 
 import typer
+
 from graft.constrained_graph import (
     DescendantError,
     EdgeDoesNotExistError,
@@ -67,7 +68,7 @@ def ls():
 @app.command()
 def create():
     """create a new task"""
-    # TODO: Allow name to be specified as created
+    # TODO: Allow name to be specified during creation
     uid = get_next_task_uid()
     typer.echo(f"creating a new task [{uid}]")
     task_attributes_map = load_task_attributes_map()
@@ -88,6 +89,7 @@ def create():
 @app.command()
 def name(uid: str, name: str):
     """set the name of a task"""
+    # TODO: Decide whether to specify maximum length
     typer.echo(f"setting name of task [{uid}] to [{name}]")
     task_attributes_map = load_task_attributes_map()
     try:
@@ -122,6 +124,7 @@ def priority(uid: str, priority: Optional[Priority] = typer.Argument(default=Non
     """set the priority of a task"""
     # TODO: Add more descriptive typer hints
     # TODO: Think of way to make 'clearing' behaviour more obvious
+    # TODO: Decide whether to reject no-op assignments (eg: medium -> medium)
     if priority:
         typer.echo(f"setting priority of task [{uid}] to [{priority.value}]")
         task_attributes_map = load_task_attributes_map()
@@ -197,7 +200,6 @@ def progress(uid: str, progress: Progress):
 def duration(uid: str, duration: Optional[Duration] = typer.Argument(default=None)):
     """set the duration of a task"""
     # TODO: Restructure supertask to remove duration field
-    # TODO: For supertasks show 'duration at least' based on largest subourdinate task duration
     if duration:
         typer.echo(f"setting duration of task [{uid}] to [{duration.value}]")
     else:

@@ -3,8 +3,8 @@ from typing import Mapping
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import networkx as nx
-from graft.constrained_graph import ConstrainedGraph
 
+from graft.constrained_graph import ConstrainedGraph
 from graft.task_attributes import TaskAttributes
 from graft.task_tag_table import TaskTagTable
 
@@ -12,6 +12,7 @@ TAG_NODE_DEFAULT_SIZE = 70
 TASK_NODE_DEFAULT_SIZE = 300
 # https://networkx.org/documentation/stable/reference/generated/networkx.drawing.nx_pylab.draw_networkx_nodes.html
 
+# TODO: Create 3D task network visualisation
 # TODO: Change node circles to rectangles
 
 

@@ -41,6 +41,10 @@ class TaskRankingAttributes:
     due_datetime: Optional[datetime.datetime]
     start_datetime: Optional[datetime.datetime]
 
+    # TODO: Add additional ranking criteria
+    #   - When created
+    #   - Last edited
+
     @classmethod
     def from_attributes(
         cls,
@@ -176,6 +180,8 @@ def get_task_network_attributes(
     concrete_task_priority_map = {}
     non_concrete_task_priority_map = {}
     for task in concrete_tasks:
+        # TODO: Replace with cache decorator instead - could be applied in many
+        # places
         if task_attributes_map[task].priority:
             priority = task_attributes_map[task].priority
         else:

@@ -53,6 +53,7 @@ def search(query: str):
     - Tags whose name contains the query
     """
     typer.echo(f"searching for tasks and tags matching [{query}]")
+    # TODO: Speed up using regex
     tasks_matched_by_name = []
     tasks_matched_by_description = []
     task_attributes_map = load_task_attributes_map()

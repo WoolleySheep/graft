@@ -335,10 +335,16 @@ class ConstrainedGraph(nx.DiGraph):
         nx.relabel_nodes(self, {old_label: new_label}, copy=False)
 
     def descendents(self, node: Hashable) -> set:
-        return nx.descendants(G=self, source=node)
+        try:
+            return nx.descendants(G=self, source=node)
+        except nx.NetworkXError as e:
+            raise NodeDoesNotExistError(node=node) from e
 
     def ancestors(self, node: Hashable) -> set:
-        return nx.ancestors(G=self, source=node)
+        try:
+            return nx.ancestors(G=self, source=node)
+        except nx.NetworkXError as e:
+            raise NodeDoesNotExistError(node=node) from e
 
     def predecessors(self, node: Hashable) -> Iterable[Hashable]:
         try:
