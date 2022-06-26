@@ -22,7 +22,7 @@ TODO
 ### Run tests
     pytest
 ### Lint code
-    pylama
+    pylama graft tests
 ### Generate & view code coverage report
     pytest --cov-report html --cov=graft
 Open htmlcov/index.html in a browser to view the report
