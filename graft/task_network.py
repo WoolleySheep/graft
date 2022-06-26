@@ -1,8 +1,16 @@
 import collections
-import dataclasses
 from typing import Collection, Hashable, Mapping, MutableMapping
 
-from graft.constrained_graph import ConstrainedGraph
+import networkx as nx
+
+from graft.constrained_graph import (
+    ConstrainedGraph,
+    EdgeDoesNotExistError,
+    NodeDoesNotExistError,
+    NoTargetPredecessorsAsSourceAncestorsError,
+    NotReachableError,
+    SelfLoopError,
+)
 from graft.priority import Priority
 from graft.task_attributes import TaskAttributes
 
@@ -21,6 +29,65 @@ class HierarchyExistsError(Exception):
 
         super().__init__(
             f"hierarchy from [{uid1}] -> [{uid2}] already exists", *args, **kwargs
+        )
+
+
+class InverseHierarchyExistsError(Exception):
+    def __init__(self, uid1: str, uid2: str, *args, **kwargs):
+        self.uid1 = uid2
+        self.uid2 = uid1
+
+        super().__init__(
+            f"hierarchy from [{uid1}] -> [{uid2}] already exists", *args, **kwargs
+        )
+
+
+class SelfHierarchyError(Exception):
+    def __init__(self, uid: str, *args, **kwargs):
+        self.uid = uid
+
+        super().__init__(
+            "hierarchy cannot be added from a task to itself", *args, **kwargs
+        )
+
+
+class InferiorTaskError(Exception):
+    def __init__(self, uid1: str, uid2: str, digraph: nx.DiGraph, *args, **kwargs):
+        self.uid1 = uid1
+        self.uid2 = uid2
+        self.digraph = digraph
+
+        # TODO: Add Error message
+        super().__init__("", *args, **kwargs)
+
+
+class SuperiorTasksError(Exception):
+    def __init__(self, uid1: str, uid2: str, superior_tasks: set[str], *args, **kwargs):
+        self.uid1 = uid1
+        self.uid2 = uid2
+        self.superior_tasks = superior_tasks
+
+        # TODO: Add Error message
+        super().__init__("", *args, **kwargs)
+
+
+class HierarchyIntroducesCycleError(Exception):
+    def __init__(self, uid1: str, uid2: str, digraph: nx.DiGraph, *args, **kwargs):
+        self.uid1 = uid1
+        self.uid2 = uid2
+        self.digraph = digraph
+
+        # TODO: Add Error message
+        super().__init__("", *args, **kwargs)
+
+
+class HierarchyDoesNotExistError(Exception):
+    def __init__(self, uid1: str, uid2: str, *args, **kwargs):
+        self.uid1 = uid1
+        self.uid2 = uid2
+
+        super().__init__(
+            f"hierarchy from [{uid1}] -> [{uid2}] does not exist", *args, **kwargs
         )
 
 
@@ -145,10 +212,62 @@ class TaskNetwork:
             if uid not in self._task_attributes_map:
                 raise TaskDoesNotExistError(uid=uid)
 
+        if uid1 == uid2:
+            raise SelfHierarchyError(uid=uid1)
+
         if self._task_hierarchy.has_edge(source=uid1, target=uid2):
             raise HierarchyExistsError(uid1=uid1, uid2=uid2)
 
+        if self._task_hierarchy.has_edge(source=uid2, target=uid1):
+            raise InverseHierarchyExistsError(uid1=uid1, uid2=uid2)
+
+        try:
+            inferior_check_digraph = self._task_hierarchy.get_joining_subgraph(
+                source=uid1, target=uid2
+            )
+        except NotReachableError:
+            pass
+        else:
+            raise InferiorTaskError(
+                uid1=uid1, uid2=uid2, digraph=inferior_check_digraph
+            )
+
+        try:
+            superior_tasks = (
+                self._task_hierarchy.get_target_predecessors_that_are_source_ancestors(
+                    source=uid1, target=uid2
+                )
+            )
+        except NoTargetPredecessorsAsSourceAncestorsError:
+            pass
+        else:
+            raise SuperiorTasksError(
+                uid1=uid1, uid2=uid2, superior_tasks=superior_tasks
+            )
+
+        try:
+            cycle_digraph = self._task_hierarchy.get_joining_subgraph(
+                source=uid2, target=uid1
+            )
+        except NotReachableError:
+            pass
+        else:
+            raise HierarchyIntroducesCycleError(
+                uid1=uid1, uid2=uid2, digraph=cycle_digraph
+            )
+
+        # TODO: Replace with simplified version, as checks already done here
         self._task_hierarchy.add_edge(source=uid1, target=uid2)
+
+    def remove_hierarchy(self, uid1: str, uid2: str) -> None:
+        try:
+            self._task_hierarchy.remove_edge(source=uid1, target=uid2)
+        except NodeDoesNotExistError as e:
+            raise TaskDoesNotExistError(uid=e.node) from e
+        except SelfLoopError as e:
+            raise SelfHierarchyError(uid=uid1) from e
+        except EdgeDoesNotExistError as e:
+            raise HierarchyDoesNotExistError(uid1=uid1, uid2=uid2) from e
 
     def add_dependency(self, uid1: str, uid2: str) -> None:
         self._task_dependencies.add_edge(source=uid1, target=uid2)

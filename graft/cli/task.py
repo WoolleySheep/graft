@@ -369,6 +369,7 @@ def delete(
 @app.command()
 def sub(uid1: str, uid2: str):
     """make task 2 a subtask of task 1"""
+    # TODO: Replace logic with task_network object
     typer.echo(f"making task [{uid2}] a subtask of task [{uid1}]")
     # TODO: Restructure supertask to remove progress field
 

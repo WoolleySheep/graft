@@ -83,7 +83,7 @@ class EdgeDoesNotExistError(Exception):
         )
 
 
-class DescendantError(Exception):
+class HasPathError(Exception):
     def __init__(
         self,
         source: Hashable,
@@ -104,6 +104,7 @@ class DescendantError(Exception):
             formatted_paths.append(formatted_path)
         paths_formatted = ", ".join(formatted_paths)
 
+        # TODO: Update error message
         super().__init__(
             f"node [{target}] is a descendant of [{source}], paths: {paths_formatted}",
             *args,
@@ -181,6 +182,28 @@ class SuccessorOfAncestorError(Exception):
         )
 
 
+class NotReachableError(Exception):
+    def __init__(self, source: Hashable, target: Hashable, *args, **kwargs):
+        self.source = source
+        self.target = target
+
+        super().__init__(
+            f"node [{target} is not reachable from node [{source}", *args, **kwargs
+        )
+
+
+class NoTargetPredecessorsAsSourceAncestorsError(Exception):
+    def __init__(self, source: Hashable, target: Hashable, *args, **kwargs):
+        self.source = source
+        self.target = target
+
+        super().__init__(
+            f"node [{target} has no predecessors which are ancestors of node [{source}",
+            *args,
+            **kwargs,
+        )
+
+
 class ConstrainedGraph(nx.DiGraph):
     def __init__(self, mimic: bool = True, *args, **kwargs):
         self.mimic = mimic
@@ -246,8 +269,8 @@ class ConstrainedGraph(nx.DiGraph):
         if not self.mimic and super().has_edge(source, target):
             raise EdgeExistsError(source=source, target=target)
 
-        if self._is_descentant(source=source, target=target):
-            raise DescendantError(source=source, target=target, network=self)
+        if nx.has_path(G=self, source=source, target=target):
+            raise HasPathError(source=source, target=target, network=self)
 
         if self._is_successor_of_ancestor(source=source, target=target):
             raise SuccessorOfAncestorError(source=source, target=target, network=self)
@@ -270,21 +293,41 @@ class ConstrainedGraph(nx.DiGraph):
         except nx.NetworkXError as e:
             raise EdgeDoesNotExistError(source=source, target=target) from e
 
-    def _is_descentant(self, source: Hashable, target: Hashable) -> bool:
-        nodes_to_search = deque(self.successors(source))
+    def get_joining_subgraph(self, source: Hashable, target: Hashable) -> nx.DiGraph:
+        """Get the subgraph that connects source to target."""
+        # TODO: Find a more efficient solution
+        subgraph = nx.DiGraph()
+        for path in nx.all_simple_paths(G=self, source=source, target=target):
+            for node1, node2 in zip(path, itertools.islice(path, 1, None)):
+                subgraph.add_edge(node1, node2)
+
+        if not subgraph:
+            raise NotReachableError(source=source, target=target)
+
+        return subgraph
+
+    def get_target_predecessors_that_are_source_ancestors(
+        self, source: Hashable, target: Hashable
+    ) -> set:
+        nodes_to_search = list(self.predecessors(node=source))
+        found_nodes = set()
         searched_nodes = set()
         while nodes_to_search:
-            node = nodes_to_search.popleft()
-            if node == target:
-                return True
+            node = nodes_to_search.pop()
             searched_nodes.add(node)
-            successors = self.successors(node)
-            unsearched_successors = (
-                node for node in successors if node not in searched_nodes
-            )
-            nodes_to_search.extend(unsearched_successors)
+            if self.has_edge(node, target):
+                found_nodes.add(node)
+            else:
+                predecessors = set(self.predecessors(node))
+                unsearched_predecessors = predecessors - searched_nodes
+                nodes_to_search.extend(unsearched_predecessors)
 
-        return False
+        if not found_nodes:
+            raise NoTargetPredecessorsAsSourceAncestorsError(
+                source=source, target=target
+            )
+
+        return found_nodes
 
     def _is_successor_of_ancestor(self, source: Hashable, target: Hashable) -> bool:
         nodes_to_search = deque(self.predecessors(source))
