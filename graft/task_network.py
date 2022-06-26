@@ -1,5 +1,15 @@
 import collections
-from typing import Collection, Hashable, Mapping, MutableMapping
+from typing import (
+    Callable,
+    Collection,
+    Generator,
+    Hashable,
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    Optional,
+)
 
 import networkx as nx
 
@@ -196,6 +206,16 @@ class HasDependeeTasksError(Exception):
         super().__init__("", *args, **kwargs)
 
 
+class TaskCycleError(Exception):
+    def __init__(self, uid1: str, uid2: str, problem_tasks: set[str], *args, **kwargs):
+        self.uid1 = uid1
+        self.uid2 = uid2
+        self.problem_tasks = problem_tasks
+
+        # TODO: Add error message
+        super().__init__("", *args, **kwargs)
+
+
 class SuperiorTaskPrioritiesError(Exception):
     def __init__(
         self,
@@ -325,6 +345,17 @@ class TaskNetwork:
                 uid1=uid1, uid2=uid2, digraph=cycle_digraph
             )
 
+        superior_of_1_or_1_upstream_of_2 = self._get_superior_of_1_or_1_upstream_of_2(
+            uid1=uid1, uid2=uid2
+        )
+
+        if superior_of_1_or_1_upstream_of_2:
+            raise TaskCycleError(
+                uid1=uid1,
+                uid2=uid2,
+                problem_tasks=superior_of_1_or_1_upstream_of_2,
+            )
+
         # TODO: Replace with simplified version, as checks already done here
         self._task_hierarchy.add_edge(source=uid1, target=uid2)
 
@@ -397,6 +428,86 @@ class TaskNetwork:
             raise SelfDependencyError(uid=uid1) from e
         except EdgeDoesNotExistError as e:
             raise DependencyDoesNotExistError(uid1=uid1, uid2=uid2) from e
+
+    def _get_superior_of_1_or_1_upstream_of_2(self, uid1: str, uid2: str) -> set[str]:
+        superior_tasks = self._task_hierarchy.ancestors(node=uid1)
+        superior_tasks.add(uid1)
+
+        superior_of_1_upstream_downstream_of_2 = set()
+
+        for upstream_task in self.upstream_tasks(
+            uid=uid2, stop_search_condition=lambda uid: uid in superior_tasks
+        ):
+            if upstream_task in superior_tasks:
+                superior_of_1_upstream_downstream_of_2.add(upstream_task)
+
+        return superior_of_1_upstream_downstream_of_2
+
+    def upstream_tasks(
+        self, uid: str, stop_search_condition: Callable[[str], bool]
+    ) -> Iterator[str]:
+        """Get all upstream tasks of a given task with no duplicates.
+
+        In this context, upstream means any tasks which must be completed for a
+        given task to begin.
+
+        If the iterator encounters a task that fulfils the
+        stop_search_condition, it will still yield the task, but it will not
+        keep searching upstream of that task. This doesn't mean that those tasks
+        won't be yielded, as they may be accessible upstream of another task.
+        """
+        # TODO: Rework - look at all the code duplication
+        tasks_to_assess = set(self._task_dependencies.predecessors(node=uid))
+        supertasks_to_assess = set(self._task_hierarchy.predecessors(node=uid))
+        supertasks_assessed = set()
+        yielded_tasks = set()
+
+        while tasks_to_assess or supertasks_to_assess:
+            while tasks_to_assess:
+                task = tasks_to_assess.pop()
+                yield task
+                yielded_tasks.add(task)
+
+                if stop_search_condition(task):
+                    continue
+
+                supertasks = set(self._task_hierarchy.predecessors(node=task))
+                supertasks.difference_update(supertasks_to_assess)
+                supertasks.difference_update(supertasks_assessed)
+                supertasks.difference_update(tasks_to_assess)
+                supertasks.difference_update(yielded_tasks)
+                supertasks_to_assess.update(supertasks)
+
+                subtasks = set(self._task_hierarchy.successors(node=task))
+                subtasks.difference_update(tasks_to_assess)
+                subtasks.difference_update(yielded_tasks)
+                tasks_to_assess.update(subtasks)
+
+                dependee_tasks = set(self._task_dependencies.predecessors(node=task))
+                dependee_tasks.difference_update(tasks_to_assess)
+                dependee_tasks.difference_update(yielded_tasks)
+                tasks_to_assess.update(dependee_tasks)
+
+                supertasks_assessed.add(task)
+
+            if supertasks_to_assess:
+                task = supertasks_to_assess.pop()
+
+                supertasks = set(self._task_hierarchy.predecessors(node=task))
+                supertasks.difference_update(supertasks_to_assess)
+                supertasks.difference_update(supertasks_assessed)
+                supertasks.difference_update(tasks_to_assess)
+                supertasks.difference_update(yielded_tasks)
+                supertasks_to_assess.update(supertasks)
+
+                dependee_tasks = set(self._task_dependencies.predecessors(node=task))
+                dependee_tasks.difference_update(tasks_to_assess)
+                dependee_tasks.difference_update(yielded_tasks)
+                tasks_to_assess.update(dependee_tasks)
+
+                supertasks_assessed.add(task)
+
+        pass
 
     def set_priority(self, uid: str, priority: Priority) -> None:
         # TODO: Only requires task_attributes_map & task_hierarchy, not task_dependencies. Consider making a new class, or using a function.
