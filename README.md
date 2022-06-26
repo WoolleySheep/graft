@@ -21,6 +21,8 @@ TODO
     black .
 ### Run tests
     pytest
+### Lint code
+    pylama
 ### Generate & view code coverage report
     pytest --cov-report html --cov=graft
 Open htmlcov/index.html in a browser to view the report
