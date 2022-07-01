@@ -13,13 +13,16 @@ from typing import (
 
 import networkx as nx
 
-from graft.constrained_graph import (
-    ConstrainedGraph,
+from graft.acyclic_digraph import (
+    AcyclicDiGraph,
     EdgeDoesNotExistError,
     NodeDoesNotExistError,
-    NoTargetPredecessorsAsSourceAncestorsError,
     NotReachableError,
     SelfLoopError,
+)
+from graft.constrained_graph import (
+    ConstrainedGraph,
+    NoTargetPredecessorsAsSourceAncestorsError,
 )
 from graft.priority import Priority
 from graft.task_attributes import TaskAttributes
@@ -128,26 +131,6 @@ class SelfDependencyError(Exception):
         super().__init__(
             "dependency cannot be added from a task to itself", *args, **kwargs
         )
-
-
-class Dependent2TaskError(Exception):
-    def __init__(self, uid1: str, uid2: str, digraph: nx.DiGraph, *args, **kwargs):
-        self.uid1 = uid1
-        self.uid2 = uid2
-        self.digraph = digraph
-
-        # TODO: Add Error message
-        super().__init__("", *args, **kwargs)
-
-
-class Dependee2TasksError(Exception):
-    def __init__(self, uid1: str, uid2: str, superior_tasks: set[str], *args, **kwargs):
-        self.uid1 = uid1
-        self.uid2 = uid2
-        self.superior_tasks = superior_tasks
-
-        # TODO: Add Error message
-        super().__init__("", *args, **kwargs)
 
 
 class DependencyIntroducesCycleError(Exception):
@@ -270,7 +253,7 @@ class TaskNetwork:
         self,
         task_attributes_map: Mapping[str, TaskAttributes],
         task_hierarchy: ConstrainedGraph,
-        task_dependencies: ConstrainedGraph,
+        task_dependencies: AcyclicDiGraph,
     ) -> None:
         self._task_attributes_map = task_attributes_map
         self._task_hierarchy = task_hierarchy
@@ -386,28 +369,6 @@ class TaskNetwork:
 
         if self._task_dependencies.has_edge(source=uid2, target=uid1):
             raise InverseDependencyExistsError(uid1=uid1, uid2=uid2)
-
-        try:
-            dependent2_check_digraph = self._task_dependencies.get_joining_subgraph(
-                source=uid1, target=uid2
-            )
-        except NotReachableError:
-            pass
-        else:
-            raise Dependent2TaskError(
-                uid1=uid1, uid2=uid2, digraph=dependent2_check_digraph
-            )
-
-        try:
-            dependee2_tasks = self._task_dependencies.get_target_predecessors_that_are_source_ancestors(
-                source=uid1, target=uid2
-            )
-        except NoTargetPredecessorsAsSourceAncestorsError:
-            pass
-        else:
-            raise Dependee2TasksError(
-                uid1=uid1, uid2=uid2, superior_tasks=dependee2_tasks
-            )
 
         try:
             cycle_digraph = self._task_dependencies.get_joining_subgraph(

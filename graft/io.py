@@ -21,6 +21,8 @@ TASK_ATTRIBUTES_MAP_FILEPATH = DATA_DIRECTORY / "task_attributes_map.json"
 
 TASK_TAG_TABLE_FILEPATH = DATA_DIRECTORY / "task_tag_table.csv"
 
+# TODO: Investigate threaded file loading for improved performance
+
 
 def save_task_attributes_map(task_attributes_map: dict[str, TaskAttributes]) -> None:
     task_attributes_map_dict = {

@@ -94,10 +94,12 @@ def delete(name: str, link: Optional[bool] = typer.Option(None, "--re-link/--un-
                 return
         elif link:
             typer.echo("deleting tag and re-linking neighbouring tags")
-            tag_hierarchy.remove_node_and_relink(node=name)
+            tag_hierarchy.remove_node_and_create_edges_from_predecessors_to_successors(
+                node=name
+            )
         else:
             typer.echo("deleting tag and associated links")
-            tag_hierarchy.remove_node_and_links(node=name)
+            tag_hierarchy.remove_node_and_neighbouring_edges(node=name)
     except NodeDoesNotExistError:
         typer.echo(f"tag [{name}] does not exist")
         return
