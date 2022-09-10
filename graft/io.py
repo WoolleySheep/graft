@@ -8,6 +8,8 @@ from graft.constrained_graph import ConstrainedGraph
 from graft.task_attributes import TaskAttributes
 from graft.task_tag_table import TaskTagTable
 
+NODE_LABEL_DELIMITER = ","
+
 DATA_DIRECTORY = Path("data")
 
 TASK_UID_COUNT_FILEPATH = DATA_DIRECTORY / "task_uid_count.txt"
@@ -44,12 +46,12 @@ def load_task_attributes_map() -> dict[str, TaskAttributes]:
 
 
 def _save_graph_to_file(graph: nx.Graph, filepath: Path) -> None:
-    nx.write_adjlist(G=graph, path=filepath, delimiter=",")
+    nx.write_adjlist(G=graph, path=filepath, delimiter=NODE_LABEL_DELIMITER)
 
 
 def _load_constrained_graph_from_file(filepath: Path) -> ConstrainedGraph:
     constrained_graph = nx.read_adjlist(
-        path=filepath, create_using=ConstrainedGraph, delimiter=","
+        path=filepath, create_using=ConstrainedGraph, delimiter=NODE_LABEL_DELIMITER
     )
     constrained_graph.mimic = False
     return constrained_graph
@@ -64,7 +66,7 @@ def increment_task_uid_count() -> None:
     TASK_UID_COUNT_FILEPATH.write_text(data=str(next_uid))
 
 
-def save_tag_hierarchy(tag_hierarchy: ConstrainedGraph) -> None:
+def save_tag_hierarchy(tag_hierarchy: nx.Graph) -> None:
     _save_graph_to_file(graph=tag_hierarchy, filepath=TAG_HIERARCHY_GRAPH_FILEPATH)
 
 
@@ -84,7 +86,7 @@ def load_task_hierarchy() -> ConstrainedGraph:
     return _load_constrained_graph_from_file(filepath=TASK_HIERARCHY_GRAPH_FILEPATH)
 
 
-def save_task_hierarchy(task_hierarchy: ConstrainedGraph) -> None:
+def save_task_hierarchy(task_hierarchy: nx.Graph) -> None:
     _save_graph_to_file(graph=task_hierarchy, filepath=TASK_HIERARCHY_GRAPH_FILEPATH)
 
 

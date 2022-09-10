@@ -565,39 +565,34 @@ class TaskNetwork:
                 task = tasks_to_assess.pop()
                 if task == uid2:
                     return True
-                tasks_assessed.add(task)
 
                 supertasks = set(self._task_hierarchy.predecessors(node=task))
-                supertasks.difference_update(supertasks_to_assess)
                 supertasks.difference_update(supertasks_assessed)
                 supertasks.difference_update(tasks_to_assess)
                 supertasks.difference_update(tasks_assessed)
                 supertasks_to_assess.update(supertasks)
 
                 subtasks = set(self._task_hierarchy.successors(node=task))
-                subtasks.difference_update(tasks_to_assess)
                 subtasks.difference_update(tasks_assessed)
                 tasks_to_assess.update(subtasks)
 
                 dependee_tasks = set(self._task_dependencies.successors(node=task))
-                dependee_tasks.difference_update(tasks_to_assess)
                 dependee_tasks.difference_update(tasks_assessed)
                 tasks_to_assess.update(dependee_tasks)
 
+                tasks_assessed.add(task)
                 supertasks_assessed.add(task)
 
             if supertasks_to_assess:
                 task = supertasks_to_assess.pop()
 
                 supertasks = set(self._task_hierarchy.predecessors(node=task))
-                supertasks.difference_update(supertasks_to_assess)
                 supertasks.difference_update(supertasks_assessed)
                 supertasks.difference_update(tasks_to_assess)
                 supertasks.difference_update(tasks_assessed)
                 supertasks_to_assess.update(supertasks)
 
                 dependee_tasks = set(self._task_dependencies.successors(node=task))
-                dependee_tasks.difference_update(tasks_to_assess)
                 dependee_tasks.difference_update(tasks_assessed)
                 tasks_to_assess.update(dependee_tasks)
 

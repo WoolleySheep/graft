@@ -174,4 +174,6 @@ class ConstrainedGraph(AcyclicDiGraph):
 
 def is_node_valid(node: Hashable) -> bool:
     """Check that a node name can be saved without causing problems"""
+    # TODO: The type on this needs to be narrowed - move to io, as this is based
+    # on the chosen delimiter?
     return "," not in json.dumps(node)
