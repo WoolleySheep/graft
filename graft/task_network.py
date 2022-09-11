@@ -206,6 +206,14 @@ class TaskCycle1DownstreamOf2Error(TaskCycleError):
     ...
 
 
+class TaskCycleInferiorOf2UpstreamOf1(TaskCycleError):
+    ...
+
+
+class TaskCycleInferiorOf2DownstreamOf1(TaskCycleError):
+    ...
+
+
 class SuperiorTaskPrioritiesError(Exception):
     def __init__(
         self,
@@ -343,6 +351,24 @@ class TaskNetwork:
         if is_uid1_downstream_of_uid2:
             raise TaskCycle1DownstreamOf2Error(uid1=uid1, uid2=uid2)
 
+        is_inferior_of_uid2_downstream_of_uid1 = self._is_inferior_downstream(
+            uid1=uid2, uid2=uid1
+        )
+        if is_inferior_of_uid2_downstream_of_uid1:
+            raise TaskCycleInferiorOf2DownstreamOf1(uid1=uid1, uid2=uid2)
+
+        is_inferior_of_uid2_upstream_of_uid1 = self._is_inferior_upstream(
+            uid1=uid2, uid2=uid1
+        )
+        if is_inferior_of_uid2_upstream_of_uid1:
+            raise TaskCycleInferiorOf2UpstreamOf1(uid1=uid1, uid2=uid2)
+
+        # TODO: Consider raising exception if adding a hierarchy means that two
+        # tasks, one superior to the other, are both independently upstream of a
+        # third task. The superior task being upstream means that all inferior
+        # tasks are also upstream, duplicating information. Find a way to block
+        # this.
+
         # TODO: Replace with simplified version, as checks already done here
         self._task_hierarchy.add_edge(source=uid1, target=uid2)
 
@@ -423,7 +449,7 @@ class TaskNetwork:
         return superior_of_1_or_1_downstream_of_2
 
     def upstream_tasks(
-        self, uid: str, stop_search_condition: Callable[[str], bool]
+        self, uid: str, stop_search_condition: Optional[Callable[[str], bool]] = None
     ) -> Iterator[str]:
         """Get all upstream tasks of a given task with no duplicates.
 
@@ -447,7 +473,7 @@ class TaskNetwork:
                 yield task
                 yielded_tasks.add(task)
 
-                if stop_search_condition(task):
+                if stop_search_condition is not None and stop_search_condition(task):
                     continue
 
                 supertasks = set(self._task_hierarchy.predecessors(node=task))
@@ -487,7 +513,7 @@ class TaskNetwork:
                 supertasks_assessed.add(task)
 
     def downstream_tasks(
-        self, uid: str, stop_search_condition: Callable[[str], bool]
+        self, uid: str, stop_search_condition: Optional[Callable[[str], bool]] = None
     ) -> Iterator[str]:
         """Get all downstream tasks of a given task with no duplicates.
 
@@ -510,7 +536,7 @@ class TaskNetwork:
                 yield task
                 yielded_tasks.add(task)
 
-                if stop_search_condition(task):
+                if stop_search_condition is not None and stop_search_condition(task):
                     continue
 
                 supertasks = set(self._task_hierarchy.predecessors(node=task))
@@ -599,6 +625,18 @@ class TaskNetwork:
                 supertasks_assessed.add(task)
 
         return False
+
+    def _is_inferior_downstream(self, uid1: str, uid2: str) -> bool:
+        """Is a task inferior to uid1 downstream of uid2."""
+        inferior_to_uid1 = set(self._task_hierarchy.descendants(node=uid1))
+        downstream_of_uid2 = set(self.downstream_tasks(uid=uid2))
+        return bool(inferior_to_uid1 & downstream_of_uid2)
+
+    def _is_inferior_upstream(self, uid1: str, uid2: str) -> bool:
+        """Is a task inferior to uid1 upstream of uid2."""
+        inferior_to_uid1 = set(self._task_hierarchy.descendants(node=uid1))
+        downstream_of_uid2 = set(self.upstream_tasks(uid=uid2))
+        return bool(inferior_to_uid1 & downstream_of_uid2)
 
     def set_priority(self, uid: str, priority: Priority) -> None:
         # TODO: Only requires task_attributes_map & task_hierarchy, not task_dependencies. Consider making a new class, or using a function.

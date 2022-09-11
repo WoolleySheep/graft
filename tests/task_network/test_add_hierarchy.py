@@ -1,6 +1,5 @@
 import networkx as nx
 import pytest
-
 from graft.task_network import (
     HierarchyExistsError,
     HierarchyIntroducesCycleError,
@@ -10,7 +9,10 @@ from graft.task_network import (
     SuperiorTasksError,
     TaskCycle1DownstreamOf2Error,
     TaskCycle1UpstreamOf2Error,
+    TaskCycleInferiorOf2DownstreamOf1,
+    TaskCycleInferiorOf2UpstreamOf1,
     TaskDoesNotExistError,
+    TaskNetwork,
 )
 
 
@@ -266,4 +268,40 @@ def test_1_downstream_of_2_complex(task_network):
     with pytest.raises(TaskCycle1DownstreamOf2Error) as exc_info:
         task_network.add_hierarchy("4", "3")
     assert exc_info.value.uid1 == "4"
+    assert exc_info.value.uid2 == "3"
+
+
+def test_inferior_2_upstream_1(task_network: TaskNetwork):
+    # Given the following task network
+    task_network.add_task("1")
+    task_network.add_task("2")
+    task_network.add_task("3")
+    task_network.add_hierarchy("1", "2")
+    task_network.add_dependency("2", "3")
+
+    # When a hierarchy is added
+    # And a task inferior to the subtask is downstream of the supertask
+    # Then the appropriate exception is raised
+    with pytest.raises(TaskCycleInferiorOf2UpstreamOf1) as exc_info:
+        task_network.add_hierarchy("3", "1")
+    assert exc_info.value.uid1 == "3"
+    assert exc_info.value.uid2 == "1"
+
+
+def test_inferior_2_downstream_1(task_network: TaskNetwork):
+    # Given the following task network
+    task_network.add_task("1")
+    task_network.add_task("2")
+    task_network.add_task("3")
+    task_network.add_task("4")
+    task_network.add_hierarchy("1", "2")
+    task_network.add_hierarchy("3", "4")
+    task_network.add_dependency("1", "4")
+
+    # When a hierarchy is added
+    # And a task inferior to the subtask is upstream of the supertask
+    # Then the appropriate exception is raised
+    with pytest.raises(TaskCycleInferiorOf2DownstreamOf1) as exc_info:
+        task_network.add_hierarchy("2", "3")
+    assert exc_info.value.uid1 == "2"
     assert exc_info.value.uid2 == "3"
