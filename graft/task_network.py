@@ -214,6 +214,71 @@ class TaskCycleInferiorOf2DownstreamOf1(TaskCycleError):
     ...
 
 
+class TaskCycleDependencyInferiorOf1DownstreamOf2(TaskCycleError):
+    ...
+
+
+class TaskCycleDependencySuperiorOf1DownstreamOf2(TaskCycleError):
+    ...
+
+
+class TaskCycleDependencyInferiorOf2UpstreamOf1(TaskCycleError):
+    ...
+
+
+class TaskCycleDependencySuperiorOf2UpstreamOf1(TaskCycleError):
+    ...
+
+
+class DependencyHierarchyClashError(Exception):
+    def __init__(
+        self, supertask: str, subtask: str, uid1: str, uid2: str, *args, **kwargs
+    ):
+        self.supertask = supertask
+        self.subtask = subtask
+        self.uid1 = uid1
+        self.uid2 = uid2
+
+        # TODO: Add error message
+        super().__init__("", *args, **kwargs)
+
+
+class DependencyHierarchyExtendedClashError(Exception):
+    def __init__(self, uid1: str, uid2: str, *args, **kwargs):
+        self.uid1 = uid1
+        self.uid2 = uid2
+
+        # TODO: Add error message
+        super().__init__("", *args, **kwargs)
+
+
+class DependencyDownstreamCycleError(Exception):
+    def __init__(self, uid1: str, uid2: str, *args, **kwargs):
+        self.uid1 = uid1
+        self.uid2 = uid2
+
+        # TODO: Add error message
+        super().__init__("", *args, **kwargs)
+
+
+class DependencyCycleInferiorOf2UpstreamOf1(Exception):
+    def __init__(self, uid1: str, uid2: str, *args, **kwargs):
+        self.uid1 = uid1
+        self.uid2 = uid2
+
+        # TODO: Add error message
+        super().__init__("", *args, **kwargs)
+
+
+class DependencyCycleInferiorOf1DownstreamOf2(Exception):
+    def __init__(self, uid1: str, uid2: str, *args, **kwargs):
+        self.uid1 = uid1
+        self.uid2 = uid2
+
+        # TODO: Add error message
+        super().__init__("", *args, **kwargs)
+
+
 class SuperiorTaskPrioritiesError(Exception):
     def __init__(
         self,
@@ -407,6 +472,31 @@ class TaskNetwork:
                 uid1=uid1, uid2=uid2, digraph=cycle_digraph
             )
 
+        if self._task_hierarchy.has_edge(source=uid1, target=uid2):
+            raise DependencyHierarchyClashError(
+                supertask=uid1, subtask=uid2, uid1=uid1, uid2=uid2
+            )
+
+        if self._task_hierarchy.has_edge(source=uid2, target=uid1):
+            raise DependencyHierarchyClashError(
+                supertask=uid2, subtask=uid1, uid1=uid1, uid2=uid2
+            )
+
+        if self._task_hierarchy.has_joining_subgraph(source=uid1, target=uid2):
+            raise DependencyHierarchyExtendedClashError(uid1=uid1, uid2=uid2)
+
+        if self._task_hierarchy.has_joining_subgraph(source=uid2, target=uid1):
+            raise DependencyHierarchyExtendedClashError(uid1=uid1, uid2=uid2)
+
+        if self.is_downstream(uid1=uid2, uid2=uid1):
+            raise DependencyDownstreamCycleError(uid1=uid1, uid2=uid2)
+
+        if self._is_inferior_upstream(uid1=uid2, uid2=uid1):
+            raise DependencyCycleInferiorOf2UpstreamOf1(uid1=uid1, uid2=uid2)
+
+        if self._is_inferior_downstream(uid1=uid1, uid2=uid2):
+            raise DependencyCycleInferiorOf1DownstreamOf2(uid1=uid1, uid2=uid2)
+
         # TODO: Replace with simplified version, as checks already done here
         self._task_dependencies.add_edge(source=uid1, target=uid2)
 
@@ -540,19 +630,16 @@ class TaskNetwork:
                     continue
 
                 supertasks = set(self._task_hierarchy.predecessors(node=task))
-                supertasks.difference_update(supertasks_to_assess)
                 supertasks.difference_update(supertasks_assessed)
                 supertasks.difference_update(tasks_to_assess)
                 supertasks.difference_update(yielded_tasks)
                 supertasks_to_assess.update(supertasks)
 
                 subtasks = set(self._task_hierarchy.successors(node=task))
-                subtasks.difference_update(tasks_to_assess)
                 subtasks.difference_update(yielded_tasks)
                 tasks_to_assess.update(subtasks)
 
                 dependee_tasks = set(self._task_dependencies.successors(node=task))
-                dependee_tasks.difference_update(tasks_to_assess)
                 dependee_tasks.difference_update(yielded_tasks)
                 tasks_to_assess.update(dependee_tasks)
 
@@ -562,14 +649,12 @@ class TaskNetwork:
                 task = supertasks_to_assess.pop()
 
                 supertasks = set(self._task_hierarchy.predecessors(node=task))
-                supertasks.difference_update(supertasks_to_assess)
                 supertasks.difference_update(supertasks_assessed)
                 supertasks.difference_update(tasks_to_assess)
                 supertasks.difference_update(yielded_tasks)
                 supertasks_to_assess.update(supertasks)
 
                 dependee_tasks = set(self._task_dependencies.successors(node=task))
-                dependee_tasks.difference_update(tasks_to_assess)
                 dependee_tasks.difference_update(yielded_tasks)
                 tasks_to_assess.update(dependee_tasks)
 

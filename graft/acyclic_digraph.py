@@ -219,6 +219,13 @@ class AcyclicDiGraph(nx.DiGraph):
             super().add_edge(predecessor, successor)
         super().remove_node(node)
 
+    def has_joining_subgraph(self, source: Hashable, target: Hashable) -> bool:
+        for node in (source, target):
+            if node not in self:
+                raise NodeDoesNotExistError(node=node)
+
+        return nx.has_path(G=self, source=source, target=target)
+
     def get_joining_subgraph(self, source: Hashable, target: Hashable) -> nx.DiGraph:
         """Get the subgraph that connects source to target."""
         # TODO: Find a more efficient solution
@@ -253,8 +260,8 @@ class AcyclicDiGraph(nx.DiGraph):
             nx.find_cycle(self)
         except nx.NetworkXNoCycle:
             return False
-        else:
-            return True
+
+        return True
 
     def relabel_node(self, old_label: Hashable, new_label: Hashable) -> None:
         if old_label not in self:
