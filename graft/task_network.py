@@ -1,4 +1,5 @@
 import collections
+import datetime
 from typing import (
     Callable,
     Collection,
@@ -12,6 +13,7 @@ from typing import (
 )
 
 import networkx as nx
+from attr import attr
 
 from graft.acyclic_digraph import (
     AcyclicDiGraph,
@@ -25,7 +27,11 @@ from graft.constrained_graph import (
     NoTargetPredecessorsAsSourceAncestorsError,
 )
 from graft.priority import Priority
-from graft.task_attributes import TaskAttributes
+from graft.task_attributes import (
+    AfterDueDatetimeError,
+    BeforeStartDatetimeError,
+    TaskAttributes,
+)
 
 
 class TaskDoesNotExistError(Exception):
@@ -342,7 +348,10 @@ class TaskNetwork:
         self._task_dependencies = task_dependencies
 
     def add_task(self, uid: str) -> None:
-        """Add a task to the network."""
+        """Add a task to the network.
+
+        Assumed that no tasks will be added with existing uid's.
+        """
         self._task_attributes_map[uid] = TaskAttributes()
         self._task_hierarchy.add_node(node=uid)
         self._task_dependencies.add_node(node=uid)
@@ -761,6 +770,48 @@ class TaskNetwork:
             )
 
         attributes.priority = priority
+
+    def set_due_datetime(self, uid: str, due_datetime: datetime.datetime) -> None:
+        try:
+            attributes = self._task_attributes_map[uid]
+        except KeyError as e:
+            raise TaskDoesNotExistError(uid=uid) from e
+
+        current_start_datetime = attributes.start_datetime
+        if current_start_datetime and due_datetime <= current_start_datetime:
+            raise BeforeStartDatetimeError(
+                start_datetime=current_start_datetime, due_datetime=due_datetime
+            )
+
+        # If a due date is set and the new due date is later than the current
+        # due date, there will never be a problem
+        current_due_datetime = attributes.due_datetime
+        if not current_due_datetime or due_datetime < current_due_datetime:
+            # Latest start date of upstream tasks & superior tasks
+            pass
+
+        attributes.due_datetime = due_datetime
+
+    def set_start_datetime(self, uid: str, start_datetime: datetime.datetime) -> None:
+        try:
+            attributes = self._task_attributes_map[uid]
+        except KeyError as e:
+            raise TaskDoesNotExistError(uid=uid) from e
+
+        current_due_datetime = attributes.due_datetime
+        if current_due_datetime and start_datetime >= current_due_datetime:
+            raise AfterDueDatetimeError(
+                start_datetime=start_datetime, due_datetime=current_due_datetime
+            )
+
+        # If a start date is set and the new start date is earlier than the
+        # current start date, there will never be a problem
+        current_start_datetime = attributes.start_datetime
+        if not current_start_datetime or start_datetime > current_start_datetime:
+            # TODO: Add block for earliest due date of downstream and superior tasks
+            pass
+
+        attributes.start_datetime = start_datetime
 
     def _do_any_superior_tasks_have_priority(self, uid: str) -> bool:
         """Do any of the superior tasks of task [uid] have a priority?"""

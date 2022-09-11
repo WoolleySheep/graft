@@ -17,6 +17,11 @@ class TaskBlockedError(Exception):
         super().__init__("Task is blocked", *args, **kwargs)
 
 
+class NoPriorityError(Exception):
+    def __init__(self, *args, **kwargs):
+        super().__init__("Task does not have a priority", *args, **kwargs)
+
+
 class TaskNotBlockedError(Exception):
     def __init__(self, *args, **kwargs):
         super().__init__("Task is not blocked", *args, **kwargs)
@@ -184,3 +189,9 @@ class TaskAttributes:
             )
 
         self.due_datetime = due_datetime
+
+    def clear_priority(self) -> None:
+        if not self.priority:
+            raise NoPriorityError
+
+        self.priority = None
