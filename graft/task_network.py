@@ -279,6 +279,15 @@ class DependencyCycleInferiorOf1DownstreamOf2(Exception):
         super().__init__("", *args, **kwargs)
 
 
+class MultiplePrioritiesInHierarchyError(Exception):
+    def __init__(self, uid1: str, uid2: str, *args, **kwargs):
+        self.uid1 = uid1
+        self.uid2 = uid2
+
+        # TODO: Add error message
+        super().__init__("", *args, **kwargs)
+
+
 class SuperiorTaskPrioritiesError(Exception):
     def __init__(
         self,
@@ -433,6 +442,17 @@ class TaskNetwork:
         # third task. The superior task being upstream means that all inferior
         # tasks are also upstream, duplicating information. Find a way to block
         # this.
+
+        supertask_has_priority = bool(self._task_attributes_map[uid1].priority)
+        subtask_has_priority = bool(self._task_attributes_map[uid2].priority)
+
+        if (
+            supertask_has_priority
+            or self._do_any_superior_tasks_have_priority(uid=uid1)
+        ) and (subtask_has_priority or self._do_any_inferior_tasks_have_priority(uid2)):
+            raise MultiplePrioritiesInHierarchyError(uid1=uid1, uid2=uid2)
+
+        self._do_any_inferior_tasks_have_priority(uid2)
 
         # TODO: Replace with simplified version, as checks already done here
         self._task_hierarchy.add_edge(source=uid1, target=uid2)
@@ -726,7 +746,7 @@ class TaskNetwork:
     def set_priority(self, uid: str, priority: Priority) -> None:
         # TODO: Only requires task_attributes_map & task_hierarchy, not task_dependencies. Consider making a new class, or using a function.
         try:
-            attributes = self.task_attributes_map[uid]
+            attributes = self._task_attributes_map[uid]
         except KeyError as e:
             raise TaskDoesNotExistError(uid=uid) from e
 
@@ -736,8 +756,8 @@ class TaskNetwork:
         ):
             raise SuperiorTaskPrioritiesError(
                 uid=uid,
-                task_attributes_map=self.task_attributes_map,
-                task_hierarchy=self.task_hierarchy,
+                task_attributes_map=self._task_attributes_map,
+                task_hierarchy=self._task_hierarchy,
             )
 
         attributes.priority = priority
@@ -745,16 +765,34 @@ class TaskNetwork:
     def _do_any_superior_tasks_have_priority(self, uid: str) -> bool:
         """Do any of the superior tasks of task [uid] have a priority?"""
         # Assumption is that task [uid] does not have a set priority
-        unsearched_tasks = collections.deque(self.task_hierarchy.predecessors(node=uid))
+        unsearched_tasks = collections.deque(
+            self._task_hierarchy.predecessors(node=uid)
+        )
         searched_tasks = set()
         while unsearched_tasks:
             task = unsearched_tasks.popleft()
-            priority = self.task_attributes_map[task].priority
+            priority = self._task_attributes_map[task].priority
             if priority:
                 return True
             searched_tasks.add(task)
-            for supertask in self.task_hierarchy.predecessors(node=task):
+            for supertask in self._task_hierarchy.predecessors(node=task):
                 if supertask not in searched_tasks:
                     unsearched_tasks.append(supertask)
+
+        return False
+
+    def _do_any_inferior_tasks_have_priority(self, uid: str) -> bool:
+        """Do any of the inferior tasks of task [uid] have a priority?"""
+        unsearched_tasks = collections.deque(self._task_hierarchy.successors(node=uid))
+        searched_tasks = set()
+        while unsearched_tasks:
+            task = unsearched_tasks.popleft()
+            priority = self._task_attributes_map[task].priority
+            if priority:
+                return True
+            searched_tasks.add(task)
+            for subtask in self._task_hierarchy.successors(node=task):
+                if subtask not in searched_tasks:
+                    unsearched_tasks.append(subtask)
 
         return False
