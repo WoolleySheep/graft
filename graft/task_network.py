@@ -336,6 +336,46 @@ class SuperiorTaskPrioritiesError(Exception):
         )
 
 
+class InferiorTaskPrioritiesError(Exception):
+    def __init__(self, uid: str, *args, **kwargs):
+        self.uid = uid
+
+        # TODO: Add error message
+        super().__init__("", *args, **kwargs)
+
+
+class SuperiorTaskDueDatetimeError(Exception):
+    def __init__(self, uid: str, *args, **kwargs):
+        self.uid = uid
+
+        # TODO: Add error message
+        super().__init__("", *args, **kwargs)
+
+
+class InferiorTaskDueDatetimeError(Exception):
+    def __init__(self, uid: str, *args, **kwargs):
+        self.uid = uid
+
+        # TODO: Add error message
+        super().__init__("", *args, **kwargs)
+
+
+class SuperiorTaskStartDatetimeError(Exception):
+    def __init__(self, uid: str, *args, **kwargs):
+        self.uid = uid
+
+        # TODO: Add error message
+        super().__init__("", *args, **kwargs)
+
+
+class InferiorTaskStartDatetimeError(Exception):
+    def __init__(self, uid: str, *args, **kwargs):
+        self.uid = uid
+
+        # TODO: Add error message
+        super().__init__("", *args, **kwargs)
+
+
 class TaskNetwork:
     def __init__(
         self,
@@ -460,8 +500,6 @@ class TaskNetwork:
             or self._do_any_superior_tasks_have_priority(uid=uid1)
         ) and (subtask_has_priority or self._do_any_inferior_tasks_have_priority(uid2)):
             raise MultiplePrioritiesInHierarchyError(uid1=uid1, uid2=uid2)
-
-        self._do_any_inferior_tasks_have_priority(uid2)
 
         # TODO: Replace with simplified version, as checks already done here
         self._task_hierarchy.add_edge(source=uid1, target=uid2)
@@ -760,14 +798,15 @@ class TaskNetwork:
             raise TaskDoesNotExistError(uid=uid) from e
 
         # Don't need to search if task already has a priority
-        if not attributes.priority and self._do_any_superior_tasks_have_priority(
-            uid=uid
-        ):
-            raise SuperiorTaskPrioritiesError(
-                uid=uid,
-                task_attributes_map=self._task_attributes_map,
-                task_hierarchy=self._task_hierarchy,
-            )
+        if not attributes.priority:
+            if self._do_any_superior_tasks_have_priority(uid=uid):
+                raise SuperiorTaskPrioritiesError(
+                    uid=uid,
+                    task_attributes_map=self._task_attributes_map,
+                    task_hierarchy=self._task_hierarchy,
+                )
+            if self._do_any_inferior_tasks_have_priority(uid=uid):
+                raise InferiorTaskPrioritiesError(uid=uid)
 
         attributes.priority = priority
 
@@ -783,12 +822,15 @@ class TaskNetwork:
                 start_datetime=current_start_datetime, due_datetime=due_datetime
             )
 
-        # If a due date is set and the new due date is later than the current
-        # due date, there will never be a problem
-        current_due_datetime = attributes.due_datetime
-        if not current_due_datetime or due_datetime < current_due_datetime:
-            # Latest start date of upstream tasks & superior tasks
-            pass
+        # Don't need to search if task already has a due datetime
+        if not attributes.due_datetime:
+            if self._do_any_superior_tasks_have_due_datetime(uid=uid):
+                raise SuperiorTaskDueDatetimeError(uid=uid)
+            if self._do_any_inferior_tasks_have_due_datetime(uid=uid):
+                raise InferiorTaskDueDatetimeError(uid=uid)
+
+        # TODO: Add block for latest start date of upstream tasks & superior
+        # tasks
 
         attributes.due_datetime = due_datetime
 
@@ -804,33 +846,82 @@ class TaskNetwork:
                 start_datetime=start_datetime, due_datetime=current_due_datetime
             )
 
-        # If a start date is set and the new start date is earlier than the
-        # current start date, there will never be a problem
-        current_start_datetime = attributes.start_datetime
-        if not current_start_datetime or start_datetime > current_start_datetime:
-            # TODO: Add block for earliest due date of downstream and superior tasks
-            pass
+        # Don't need to search if task already has a start datetime
+        if not attributes.start_datetime:
+            if self._do_any_superior_tasks_have_start_datetime(uid=uid):
+                raise SuperiorTaskStartDatetimeError(uid=uid)
+            if self._do_any_inferior_tasks_have_start_datetime(uid=uid):
+                raise InferiorTaskStartDatetimeError(uid=uid)
+
+        # TODO: Add block for earliest due date of downstream and superior tasks
 
         attributes.start_datetime = start_datetime
 
     def _do_any_superior_tasks_have_priority(self, uid: str) -> bool:
         """Do any of the superior tasks of task [uid] have a priority?"""
-        # Assumption is that task [uid] does not have a set priority
-        unsearched_tasks = collections.deque(
-            self._task_hierarchy.predecessors(node=uid)
-        )
-        searched_tasks = set()
-        while unsearched_tasks:
-            task = unsearched_tasks.popleft()
-            priority = self._task_attributes_map[task].priority
-            if priority:
-                return True
-            searched_tasks.add(task)
-            for supertask in self._task_hierarchy.predecessors(node=task):
-                if supertask not in searched_tasks:
-                    unsearched_tasks.append(supertask)
 
-        return False
+        def has_priority(uid: str) -> bool:
+            priority = self._task_attributes_map[uid].priority
+            return priority is not None
+
+        return self._task_hierarchy.do_any_ancestors_meet_condition(
+            node=uid, condition_fn=has_priority
+        )
+
+    def _do_any_inferior_tasks_have_priority(self, uid: str) -> bool:
+        """Do any of the inferior tasks of task [uid] have a priority?"""
+
+        def has_priority(uid: str) -> bool:
+            priority = self._task_attributes_map[uid].priority
+            return priority is not None
+
+        return self._task_hierarchy.do_any_descendants_meet_condition(
+            node=uid, condition_fn=has_priority
+        )
+
+    def _do_any_superior_tasks_have_due_datetime(self, uid: str) -> bool:
+        """Do any of the superior tasks of task [uid] have a due datetime?"""
+
+        def has_due_datetime(uid: str) -> bool:
+            due_datetime = self._task_attributes_map[uid].due_datetime
+            return due_datetime is not None
+
+        return self._task_hierarchy.do_any_ancestors_meet_condition(
+            node=uid, condition_fn=has_due_datetime
+        )
+
+    def _do_any_inferior_tasks_have_due_datetime(self, uid: str) -> bool:
+        """Do any of the inferior tasks of task [uid] have a due datetime?"""
+
+        def has_due_datetime(uid: str) -> bool:
+            due_datetime = self._task_attributes_map[uid].due_datetime
+            return due_datetime is not None
+
+        return self._task_hierarchy.do_any_descendants_meet_condition(
+            node=uid, condition_fn=has_due_datetime
+        )
+
+    def _do_any_superior_tasks_have_start_datetime(self, uid: str) -> bool:
+        """Do any of the superior tasks of task [uid] have a start datetime?"""
+
+        def has_start_datetime(uid: str) -> bool:
+            start_datetime = self._task_attributes_map[uid].start_datetime
+            return start_datetime is not None
+
+        return self._task_hierarchy.do_any_ancestors_meet_condition(
+            node=uid, condition_fn=has_start_datetime
+        )
+
+    def _do_any_inferior_tasks_have_start_datetime(self, uid: str) -> bool:
+        """Do any of the inferior tasks of task [uid] have a start datetime?"""
+
+        def has_start_datetime(uid: str) -> bool:
+            start_datetime = self._task_attributes_map[uid].start_datetime
+            return start_datetime is not None
+
+        return self._task_hierarchy.do_any_descendants_meet_condition(
+            node=uid, condition_fn=has_start_datetime
+        )
 
     def _do_any_inferior_tasks_have_priority(self, uid: str) -> bool:
         """Do any of the inferior tasks of task [uid] have a priority?"""

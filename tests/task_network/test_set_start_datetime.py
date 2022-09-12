@@ -2,7 +2,12 @@ import datetime
 
 import pytest
 from graft.task_attributes import AfterDueDatetimeError, BeforeStartDatetimeError
-from graft.task_network import TaskDoesNotExistError, TaskNetwork
+from graft.task_network import (
+    InferiorTaskStartDatetimeError,
+    SuperiorTaskStartDatetimeError,
+    TaskDoesNotExistError,
+    TaskNetwork,
+)
 
 
 def test_single_task(task_network: TaskNetwork):
@@ -42,3 +47,35 @@ def test_start_datetime_after_due_datetime(task_network: TaskNetwork):
         task_network.set_start_datetime("1", later_start_datetime)
     assert exc_info.value.due_datetime == due_datetime
     assert exc_info.value.start_datetime == later_start_datetime
+
+
+def test_superior_task_already_has_start_datetime(task_network: TaskNetwork):
+    # Given a the following task hierarchies and start datetime
+    task_network.add_task("1")
+    task_network.add_task("2")
+    task_network.add_task("3")
+    task_network.add_hierarchy("1", "2")
+    task_network.add_hierarchy("2", "3")
+    task_network.set_start_datetime("1", datetime.datetime.now())
+
+    # When a due datetime is set for the inferior task
+    # Then an appropriate exception is raised
+    with pytest.raises(SuperiorTaskStartDatetimeError) as exc_info:
+        task_network.set_start_datetime("3", datetime.datetime.now())
+    assert exc_info.value.uid == "3"
+
+
+def test_inferior_task_already_has_start_datetime(task_network: TaskNetwork):
+    # Given a the following task hierarchies and start datetime
+    task_network.add_task("1")
+    task_network.add_task("2")
+    task_network.add_task("3")
+    task_network.add_hierarchy("1", "2")
+    task_network.add_hierarchy("2", "3")
+    task_network.set_start_datetime("3", datetime.datetime.now())
+
+    # When a start datetime is set for the superior task
+    # Then an appropriate exception is raised
+    with pytest.raises(InferiorTaskStartDatetimeError) as exc_info:
+        task_network.set_start_datetime("1", datetime.datetime.now())
+    assert exc_info.value.uid == "1"

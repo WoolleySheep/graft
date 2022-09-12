@@ -2,7 +2,12 @@ import datetime
 
 import pytest
 from graft.task_attributes import BeforeStartDatetimeError
-from graft.task_network import TaskDoesNotExistError, TaskNetwork
+from graft.task_network import (
+    InferiorTaskDueDatetimeError,
+    SuperiorTaskDueDatetimeError,
+    TaskDoesNotExistError,
+    TaskNetwork,
+)
 
 
 def test_single_task(task_network: TaskNetwork):
@@ -42,3 +47,35 @@ def test_due_datetime_before_start_datetime(task_network: TaskNetwork):
         task_network.set_due_datetime("1", earlier_due_datetime)
     assert exc_info.value.due_datetime == earlier_due_datetime
     assert exc_info.value.start_datetime == start_datetime
+
+
+def test_superior_task_already_has_due_datetime(task_network: TaskNetwork):
+    # Given a the following task hierarchies and due datetime
+    task_network.add_task("1")
+    task_network.add_task("2")
+    task_network.add_task("3")
+    task_network.add_hierarchy("1", "2")
+    task_network.add_hierarchy("2", "3")
+    task_network.set_due_datetime("1", datetime.datetime.now())
+
+    # When a due datetime is set for the inferior task
+    # Then an appropriate exception is raised
+    with pytest.raises(SuperiorTaskDueDatetimeError) as exc_info:
+        task_network.set_due_datetime("3", datetime.datetime.now())
+    assert exc_info.value.uid == "3"
+
+
+def test_inferior_task_already_has_due_datetime(task_network: TaskNetwork):
+    # Given a the following task hierarchies and due datetime
+    task_network.add_task("1")
+    task_network.add_task("2")
+    task_network.add_task("3")
+    task_network.add_hierarchy("1", "2")
+    task_network.add_hierarchy("2", "3")
+    task_network.set_due_datetime("3", datetime.datetime.now())
+
+    # When a due datetime is set for the superior task
+    # Then an appropriate exception is raised
+    with pytest.raises(InferiorTaskDueDatetimeError) as exc_info:
+        task_network.set_due_datetime("1", datetime.datetime.now())
+    assert exc_info.value.uid == "1"

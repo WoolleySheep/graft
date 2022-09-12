@@ -1,5 +1,5 @@
 import itertools
-from typing import Hashable, Iterable
+from typing import Callable, Hashable, Iterable
 
 import networkx as nx
 
@@ -277,15 +277,49 @@ class AcyclicDiGraph(nx.DiGraph):
         except nx.NetworkXError as e:
             raise NodeDoesNotExistError(node=node) from e
 
+    def do_any_descendants_meet_condition(
+        self, node: Hashable, condition_fn: Callable[[Hashable], bool]
+    ) -> bool:
+        """Do any descendants meet the condition?"""
+        unsearched_nodes = set(self.successors(node=node))
+        searched_nodes = set()
+        while unsearched_nodes:
+            current_node = unsearched_nodes.pop()
+            if condition_fn(current_node):
+                return True
+            searched_nodes.add(current_node)
+            supertasks = set(self.successors(node=current_node))
+            supertasks.difference_update(searched_nodes)
+            unsearched_nodes.update(supertasks)
+
+        return False
+
     def ancestors(self, node: Hashable) -> set:
         try:
             return nx.ancestors(G=self, source=node)
         except nx.NetworkXError as e:
             raise NodeDoesNotExistError(node=node) from e
 
+    def do_any_ancestors_meet_condition(
+        self, node: Hashable, condition_fn: Callable[[Hashable], bool]
+    ) -> bool:
+        """Do any ancestors meet the condition?"""
+        unsearched_nodes = set(self.predecessors(node=node))
+        searched_nodes = set()
+        while unsearched_nodes:
+            current_node = unsearched_nodes.pop()
+            if condition_fn(current_node):
+                return True
+            searched_nodes.add(current_node)
+            supertasks = set(self.predecessors(node=current_node))
+            supertasks.difference_update(searched_nodes)
+            unsearched_nodes.update(supertasks)
+
+        return False
+
     def predecessors(self, node: Hashable) -> Iterable[Hashable]:
         try:
-            return super().predecessors(node)
+            return super().predecessors(n=node)
         except nx.NetworkXError as e:
             raise NodeDoesNotExistError(node=node) from e
 

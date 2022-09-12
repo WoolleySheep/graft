@@ -3,6 +3,7 @@ import collections
 import pytest
 from graft.priority import Priority
 from graft.task_network import (
+    InferiorTaskPrioritiesError,
     SuperiorTaskPrioritiesError,
     TaskDoesNotExistError,
     TaskNetwork,
@@ -84,3 +85,19 @@ def test_multiple_priorities(task_network: TaskNetwork):
         collections.Counter(exc_info.value.superior_tasks_with_priorities)
         == expected_counter
     )
+
+
+def test_inferior_task_already_has_priority(task_network: TaskNetwork):
+    # Given a the following task hierarchies and priority
+    task_network.add_task("1")
+    task_network.add_task("2")
+    task_network.add_task("3")
+    task_network.add_hierarchy("1", "2")
+    task_network.add_hierarchy("2", "3")
+    task_network.set_priority("3", Priority.MEDIUM)
+
+    # When a priority is set for the superior task
+    # Then an appropriate exception is raised
+    with pytest.raises(InferiorTaskPrioritiesError) as exc_info:
+        task_network.set_priority("1", Priority.MEDIUM)
+    assert exc_info.value.uid == "1"
