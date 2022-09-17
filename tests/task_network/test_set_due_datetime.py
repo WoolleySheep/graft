@@ -81,42 +81,74 @@ def test_inferior_task_already_has_due_datetime(task_network: TaskNetwork):
     assert exc_info.value.uid == "1"
 
 
-def test_due_datetime_later_than_any_superiors_start_datetime(
+def test_due_datetime_earlier_than_any_superiors_start_datetime(
     task_network: TaskNetwork,
 ) -> None:
-    # Given the following task hierarchy and state datetime
+    # Given the following task hierarchy and start datetime
     task_network.add_task("1")
     task_network.add_task("2")
     task_network.add_task("3")
+    task_network.add_hierarchy("1", "2")
+    task_network.add_hierarchy("2", "3")
     task_network.set_start_datetime(uid="1", start_datetime=datetime.datetime.now())
 
-    # When a due datetime is set which is later than a start datetime of a superior task
+    # When a due datetime is set which is earlier than the start datetime of any superior tasks
     # Then an appropriate exception is raised
-    later_due_datetime = datetime.datetime.now() + datetime.timedelta(days=1)
-    with pytest.raises(SuperiorStartDatetimeTooEarly) as exc_info:
-        task_network.set_due_datetime(uid="3", due_datetime=later_due_datetime)
+    earlier_due_datetime = datetime.datetime.now() - datetime.timedelta(days=1)
+    with pytest.raises(SuperiorStartDatetimeTooLate) as exc_info:
+        task_network.set_due_datetime(uid="3", due_datetime=earlier_due_datetime)
     assert exc_info.value.uid == "3"
 
 
-def test_due_datetime_later_than_any_inferiors_start_datetime():
-    # Raise an exception if the set due datetime is later than any of the task's
-    # inferior tasks' start datetimes
+def test_due_datetime_earlier_than_any_inferiors_start_datetime(
+    task_network: TaskNetwork,
+) -> None:
+    # Given the following task hierarchy and start datetime
+    task_network.add_task("1")
+    task_network.add_task("2")
+    task_network.add_task("3")
+    task_network.add_hierarchy("1", "2")
+    task_network.add_hierarchy("2", "3")
+    task_network.set_start_datetime(uid="3", start_datetime=datetime.datetime.now())
+
+    # When a due datetime is set which is earlier than the start datetime of any inferior tasks
+    # Then an appropriate exception is raised
+    earlier_due_datetime = datetime.datetime.now() - datetime.timedelta(days=1)
+    with pytest.raises(InferiorStartDatetimeTooLate) as exc_info:
+        task_network.set_due_datetime(uid="1", due_datetime=earlier_due_datetime)
+    assert exc_info.value.uid == "1"
+
+
+def test_due_datetime_earlier_than_any_inferior_tasks_superior_start_datetime(
+    task_network: TaskNetwork,
+) -> None:
+    # Given the following task hierarchy and start datetime
+    task_network.add_task("1")
+    task_network.add_task("2")
+    task_network.add_task("3")
+    task_network.add_task("4")
+    task_network.add_task("5")
+    task_network.add_hierarchy("1", "2")
+    task_network.add_hierarchy("2", "3")
+    task_network.add_hierarchy("4", "5")
+    task_network.add_hierarchy("5", "3")
+    task_network.set_start_datetime(uid="4", start_datetime=datetime.datetime.now())
+
+    # When a due datetime is set which is earlier than the start datetime of superior tasks of any inferior tasks
+    # Then an appropriate exception is raised
+    earlier_due_datetime = datetime.datetime.now() - datetime.timedelta(days=1)
+    with pytest.raises(SuperiorInferiorStartDatetimeTooLate) as exc_info:
+        task_network.set_due_datetime(uid="3", due_datetime=earlier_due_datetime)
+    assert exc_info.value.uid == "3"
+
+
+def test_due_datetime_earlier_than_any_upstream_start_datetime():
+    # Raise an exception if the set due datetime is earlier than the start
+    # datetime of any upstream tasks
     raise NotImplementedError
 
 
-def test_due_datetime_later_than_any_inferior_tasks_superior_start_datetime():
-    # Raise an exception if the set due datetime is later than any of the start
-    # datetimes of any of the superior tasks of the task's inferior tasks
-    raise NotImplementedError
-
-
-def test_due_datetime_later_than_earliest_downstream_start_datetime():
-    # Raise an exception if the set due datetime is later than the start
-    # datetime of any downstream tasks
-    raise NotImplementedError
-
-
-def test_due_datetime_later_than_inferior_tasks_earliest_downstream_start_datetime():
-    # Raise an exception if the set due datetime is later than the start
-    # datetime of any downstream tasks of any of the task's inferior tasks
+def test_due_datetime_earlier_than_inferior_tasks_upstream_start_datetime():
+    # Raise an exception if the set due datetime is earlier than the start
+    # datetime of any upstream tasks of any of the task's inferior tasks
     raise NotImplementedError
