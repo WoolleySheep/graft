@@ -1,20 +1,9 @@
 import collections
 import datetime
 import itertools
-from typing import (
-    Callable,
-    Collection,
-    Generator,
-    Hashable,
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    Optional,
-)
+from typing import Callable, Collection, Iterator, Mapping, Optional
 
 import networkx as nx
-from attr import attr
 
 from graft.acyclic_digraph import (
     AcyclicDiGraph,
@@ -934,22 +923,6 @@ class TaskNetwork:
         return self._task_hierarchy.do_any_descendants_meet_condition(
             node=uid, condition_fn=has_start_datetime
         )
-
-    def _do_any_inferior_tasks_have_priority(self, uid: str) -> bool:
-        """Do any of the inferior tasks of task [uid] have a priority?"""
-        unsearched_tasks = collections.deque(self._task_hierarchy.successors(node=uid))
-        searched_tasks = set()
-        while unsearched_tasks:
-            task = unsearched_tasks.popleft()
-            priority = self._task_attributes_map[task].priority
-            if priority:
-                return True
-            searched_tasks.add(task)
-            for subtask in self._task_hierarchy.successors(node=task):
-                if subtask not in searched_tasks:
-                    unsearched_tasks.append(subtask)
-
-        return False
 
     def _are_direct_hierarchies_dependent(self, uid1: str, uid2: str) -> bool:
         """Check if the direct family line of task [uid1] have any dependencies with the

@@ -1,6 +1,5 @@
 import networkx as nx
 import pytest
-
 from graft.task_network import (
     DependencyCycleInferiorOf1DownstreamOf2,
     DependencyCycleInferiorOf2UpstreamOf1,
@@ -11,10 +10,6 @@ from graft.task_network import (
     DependencyIntroducesCycleError,
     InverseDependencyExistsError,
     SelfDependencyError,
-    TaskCycleDependencyInferiorOf1DownstreamOf2,
-    TaskCycleDependencyInferiorOf2UpstreamOf1,
-    TaskCycleDependencySuperiorOf1DownstreamOf2,
-    TaskCycleDependencySuperiorOf2UpstreamOf1,
     TaskDoesNotExistError,
     TaskNetwork,
     UnnecessaryDependencyError,
