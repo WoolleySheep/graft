@@ -1,5 +1,6 @@
 import collections
 import datetime
+import itertools
 from typing import (
     Callable,
     Collection,
@@ -285,6 +286,15 @@ class DependencyCycleInferiorOf1DownstreamOf2(Exception):
         super().__init__("", *args, **kwargs)
 
 
+class UnnecessaryDependencyError(Exception):
+    def __init__(self, uid1: str, uid2: str, *args, **kwargs):
+        self.uid1 = uid1
+        self.uid2 = uid2
+
+        # TODO: Add error message
+        super().__init__("", *args, **kwargs)
+
+
 class MultiplePrioritiesInHierarchyError(Exception):
     def __init__(self, uid1: str, uid2: str, *args, **kwargs):
         self.uid1 = uid1
@@ -486,11 +496,10 @@ class TaskNetwork:
         if is_inferior_of_uid2_upstream_of_uid1:
             raise TaskCycleInferiorOf2UpstreamOf1(uid1=uid1, uid2=uid2)
 
-        # TODO: Consider raising exception if adding a hierarchy means that two
-        # tasks, one superior to the other, are both independently upstream of a
-        # third task. The superior task being upstream means that all inferior
-        # tasks are also upstream, duplicating information. Find a way to block
-        # this.
+        if self._will_raise_unecessary_dependency_error_add_hierarchy(
+            uid1=uid1, uid2=uid2
+        ):
+            raise UnnecessaryDependencyError(uid1=uid1, uid2=uid2)
 
         supertask_has_priority = bool(self._task_attributes_map[uid1].priority)
         subtask_has_priority = bool(self._task_attributes_map[uid2].priority)
@@ -563,6 +572,9 @@ class TaskNetwork:
 
         if self._is_inferior_downstream(uid1=uid1, uid2=uid2):
             raise DependencyCycleInferiorOf1DownstreamOf2(uid1=uid1, uid2=uid2)
+
+        if self._are_direct_hierarchies_dependent(uid1=uid1, uid2=uid2):
+            raise UnnecessaryDependencyError(uid1=uid1, uid2=uid2)
 
         # TODO: Replace with simplified version, as checks already done here
         self._task_dependencies.add_edge(source=uid1, target=uid2)
@@ -936,5 +948,66 @@ class TaskNetwork:
             for subtask in self._task_hierarchy.successors(node=task):
                 if subtask not in searched_tasks:
                     unsearched_tasks.append(subtask)
+
+        return False
+
+    def _are_direct_hierarchies_dependent(self, uid1: str, uid2: str) -> bool:
+        """Check if the direct family line of task [uid1] have any dependencies with the
+        direct family line of task [uid2].
+        """
+        # TODO (mjw): Make this more efficient
+        uid1_hierarchy = self._task_hierarchy.direct_family_line(node=uid1)
+        uid2_hierarchy = self._task_hierarchy.direct_family_line(node=uid2)
+        for task1, task2 in itertools.product(uid1_hierarchy, uid2_hierarchy):
+            if self._task_dependencies.has_edge(
+                source=task1, target=task2
+            ) or self._task_dependencies.has_edge(source=task2, target=task1):
+                return True
+
+        return False
+
+    def _will_raise_unecessary_dependency_error_add_hierarchy(
+        self, uid1: str, uid2: str
+    ) -> bool:
+        """Check if any dependents/dependees of (task [uid1] or superior tasks
+        [uid1]) and any dependents/dependees of (task [uid2] or inferor tasks
+        [uid2]) are superior to/inferior to/same as each other.
+        """
+        # TODO (mjw): Find better name for function.
+        # TODO (mjw): Make more efficient
+        uid1_and_superior_tasks = self._task_hierarchy.ancestors(node=uid1)
+        uid1_and_superior_tasks.add(uid1)
+
+        uid2_and_inferior_tasks = self._task_hierarchy.descendants(node=uid2)
+        uid2_and_inferior_tasks.add(uid2)
+
+        uid1_and_superiors_dependees_dependents = set()
+        for task in uid1_and_superior_tasks:
+            task_dependees_and_dependents = itertools.chain(
+                self._task_dependencies.predecessors(node=task),
+                self._task_dependencies.successors(node=task),
+            )
+            uid1_and_superiors_dependees_dependents.update(
+                task_dependees_and_dependents
+            )
+
+        uid2_and_inferiors_dependees_dependents = set()
+        for task in uid2_and_inferior_tasks:
+            task_dependees_and_dependents = itertools.chain(
+                self._task_dependencies.predecessors(node=task),
+                self._task_dependencies.successors(node=task),
+            )
+            uid2_and_inferiors_dependees_dependents.update(
+                task_dependees_and_dependents
+            )
+
+        for task1, task2 in itertools.product(
+            uid1_and_superiors_dependees_dependents,
+            uid2_and_inferiors_dependees_dependents,
+        ):
+            if self._task_hierarchy.has_joining_subgraph(
+                source=task1, target=task2
+            ) or self._task_hierarchy.has_joining_subgraph(source=task2, target=task1):
+                return True
 
         return False

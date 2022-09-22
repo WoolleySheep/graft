@@ -1,6 +1,7 @@
 import collections
 
 import pytest
+
 from graft.priority import Priority
 from graft.task_network import (
     InferiorTaskPrioritiesError,

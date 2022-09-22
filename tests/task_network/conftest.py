@@ -1,4 +1,5 @@
 import pytest
+
 from graft.acyclic_digraph import AcyclicDiGraph
 from graft.constrained_graph import ConstrainedGraph
 from graft.task_network import TaskNetwork

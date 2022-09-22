@@ -220,6 +220,7 @@ class AcyclicDiGraph(nx.DiGraph):
         super().remove_node(node)
 
     def has_joining_subgraph(self, source: Hashable, target: Hashable) -> bool:
+        """Check if a path from source to target exists."""
         for node in (source, target):
             if node not in self:
                 raise NodeDoesNotExistError(node=node)
@@ -270,6 +271,12 @@ class AcyclicDiGraph(nx.DiGraph):
             raise NodeExistsError(node=new_label)
 
         nx.relabel_nodes(self, {old_label: new_label}, copy=False)
+
+    def direct_family_line(self, node: Hashable) -> set:
+        """All ancestors, descendants and the node itself."""
+        nodes = self.ancestors(node=node) | self.descendants(node=node)
+        nodes.add(node)
+        return nodes
 
     def descendants(self, node: Hashable) -> set:
         try:

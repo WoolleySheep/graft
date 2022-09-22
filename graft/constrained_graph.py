@@ -1,7 +1,7 @@
 import itertools
 import json
 from collections import deque
-from typing import Hashable, Iterable
+from typing import Hashable
 
 import networkx as nx
 
@@ -10,7 +10,6 @@ from graft.acyclic_digraph import (
     EdgeExistsError,
     EdgeIntroducesCycleError,
     NodeDoesNotExistError,
-    NodeExistsError,
     SelfLoopError,
 )
 

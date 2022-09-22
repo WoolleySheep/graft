@@ -1,5 +1,6 @@
 import networkx as nx
 import pytest
+
 from graft.priority import Priority
 from graft.task_network import (
     HierarchyExistsError,
@@ -15,6 +16,7 @@ from graft.task_network import (
     TaskCycleInferiorOf2UpstreamOf1,
     TaskDoesNotExistError,
     TaskNetwork,
+    UnnecessaryDependencyError,
 )
 
 
@@ -381,3 +383,89 @@ def test_superior_of_supertask_and_inferior_of_subtask_have_priorities(
         task_network.add_hierarchy("2", "3")
     assert exc_info.value.uid1 == "2"
     assert exc_info.value.uid2 == "3"
+
+
+def test_unnecessary_dependency_1(task_network: TaskNetwork):
+    # Given the following task network
+    task_network.add_task("1")
+    task_network.add_task("2")
+    task_network.add_task("3")
+    task_network.add_dependency("1", "3")
+    task_network.add_dependency("2", "3")
+
+    # When a hierarchy is introduced that creases an unnecessary dependency
+    # Then an appropriate exception is raised
+    with pytest.raises(UnnecessaryDependencyError) as exc_info:
+        task_network.add_hierarchy("1", "2")
+    assert exc_info.value.uid1 == "1"
+    assert exc_info.value.uid2 == "2"
+
+
+def test_unnecessary_dependency_2(task_network: TaskNetwork):
+    # Given the following task network
+    task_network.add_task("1")
+    task_network.add_task("2")
+    task_network.add_task("3")
+    task_network.add_dependency("1", "2")
+    task_network.add_dependency("1", "3")
+
+    # When a hierarchy is introduced that creases an unnecessary dependency
+    # Then an appropriate exception is raised
+    with pytest.raises(UnnecessaryDependencyError) as exc_info:
+        task_network.add_hierarchy("2", "3")
+    assert exc_info.value.uid1 == "2"
+    assert exc_info.value.uid2 == "3"
+
+
+def test_unnecessary_dependency_3(task_network: TaskNetwork):
+    # Given the following task network
+    task_network.add_task("1")
+    task_network.add_task("2")
+    task_network.add_task("3")
+    task_network.add_task("4")
+    task_network.add_hierarchy("1", "2")
+    task_network.add_dependency("3", "4")
+    task_network.add_dependency("1", "4")
+
+    # When a hierarchy is introduced that creases an unnecessary dependency
+    # Then an appropriate exception is raised
+    with pytest.raises(UnnecessaryDependencyError) as exc_info:
+        task_network.add_hierarchy("2", "3")
+    assert exc_info.value.uid1 == "2"
+    assert exc_info.value.uid2 == "3"
+
+
+def test_unnecessary_dependency_4(task_network: TaskNetwork):
+    # Given the following task network
+    task_network.add_task("1")
+    task_network.add_task("2")
+    task_network.add_task("3")
+    task_network.add_task("4")
+    task_network.add_hierarchy("1", "2")
+    task_network.add_dependency("1", "3")
+    task_network.add_dependency("2", "4")
+
+    # When a hierarchy is introduced that creases an unnecessary dependency
+    # Then an appropriate exception is raised
+    with pytest.raises(UnnecessaryDependencyError) as exc_info:
+        task_network.add_hierarchy("3", "4")
+    assert exc_info.value.uid1 == "3"
+    assert exc_info.value.uid2 == "4"
+
+
+def test_unnecessary_dependency_5(task_network: TaskNetwork):
+    # Given the following task network
+    task_network.add_task("1")
+    task_network.add_task("2")
+    task_network.add_task("3")
+    task_network.add_task("4")
+    task_network.add_hierarchy("1", "2")
+    task_network.add_dependency("1", "4")
+    task_network.add_dependency("2", "3")
+
+    # When a dependency is added that that overwrites an existing dependency
+    # Then an appropriate exception is raised
+    with pytest.raises(UnnecessaryDependencyError) as exc_info:
+        task_network.add_hierarchy("3", "4")
+    assert exc_info.value.uid1 == "3"
+    assert exc_info.value.uid2 == "4"
