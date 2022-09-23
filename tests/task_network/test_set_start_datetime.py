@@ -2,7 +2,7 @@ import datetime
 
 import pytest
 
-from graft.task_attributes import AfterDueDatetimeError, BeforeStartDatetimeError
+from graft.task_attributes import AfterDueDatetimeError
 from graft.task_network import (
     InferiorTaskStartDatetimeError,
     SuperiorTaskStartDatetimeError,

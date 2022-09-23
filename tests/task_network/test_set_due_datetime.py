@@ -1,10 +1,14 @@
 import datetime
 
 import pytest
-
 from graft.task_attributes import BeforeStartDatetimeError
 from graft.task_network import (
+    DueBeforeInferiorsUpstreamStartError,
+    DueBeforeUpstreamStartError,
+    InferiorStartDatetimeTooLate,
     InferiorTaskDueDatetimeError,
+    SuperiorInferiorStartDatetimeTooLate,
+    SuperiorStartDatetimeTooLate,
     SuperiorTaskDueDatetimeError,
     TaskDoesNotExistError,
     TaskNetwork,
@@ -145,11 +149,12 @@ def test_due_datetime_earlier_than_any_inferior_tasks_superior_start_datetime(
     task_network.add_hierarchy("5", "3")
     task_network.set_start_datetime(uid="4", start_datetime=datetime_example)
 
-    # When a due datetime is set which is earlier than the start datetime of superior tasks of any inferior tasks
+    # When a due datetime is set which is earlier than the start datetime of superior
+    # tasks of any inferior tasks
     # Then an appropriate exception is raised
     with pytest.raises(SuperiorInferiorStartDatetimeTooLate) as exc_info:
-        task_network.set_due_datetime(uid="3", due_datetime=datetime_earlier_example)
-    assert exc_info.value.uid == "3"
+        task_network.set_due_datetime(uid="1", due_datetime=datetime_earlier_example)
+    assert exc_info.value.uid == "1"
 
 
 def test_due_datetime_earlier_than_any_upstream_start_datetime(
@@ -193,6 +198,6 @@ def test_due_datetime_earlier_than_inferior_tasks_upstream_start_datetime(
     # When a due datetime is set that is earlier than the start datetime of a
     # task upstream of an inferior task
     # Then the appropriate exception is raised
-    with pytest.raises(DueBeforeInferiorUpstreamStart) as exc_info:
+    with pytest.raises(DueBeforeInferiorsUpstreamStartError) as exc_info:
         task_network.set_due_datetime(uid="4", due_datetime=datetime_earlier_example)
     assert exc_info.value.uid == "4"

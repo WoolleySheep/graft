@@ -1,3 +1,4 @@
+import collections
 import itertools
 from typing import Callable, Hashable, Iterable
 
@@ -284,45 +285,35 @@ class AcyclicDiGraph(nx.DiGraph):
         except nx.NetworkXError as e:
             raise NodeDoesNotExistError(node=node) from e
 
-    def do_any_descendants_meet_condition(
-        self, node: Hashable, condition_fn: Callable[[Hashable], bool]
-    ) -> bool:
-        """Do any descendants meet the condition?"""
-        unsearched_nodes = set(self.successors(node=node))
-        searched_nodes = set()
-        while unsearched_nodes:
-            current_node = unsearched_nodes.pop()
-            if condition_fn(current_node):
-                return True
-            searched_nodes.add(current_node)
-            supertasks = set(self.successors(node=current_node))
-            supertasks.difference_update(searched_nodes)
-            unsearched_nodes.update(supertasks)
-
-        return False
-
     def ancestors(self, node: Hashable) -> set:
         try:
             return nx.ancestors(G=self, source=node)
         except nx.NetworkXError as e:
             raise NodeDoesNotExistError(node=node) from e
 
-    def do_any_ancestors_meet_condition(
-        self, node: Hashable, condition_fn: Callable[[Hashable], bool]
-    ) -> bool:
-        """Do any ancestors meet the condition?"""
+    def ancestors_unique(self, node: Hashable) -> Iterable[Hashable]:
+        """Return an iterator over the ancestors of a node, only returning each node once."""
         unsearched_nodes = set(self.predecessors(node=node))
         searched_nodes = set()
         while unsearched_nodes:
             current_node = unsearched_nodes.pop()
-            if condition_fn(current_node):
-                return True
+            yield current_node
             searched_nodes.add(current_node)
-            supertasks = set(self.predecessors(node=current_node))
-            supertasks.difference_update(searched_nodes)
-            unsearched_nodes.update(supertasks)
+            predecessors = set(self.predecessors(node=current_node))
+            predecessors.difference_update(searched_nodes)
+            unsearched_nodes.update(predecessors)
 
-        return False
+    def descendants_unique(self, node: Hashable) -> Iterable[Hashable]:
+        """Return an iterator over the descendants of a node, only returning each node once."""
+        unsearched_nodes = set(self.successors(node=node))
+        searched_nodes = set()
+        while unsearched_nodes:
+            current_node = unsearched_nodes.pop()
+            yield current_node
+            searched_nodes.add(current_node)
+            successors = set(self.successors(node=current_node))
+            successors.difference_update(searched_nodes)
+            unsearched_nodes.update(successors)
 
     def predecessors(self, node: Hashable) -> Iterable[Hashable]:
         try:

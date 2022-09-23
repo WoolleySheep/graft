@@ -375,6 +375,46 @@ class InferiorTaskStartDatetimeError(Exception):
         super().__init__("", *args, **kwargs)
 
 
+class SuperiorStartDatetimeTooLate(Exception):
+    def __init__(self, uid: str, *args, **kwargs):
+        self.uid = uid
+
+        # TODO: Add error message
+        super().__init__("", *args, **kwargs)
+
+
+class InferiorStartDatetimeTooLate(Exception):
+    def __init__(self, uid: str, *args, **kwargs):
+        self.uid = uid
+
+        # TODO: Add error message
+        super().__init__("", *args, **kwargs)
+
+
+class SuperiorInferiorStartDatetimeTooLate(Exception):
+    def __init__(self, uid: str, *args, **kwargs):
+        self.uid = uid
+
+        # TODO: Add error message
+        super().__init__("", *args, **kwargs)
+
+
+class DueBeforeUpstreamStartError(Exception):
+    def __init__(self, uid: str, *args, **kwargs):
+        self.uid = uid
+
+        # TODO: Add error message
+        super().__init__("", *args, **kwargs)
+
+
+class DueBeforeInferiorsUpstreamStartError(Exception):
+    def __init__(self, uid: str, *args, **kwargs):
+        self.uid = uid
+
+        # TODO: Add error message
+        super().__init__("", *args, **kwargs)
+
+
 class TaskNetwork:
     def __init__(
         self,
@@ -830,6 +870,31 @@ class TaskNetwork:
             if self._do_any_inferior_tasks_have_due_datetime(uid=uid):
                 raise InferiorTaskDueDatetimeError(uid=uid)
 
+        if self._do_any_superior_tasks_have_start_datetime_later_than_or_equal_to_threshold(
+            uid=uid, threshold=due_datetime
+        ):
+            raise SuperiorStartDatetimeTooLate(uid=uid)
+
+        if self._do_any_inferior_tasks_have_start_datetime_later_than_or_equal_to_threshold(
+            uid=uid, threshold=due_datetime
+        ):
+            raise InferiorStartDatetimeTooLate(uid=uid)
+
+        if self._do_any_superior_tasks_of_inferior_tasks_have_start_datetime_later_than_or_equal_to_threshold(
+            uid=uid, threshold=due_datetime
+        ):
+            raise SuperiorInferiorStartDatetimeTooLate(uid=uid)
+
+        if self._do_any_upstream_tasks_have_start_datetime_later_than_or_equal_to_threshold(
+            uid=uid, threshold=due_datetime
+        ):
+            raise DueBeforeUpstreamStartError(uid=uid)
+
+        if self._do_any_upstream_tasks_of_inferior_tasks_have_start_datetime_later_than_or_equal_to_threshold(
+            uid=uid, threshold=due_datetime
+        ):
+            raise DueBeforeInferiorsUpstreamStartError(uid=uid)
+
         # TODO: Add block for latest start date of upstream tasks & superior
         # tasks
 
@@ -860,69 +925,110 @@ class TaskNetwork:
 
     def _do_any_superior_tasks_have_priority(self, uid: str) -> bool:
         """Do any of the superior tasks of task [uid] have a priority?"""
+        for task in self._task_hierarchy.ancestors_unique(node=uid):
+            if self._task_attributes_map[task].priority:
+                return True
 
-        def has_priority(uid: str) -> bool:
-            priority = self._task_attributes_map[uid].priority
-            return priority is not None
-
-        return self._task_hierarchy.do_any_ancestors_meet_condition(
-            node=uid, condition_fn=has_priority
-        )
+        return False
 
     def _do_any_inferior_tasks_have_priority(self, uid: str) -> bool:
         """Do any of the inferior tasks of task [uid] have a priority?"""
+        for task in self._task_hierarchy.descendants_unique(node=uid):
+            if self._task_attributes_map[task].priority:
+                return True
 
-        def has_priority(uid: str) -> bool:
-            priority = self._task_attributes_map[uid].priority
-            return priority is not None
-
-        return self._task_hierarchy.do_any_descendants_meet_condition(
-            node=uid, condition_fn=has_priority
-        )
+        return False
 
     def _do_any_superior_tasks_have_due_datetime(self, uid: str) -> bool:
         """Do any of the superior tasks of task [uid] have a due datetime?"""
+        for task in self._task_hierarchy.ancestors_unique(node=uid):
+            if self._task_attributes_map[task].due_datetime:
+                return True
 
-        def has_due_datetime(uid: str) -> bool:
-            due_datetime = self._task_attributes_map[uid].due_datetime
-            return due_datetime is not None
+        return False
 
-        return self._task_hierarchy.do_any_ancestors_meet_condition(
-            node=uid, condition_fn=has_due_datetime
-        )
+    def _do_any_superior_tasks_have_start_datetime_later_than_or_equal_to_threshold(
+        self, uid: str, threshold: datetime.datetime
+    ) -> bool:
+        """Do any of the superior tasks of task [uid] have a start datetime
+        later than or equal to [threshold]?"""
+        for task in self._task_hierarchy.ancestors_unique(node=uid):
+            start_datetime = self._task_attributes_map[task].start_datetime
+            if start_datetime and start_datetime >= threshold:
+                return True
+
+        return False
+
+    def _do_any_inferior_tasks_have_start_datetime_later_than_or_equal_to_threshold(
+        self, uid: str, threshold: datetime.datetime
+    ) -> bool:
+        """Do any of the inferior tasks of task [uid] have a start datetime
+        later than or equal to [threshold]?"""
+        for task in self._task_hierarchy.descendants_unique(node=uid):
+            start_datetime = self._task_attributes_map[task].start_datetime
+            if start_datetime and start_datetime >= threshold:
+                return True
+
+        return False
+
+    def _do_any_superior_tasks_of_inferior_tasks_have_start_datetime_later_than_or_equal_to_threshold(
+        self, uid: str, threshold: datetime.datetime
+    ) -> bool:
+        """Do any of the superior tasks of the inferior tasks of task [uid] have
+        a start datetime later than or equal to [threshold]?"""
+        for inferior in self._task_hierarchy.descendants_unique(node=uid):
+            for superior in self._task_hierarchy.ancestors_unique(node=inferior):
+                start_datetime = self._task_attributes_map[superior].start_datetime
+                if start_datetime and start_datetime >= threshold:
+                    return True
+
+        return False
+
+    def _do_any_upstream_tasks_have_start_datetime_later_than_or_equal_to_threshold(
+        self, uid: str, threshold: datetime.datetime
+    ) -> bool:
+        for task in self.upstream_tasks(uid=uid):
+            start_datetime = self._task_attributes_map[task].start_datetime
+            if start_datetime and start_datetime >= threshold:
+                return True
+
+        return False
+
+    def _do_any_upstream_tasks_of_inferior_tasks_have_start_datetime_later_than_or_equal_to_threshold(
+        self, uid: str, threshold: datetime.datetime
+    ) -> bool:
+        for inferior_task in self._task_hierarchy.descendants(node=uid):
+            for upstream_task in self.upstream_tasks(uid=inferior_task):
+                start_datetime = self._task_attributes_map[upstream_task].start_datetime
+                if start_datetime and start_datetime >= threshold:
+                    return True
+
+        return False
 
     def _do_any_inferior_tasks_have_due_datetime(self, uid: str) -> bool:
         """Do any of the inferior tasks of task [uid] have a due datetime?"""
+        for task in self._task_hierarchy.descendants_unique(node=uid):
+            if self._task_attributes_map[task].due_datetime:
+                return True
 
-        def has_due_datetime(uid: str) -> bool:
-            due_datetime = self._task_attributes_map[uid].due_datetime
-            return due_datetime is not None
-
-        return self._task_hierarchy.do_any_descendants_meet_condition(
-            node=uid, condition_fn=has_due_datetime
-        )
+        return False
 
     def _do_any_superior_tasks_have_start_datetime(self, uid: str) -> bool:
         """Do any of the superior tasks of task [uid] have a start datetime?"""
+        for task in self._task_hierarchy.ancestors_unique(node=uid):
+            if self._task_attributes_map[task].start_datetime:
+                return True
 
-        def has_start_datetime(uid: str) -> bool:
-            start_datetime = self._task_attributes_map[uid].start_datetime
-            return start_datetime is not None
-
-        return self._task_hierarchy.do_any_ancestors_meet_condition(
-            node=uid, condition_fn=has_start_datetime
-        )
+        return False
 
     def _do_any_inferior_tasks_have_start_datetime(self, uid: str) -> bool:
         """Do any of the inferior tasks of task [uid] have a start datetime?"""
+        for task in self._task_hierarchy.descendants_unique(node=uid):
+            start_datetime = self._task_attributes_map[task].start_datetime
+            if start_datetime:
+                return True
 
-        def has_start_datetime(uid: str) -> bool:
-            start_datetime = self._task_attributes_map[uid].start_datetime
-            return start_datetime is not None
-
-        return self._task_hierarchy.do_any_descendants_meet_condition(
-            node=uid, condition_fn=has_start_datetime
-        )
+        return False
 
     def _are_direct_hierarchies_dependent(self, uid1: str, uid2: str) -> bool:
         """Check if the direct family line of task [uid1] have any dependencies with the

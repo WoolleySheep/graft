@@ -311,80 +311,6 @@ def test_inferior_2_downstream_1(task_network: TaskNetwork):
     assert exc_info.value.uid2 == "3"
 
 
-def test_supertask_and_subtask_have_priorities(task_network: TaskNetwork):
-    # Given the following tasks and priorities
-    task_network.add_task("1")
-    task_network.add_task("2")
-    task_network.set_priority("1", Priority.MEDIUM)
-    task_network.set_priority("2", Priority.MEDIUM)
-
-    # When a hierarchy is added
-    # And both tasks have priorities
-    # Then the appropriate exception is raised
-    with pytest.raises(MultiplePrioritiesInHierarchyError) as exc_info:
-        task_network.add_hierarchy("1", "2")
-    assert exc_info.value.uid1 == "1"
-    assert exc_info.value.uid2 == "2"
-
-
-def test_supertask_and_inferior_of_subtask_have_priority(task_network: TaskNetwork):
-    # Given the following task hierarchies and priorities
-    task_network.add_task("1")
-    task_network.add_task("2")
-    task_network.add_task("3")
-    task_network.add_hierarchy("2", "3")
-    task_network.set_priority("1", Priority.MEDIUM)
-    task_network.set_priority("3", Priority.MEDIUM)
-
-    # When a hierarchy is added
-    # And the supertask and an inferior of the subtask have priorities
-    # Then the appropriate exception is raised
-    with pytest.raises(MultiplePrioritiesInHierarchyError) as exc_info:
-        task_network.add_hierarchy("1", "2")
-    assert exc_info.value.uid1 == "1"
-    assert exc_info.value.uid2 == "2"
-
-
-def test_superior_of_supertask_and_subtask_have_priorities(task_network: TaskNetwork):
-    # Given the following task hierarchies and priorities
-    task_network.add_task("1")
-    task_network.add_task("2")
-    task_network.add_task("3")
-    task_network.add_hierarchy("1", "2")
-    task_network.set_priority("1", Priority.MEDIUM)
-    task_network.set_priority("3", Priority.MEDIUM)
-
-    # When a hierarchy is added
-    # And a superior of the supertask and the subtask have priorities
-    # Then the appropriate exception is raised
-    with pytest.raises(MultiplePrioritiesInHierarchyError) as exc_info:
-        task_network.add_hierarchy("2", "3")
-    assert exc_info.value.uid1 == "2"
-    assert exc_info.value.uid2 == "3"
-
-
-def test_superior_of_supertask_and_inferior_of_subtask_have_priorities(
-    task_network: TaskNetwork,
-):
-    # Given the following task hierarchies and priorities
-    task_network.add_task("1")
-    task_network.add_task("2")
-    task_network.add_task("3")
-    task_network.add_task("4")
-    task_network.add_hierarchy("1", "2")
-    task_network.add_hierarchy("3", "4")
-    task_network.set_priority("1", Priority.MEDIUM)
-    task_network.set_priority("4", Priority.MEDIUM)
-
-    # When a hierarchy is added
-    # And a superior of the supertask and an inferior of the subtask have priorities
-    # Then the appropriate exception is raised
-    with pytest.raises(MultiplePrioritiesInHierarchyError) as exc_info:
-        task_network.add_hierarchy("2", "3")
-    assert exc_info.value.uid1 == "2"
-    assert exc_info.value.uid2 == "3"
-
-
 def test_unnecessary_dependency_1(task_network: TaskNetwork):
     # Given the following task network
     task_network.add_task("1")
@@ -469,3 +395,80 @@ def test_unnecessary_dependency_5(task_network: TaskNetwork):
         task_network.add_hierarchy("3", "4")
     assert exc_info.value.uid1 == "3"
     assert exc_info.value.uid2 == "4"
+
+
+def test_supertask_and_subtask_have_priorities(task_network: TaskNetwork):
+    # Given the following tasks and priorities
+    task_network.add_task("1")
+    task_network.add_task("2")
+    task_network.set_priority("1", Priority.MEDIUM)
+    task_network.set_priority("2", Priority.MEDIUM)
+
+    # When a hierarchy is added
+    # And both tasks have priorities
+    # Then the appropriate exception is raised
+    with pytest.raises(MultiplePrioritiesInHierarchyError) as exc_info:
+        task_network.add_hierarchy("1", "2")
+    assert exc_info.value.uid1 == "1"
+    assert exc_info.value.uid2 == "2"
+
+
+def test_supertask_and_inferior_of_subtask_have_priority(task_network: TaskNetwork):
+    # Given the following task hierarchies and priorities
+    task_network.add_task("1")
+    task_network.add_task("2")
+    task_network.add_task("3")
+    task_network.add_hierarchy("2", "3")
+    task_network.set_priority("1", Priority.MEDIUM)
+    task_network.set_priority("3", Priority.MEDIUM)
+
+    # When a hierarchy is added
+    # And the supertask and an inferior of the subtask have priorities
+    # Then the appropriate exception is raised
+    with pytest.raises(MultiplePrioritiesInHierarchyError) as exc_info:
+        task_network.add_hierarchy("1", "2")
+    assert exc_info.value.uid1 == "1"
+    assert exc_info.value.uid2 == "2"
+
+
+def test_superior_of_supertask_and_subtask_have_priorities(task_network: TaskNetwork):
+    # Given the following task hierarchies and priorities
+    task_network.add_task("1")
+    task_network.add_task("2")
+    task_network.add_task("3")
+    task_network.add_hierarchy("1", "2")
+    task_network.set_priority("1", Priority.MEDIUM)
+    task_network.set_priority("3", Priority.MEDIUM)
+
+    # When a hierarchy is added
+    # And a superior of the supertask and the subtask have priorities
+    # Then the appropriate exception is raised
+    with pytest.raises(MultiplePrioritiesInHierarchyError) as exc_info:
+        task_network.add_hierarchy("2", "3")
+    assert exc_info.value.uid1 == "2"
+    assert exc_info.value.uid2 == "3"
+
+
+def test_superior_of_supertask_and_inferior_of_subtask_have_priorities(
+    task_network: TaskNetwork,
+):
+    # Given the following task hierarchies and priorities
+    task_network.add_task("1")
+    task_network.add_task("2")
+    task_network.add_task("3")
+    task_network.add_task("4")
+    task_network.add_hierarchy("1", "2")
+    task_network.add_hierarchy("3", "4")
+    task_network.set_priority("1", Priority.MEDIUM)
+    task_network.set_priority("4", Priority.MEDIUM)
+
+    # When a hierarchy is added
+    # And a superior of the supertask and an inferior of the subtask have priorities
+    # Then the appropriate exception is raised
+    with pytest.raises(MultiplePrioritiesInHierarchyError) as exc_info:
+        task_network.add_hierarchy("2", "3")
+    assert exc_info.value.uid1 == "2"
+    assert exc_info.value.uid2 == "3"
+
+
+# TODO (mjw): Add tests for due datetime & start datetime issues
