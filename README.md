@@ -28,3 +28,5 @@ TODO
 Open htmlcov/index.html in a browser to view the report
 ### Run mypy
     mypy graft --strict
+### Generate executable directory (located in dist/)
+    pyinstaller main.py -n graft

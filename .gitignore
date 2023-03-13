@@ -9,6 +9,11 @@ htmlcov/
 # mypy
 .mypy_cache/
 
+# pyinstaller
+graft.spec
+build/
+dist/
+
 #Code editors
 .vscode/
 
