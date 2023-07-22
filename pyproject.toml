@@ -27,7 +27,19 @@ profile = "black"
 [tool.ruff]
 line-length = 88
 select = ["ALL"]
-ignore = ["E203", "D203", "D213"]
+ignore = ["E203", "D203", "D213", "ANN101", "ANN102"]
+show-fixes = true
+
+[tool.autoflake]
+expand-star-imports = true
+remove-all-unused-imports = true
+ignore-init-module-imports = true
+remove-duplicate-keys = true
+remove-unused-variables = true
+in-place = true
+
+[tool.pydocstringformatter]
+write = true
 
 [build-system]
 requires = ["poetry-core"]

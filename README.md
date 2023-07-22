@@ -10,7 +10,7 @@ Graft seeks to solve the two problems I run into when deciding what to work on:
 TODO
 
 ## How to run
-```python -m main.py``````
+```python -m main.py```
 
 ## For developers
 ### Install developer dependencies
@@ -26,6 +26,6 @@ mypy --strict graft
 pylint graft
 ruff --fix graft
 vulture graft
-autoflake graft
+autoflake -r graft
 pydocstringformatter graft
 ```
