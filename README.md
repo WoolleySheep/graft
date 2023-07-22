@@ -10,23 +10,22 @@ Graft seeks to solve the two problems I run into when deciding what to work on:
 TODO
 
 ## How to run
-    python -m main.py
+```python -m main.py``````
 
 ## For developers
 ### Install developer dependencies
-    pip install -r requirements-dev.txt
-### Sort imports
-    isort .
-### Format code
-    black .
-### Run tests
-    pytest
-### Lint code
-    pylama graft tests
-### Generate & view code coverage report
-    pytest --cov-report html --cov=graft
-Open htmlcov/index.html in a browser to view the report
-### Run mypy
-    mypy graft --strict
-### Generate executable directory (located in dist/)
-    pyinstaller main.py -n graft
+```poetry install```
+### Format
+```
+isort graft
+black graft
+```
+### Lint
+```
+mypy --strict graft
+pylint graft
+ruff --fix graft
+vulture graft
+autoflake graft
+pydocstringformatter graft
+```

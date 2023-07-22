@@ -18,10 +18,10 @@ dist/
 .vscode/
 
 # Environments
-.venv
+.venv/
 
 # Personal directories
-archive
+archive/
 
 # Data directories
-data
+data/
