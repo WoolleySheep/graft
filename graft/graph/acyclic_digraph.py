@@ -3,7 +3,7 @@
 from collections.abc import Hashable
 from typing import Any, TypeVar
 
-from graft.graphs import digraph
+from graft.graph import digraph
 
 T = TypeVar("T", bound=Hashable)
 

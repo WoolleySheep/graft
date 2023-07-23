@@ -1,1 +1,0 @@
-"""Concrete implementation of Controller."""
