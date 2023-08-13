@@ -1,6 +1,6 @@
 """Event and associated classes and exceptions."""
 
-import datetime
+import datetime as dt
 from typing import Any
 
 
@@ -53,7 +53,7 @@ class Event:
         uid: UID | None = None,
         name: Name | None = None,
         description: Description | None = None,
-        datetime: datetime.datetime | None = None,
+        datetime: dt.datetime | None = None,
     ) -> None:
         """Initialise Event."""
         self.uid = uid

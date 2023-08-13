@@ -17,7 +17,6 @@ TODO
 ```poetry install```
 ### Format
 ```
-isort graft
 black graft
 ```
 ### Lint

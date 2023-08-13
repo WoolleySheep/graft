@@ -2,7 +2,10 @@ import typer
 
 from graft import architecture
 from graft.typer_cli import task
-from graft.typer_cli.logic_layer import assert_logic_layer_initialised
+from graft.typer_cli.logic_layer import (
+    check_logic_layer_initialised,
+    logic_layer,  # noqa: F401
+)
 
 _app = typer.Typer()
 _app.add_typer(typer_instance=task.app, name="task", help="Task management")
@@ -26,7 +29,7 @@ class TyperCLIPresentationLayer(architecture.PresentationLayer):
 
 
 @_app.command()
-@assert_logic_layer_initialised
+@check_logic_layer_initialised
 def init() -> None:
     """Initialise graft."""
     typer.echo("Initialising graft")

@@ -141,7 +141,7 @@ class DiGraph(Generic[T]):
         """Return string representation of DiGraph."""
         return str(self._successors)
 
-    def add_node(self, node: T) -> None:
+    def add_node(self, node: T, /) -> None:
         """Add node to DiGraph."""
         if node in self:
             raise NodeAlreadyExistsError(node=node)
@@ -149,7 +149,7 @@ class DiGraph(Generic[T]):
         self._successors[node] = set()
         self._predecessors[node] = set()
 
-    def remove_node(self, node: T) -> None:
+    def remove_node(self, node: T, /) -> None:
         """Remove node from DiGraph."""
         if node not in self:
             raise NodeDoesNotExistError(node=node)
@@ -206,7 +206,7 @@ class DiGraph(Generic[T]):
 
         return target in self._successors[source]
 
-    def successors(self, node: T) -> Iterator[T]:
+    def successors(self, node: T, /) -> Iterator[T]:
         """Return successors of node."""
         if node not in self:
             raise NodeDoesNotExistError(node=node)
@@ -217,11 +217,11 @@ class DiGraph(Generic[T]):
         """Check if node has successor."""
         return self._has_edge(source=node, target=successor)
 
-    def has_successors(self, node: T) -> bool:
-        """Check if node has successors."""
+    def has_successors(self, node: T, /) -> bool:
+        """Check if node has any successors."""
         return bool(self._successors[node])
 
-    def predecessors(self, node: T) -> Iterator[T]:
+    def predecessors(self, node: T, /) -> Iterator[T]:
         """Return predecessors of node."""
         if node not in self:
             raise NodeDoesNotExistError(node=node)
@@ -232,17 +232,17 @@ class DiGraph(Generic[T]):
         """Check if node has predecessor."""
         return self._has_edge(source=predecessor, target=node)
 
-    def has_predecessors(self, node: T) -> bool:
-        """Check if node has predecessors."""
+    def has_predecessors(self, node: T, /) -> bool:
+        """Check if node has any predecessors."""
         return bool(self._predecessors[node])
 
-    def descendants_bfs(self, node: T) -> Iterator[T]:
+    def descendants_bfs(self, node: T, /) -> Iterator[T]:
         """Return breadth first search of descendants of node."""
         if node not in self:
             raise NodeDoesNotExistError(node=node)
 
         visited = {node}
-        queue = collections.deque(self.successors(node=node))
+        queue = collections.deque(self.successors(node))
 
         while queue:
             node2 = queue.popleft()
@@ -252,13 +252,13 @@ class DiGraph(Generic[T]):
             queue.extend(self.successors(node2))
             yield node2
 
-    def descendants_dfs(self, node: T) -> Iterator[T]:
+    def descendants_dfs(self, node: T, /) -> Iterator[T]:
         """Return depth first search of the descendants of node."""
         if node not in self:
             raise NodeDoesNotExistError(node=node)
 
         visited = {node}
-        stack = collections.deque(self.successors(node=node))
+        stack = collections.deque(self.successors(node))
 
         while stack:
             node2 = stack.pop()
@@ -268,17 +268,17 @@ class DiGraph(Generic[T]):
             stack.extend(self.successors(node2))
             yield node2
 
-    def descendants(self, node: T) -> set[T]:
+    def descendants(self, node: T, /) -> set[T]:
         """Return descendants of node."""
-        return set(self.descendants_bfs(node=node))
+        return set(self.descendants_bfs(node))
 
-    def ancestors_bfs(self, node: T) -> Iterator[T]:
+    def ancestors_bfs(self, node: T, /) -> Iterator[T]:
         """Return breadth first search of ancestors of node."""
         if node not in self:
             raise NodeDoesNotExistError(node=node)
 
         visited = {node}
-        queue = collections.deque(self.predecessors(node=node))
+        queue = collections.deque(self.predecessors(node))
 
         while queue:
             node2 = queue.popleft()
@@ -288,13 +288,13 @@ class DiGraph(Generic[T]):
             queue.extend(self.predecessors(node2))
             yield node2
 
-    def ancestors_dfs(self, node: T) -> Iterator[T]:
+    def ancestors_dfs(self, node: T, /) -> Iterator[T]:
         """Return depth first search of ancestors of node."""
         if node not in self:
             raise NodeDoesNotExistError(node=node)
 
         visited = {node}
-        stack = collections.deque(self.predecessors(node=node))
+        stack = collections.deque(self.predecessors(node))
 
         while stack:
             node2 = stack.pop()
@@ -304,9 +304,9 @@ class DiGraph(Generic[T]):
             stack.extend(self.predecessors(node2))
             yield node2
 
-    def ancestors(self, node: T) -> set[T]:
+    def ancestors(self, node: T, /) -> set[T]:
         """Return ancestors of node."""
-        return set(self.ancestors_bfs(node=node))
+        return set(self.ancestors_bfs(node))
 
     def has_path(self, source: T, target: T) -> bool:
         """Check if there is a path from source to target."""
@@ -314,7 +314,7 @@ class DiGraph(Generic[T]):
             if node not in self:
                 raise NodeDoesNotExistError(node=node)
 
-        return target in self.descendants_dfs(node=source)
+        return target in self.descendants_dfs(source)
 
     def connecting_subgraph(self, source: T, target: T) -> Self:
         """Return connecting subgraph from source to target."""
@@ -324,7 +324,7 @@ class DiGraph(Generic[T]):
 
         # Iterate forward through the graph to generate a map of nodes and all
         # their predecessors who are also in the map
-        queue = collections.deque(self.successors(node=source))
+        queue = collections.deque(self.successors(source))
         predecessors_in_subgraph = collections.defaultdict(
             set,
             ((node, {source}) for node in queue),
@@ -332,7 +332,7 @@ class DiGraph(Generic[T]):
 
         while queue:
             node = queue.popleft()
-            for successor in self.successors(node=node):
+            for successor in self.successors(node):
                 if successor not in predecessors_in_subgraph:
                     queue.append(successor)
                 predecessors_in_subgraph[successor].add(node)
@@ -343,7 +343,7 @@ class DiGraph(Generic[T]):
         # Iterate backward through the map from the target to get the subgraph
         # from source to target
         subgraph = type(self)()
-        subgraph.add_node(node=target)
+        subgraph.add_node(target)
         visited = set()
         stack = collections.deque([target])
         while stack:
@@ -353,8 +353,20 @@ class DiGraph(Generic[T]):
             visited.add(node)
             for predecessor in predecessors_in_subgraph[node]:
                 with contextlib.suppress(NodeAlreadyExistsError):
-                    subgraph.add_node(node=predecessor)
+                    subgraph.add_node(predecessor)
                 subgraph.add_edge(source=predecessor, target=node)
             stack.extend(predecessors_in_subgraph[node])
 
         return subgraph
+
+    def roots(self) -> Iterable[T]:
+        """Return all roots of the graph."""
+        for node in self:
+            if not self.has_predecessors(node):
+                yield node
+
+    def leaves(self) -> Iterable[T]:
+        """Return all leaves of the graph."""
+        for node in self:
+            if not self.has_successors(node):
+                yield node

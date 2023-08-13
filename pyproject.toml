@@ -13,7 +13,6 @@ typer = "^0.9.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.7.0"
-isort = "^5.12.0"
 mypy = "^1.4.1"
 vulture = "^2.7"
 autoflake = "^2.2.0"
@@ -28,6 +27,7 @@ profile = "black"
 line-length = 88
 select = ["ALL"]
 ignore = ["E203", "D203", "D213", "ANN101", "ANN102"]
+ignore-init-module-imports = true
 show-fixes = true
 
 [tool.autoflake]

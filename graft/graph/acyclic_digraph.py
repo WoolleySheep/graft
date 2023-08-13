@@ -1,6 +1,7 @@
 """DiGraph and associated Exceptions."""
 
-from collections.abc import Hashable
+import collections
+from collections.abc import Hashable, Iterator
 from typing import Any, TypeVar
 
 from graft.graph import digraph
@@ -91,3 +92,30 @@ class AcyclicDiGraph(digraph.DiGraph[T]):
             )
 
         return super().add_edge(source, target)
+
+    def topological_sort_with_grouping(self) -> Iterator[set[T]]:
+        """Return nodes in topologically sorted groups.
+
+        Nodes should be in the lowest group possible.
+        """
+        # Calculate the group number of each node
+        queue = collections.deque(self.roots())
+        node_group = {node: 0 for node in queue}
+        while queue:
+            node = queue.popleft()
+            next_group = node_group[node] + 1
+            for successor in self.successors(node):
+                if successor in node_group and node_group[successor] >= next_group:
+                    continue
+
+                node_group[successor] = next_group
+                queue.append(successor)
+
+        # Get the nodes in each group
+        group_nodes: collections.defaultdict[int, set[T]] = collections.defaultdict(set)
+        for node, group in node_group.items():
+            group_nodes[group].add(node)
+
+        # Yield node groups from lowest to highest
+        for group in range(len(group_nodes)):
+            yield group_nodes[group]
