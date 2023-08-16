@@ -1,9 +1,6 @@
 """DiGraph and associated Exceptions."""
 
-from __future__ import annotations
-
 import collections
-import contextlib
 from collections.abc import Hashable, Iterable, Iterator
 from typing import Any, Generic, Self, TypeVar
 
@@ -272,6 +269,27 @@ class DiGraph(Generic[T]):
         """Return descendants of node."""
         return set(self.descendants_bfs(node))
 
+    def descendants_subgraph(self, node: T, /) -> Self:
+        """Return a subgraph of the descendants of node."""
+        if node not in self:
+            raise NodeDoesNotExistError(node=node)
+
+        subgraph = type(self)()
+        queue = collections.deque([node])
+
+        while queue:
+            node2 = queue.popleft()
+            if node2 in subgraph:
+                continue
+            subgraph.add_node(node2)
+            for successor in self.successors(node2):
+                if successor not in subgraph:
+                    subgraph.add_node(successor)
+                subgraph.add_edge(node2, successor)
+                queue.append(successor)
+
+        return subgraph
+
     def ancestors_bfs(self, node: T, /) -> Iterator[T]:
         """Return breadth first search of ancestors of node."""
         if node not in self:
@@ -308,6 +326,27 @@ class DiGraph(Generic[T]):
         """Return ancestors of node."""
         return set(self.ancestors_bfs(node))
 
+    def ancestors_subgraph(self, node: T, /) -> Self:
+        """Return a subgraph of the ancestors of node."""
+        if node not in self:
+            raise NodeDoesNotExistError(node=node)
+
+        subgraph = type(self)()
+        queue = collections.deque([node])
+
+        while queue:
+            node2 = queue.popleft()
+            if node2 in subgraph:
+                continue
+            subgraph.add_node(node2)
+            for predecessor in self.predecessors(node2):
+                if predecessor not in subgraph:
+                    subgraph.add_node(predecessor)
+                subgraph.add_edge(predecessor, node2)
+                queue.append(predecessor)
+
+        return subgraph
+
     def has_path(self, source: T, target: T) -> bool:
         """Check if there is a path from source to target."""
         for node in [source, target]:
@@ -322,42 +361,11 @@ class DiGraph(Generic[T]):
             if node not in self:
                 raise NodeDoesNotExistError(node=node)
 
-        # Iterate forward through the graph to generate a map of nodes and all
-        # their predecessors who are also in the map
-        queue = collections.deque(self.successors(source))
-        predecessors_in_subgraph = collections.defaultdict(
-            set,
-            ((node, {source}) for node in queue),
-        )
-
-        while queue:
-            node = queue.popleft()
-            for successor in self.successors(node):
-                if successor not in predecessors_in_subgraph:
-                    queue.append(successor)
-                predecessors_in_subgraph[successor].add(node)
-
-        if target not in predecessors_in_subgraph:
-            raise NoConnectingSubgraphError(source=source, target=target)
-
-        # Iterate backward through the map from the target to get the subgraph
-        # from source to target
-        subgraph = type(self)()
-        subgraph.add_node(target)
-        visited = set()
-        stack = collections.deque([target])
-        while stack:
-            node = stack.pop()
-            if node in visited:
-                continue
-            visited.add(node)
-            for predecessor in predecessors_in_subgraph[node]:
-                with contextlib.suppress(NodeAlreadyExistsError):
-                    subgraph.add_node(predecessor)
-                subgraph.add_edge(source=predecessor, target=node)
-            stack.extend(predecessors_in_subgraph[node])
-
-        return subgraph
+        source_descendants_subgraph = self.descendants_subgraph(source)
+        try:
+            return source_descendants_subgraph.ancestors_subgraph(target)
+        except NodeDoesNotExistError as e:
+            raise NoConnectingSubgraphError(source=source, target=target) from e
 
     def roots(self) -> Iterable[T]:
         """Return all roots of the graph."""

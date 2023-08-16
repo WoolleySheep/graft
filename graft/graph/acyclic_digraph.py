@@ -94,7 +94,7 @@ class AcyclicDiGraph(digraph.DiGraph[T]):
         return super().add_edge(source, target)
 
     def topological_sort_with_grouping(self) -> Iterator[set[T]]:
-        """Return nodes in topologically sorted groups.
+        """Return groups of nodes in topologically sorted order.
 
         Nodes should be in the lowest group possible.
         """
@@ -103,12 +103,15 @@ class AcyclicDiGraph(digraph.DiGraph[T]):
         node_group = {node: 0 for node in queue}
         while queue:
             node = queue.popleft()
-            next_group = node_group[node] + 1
+            min_successor_group = node_group[node] + 1
             for successor in self.successors(node):
-                if successor in node_group and node_group[successor] >= next_group:
+                if (
+                    successor in node_group
+                    and node_group[successor] >= min_successor_group
+                ):
                     continue
 
-                node_group[successor] = next_group
+                node_group[successor] = min_successor_group
                 queue.append(successor)
 
         # Get the nodes in each group
