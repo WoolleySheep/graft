@@ -1,29 +1,12 @@
-"""DiGraph and associated Exceptions."""
+"""Acyclic digraph and associated Exceptions."""
 
 import collections
 from collections.abc import Hashable, Iterator
 from typing import Any, TypeVar
 
-from graft.graph import digraph
+from graft.graph import simple_digraph
 
 T = TypeVar("T", bound=Hashable)
-
-
-class LoopError(Exception):
-    """Loop error.
-
-    Raised when edge created from node to itself, creating a loop.
-    """
-
-    def __init__(
-        self,
-        node: T,
-        *args: tuple[Any, ...],
-        **kwargs: dict[str, Any],
-    ) -> None:
-        """Initialize SelfLoopError."""
-        self.node = node
-        super().__init__(f"loop [{node}]", *args, **kwargs)
 
 
 class InverseEdgeAlreadyExistsError(Exception):
@@ -53,7 +36,7 @@ class IntroducesCycleError(Exception):
         self,
         source: T,
         target: T,
-        cyclic_subgraph: digraph.DiGraph[T],
+        cyclic_subgraph: simple_digraph.SimpleDiGraph[T],
         *args: tuple[Any, ...],
         **kwargs: dict[str, Any],
     ) -> None:
@@ -68,16 +51,20 @@ class IntroducesCycleError(Exception):
         )
 
 
-class AcyclicDiGraph(digraph.DiGraph[T]):
-    """Directed graph with no cycles."""
+class DirectedAcyclicGraph(simple_digraph.SimpleDiGraph[T]):
+    """Simple Digraph with no cycles."""
+
+    def __init__(self) -> None:
+        """Initialize DirectedAcyclicGraph."""
+        super().__init__()
 
     def add_edge(self, source: T, target: T) -> None:
-        """Add edge to Acyclic DiGraph."""
+        """Add edge to graph."""
         if source == target:
-            raise LoopError(node=source)
+            raise simple_digraph.LoopError(node=source)
 
         if self._has_edge(source, target):
-            raise digraph.EdgeAlreadyExistsError(source=source, target=target)
+            raise simple_digraph.EdgeAlreadyExistsError(source=source, target=target)
 
         if self._has_edge(source=target, target=source):
             raise InverseEdgeAlreadyExistsError(source=target, target=source)
@@ -99,24 +86,24 @@ class AcyclicDiGraph(digraph.DiGraph[T]):
         Nodes should be in the lowest group possible.
         """
         # Calculate the group number of each node
-        queue = collections.deque(self.roots())
-        node_group = {node: 0 for node in queue}
+        queue = collections.deque[T](self.roots())
+        node_group_num = dict[T, int]((node, 0) for node in queue)
         while queue:
             node = queue.popleft()
-            min_successor_group = node_group[node] + 1
+            min_successor_group_num = node_group_num[node] + 1
             for successor in self.successors(node):
                 if (
-                    successor in node_group
-                    and node_group[successor] >= min_successor_group
+                    successor in node_group_num
+                    and node_group_num[successor] >= min_successor_group_num
                 ):
                     continue
 
-                node_group[successor] = min_successor_group
+                node_group_num[successor] = min_successor_group_num
                 queue.append(successor)
 
         # Get the nodes in each group
-        group_nodes: collections.defaultdict[int, set[T]] = collections.defaultdict(set)
-        for node, group in node_group.items():
+        group_nodes = collections.defaultdict[int, set[T]](set)
+        for node, group in node_group_num.items():
             group_nodes[group].add(node)
 
         # Yield node groups from lowest to highest
