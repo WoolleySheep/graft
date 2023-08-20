@@ -5,6 +5,7 @@ from collections.abc import (
     Generator,
     Hashable,
     Iterable,
+    Iterator,
     Mapping,
     Set,
 )
@@ -159,9 +160,9 @@ class NodesView(Set[T]):
         """Check if item is in NodeView."""
         return item in self._nodes
 
-    def __iter__(self) -> Generator[T, None, None]:
-        """Return generator over nodes in view."""
-        yield from self._nodes
+    def __iter__(self) -> Iterator[T]:
+        """Return iterator over nodes in view."""
+        return iter(self._nodes)
 
     def __str__(self) -> str:
         """Return string representation of view."""
@@ -246,9 +247,9 @@ class SimpleDiGraph(Generic[T]):
         """Check if item is a node in digraph."""
         return item in self.nodes()
 
-    def __iter__(self) -> Generator[T, None, None]:
-        """Return generator over digraph nodes."""
-        yield from self.nodes()
+    def __iter__(self) -> Iterator[T]:
+        """Return iterator over digraph nodes."""
+        return iter(self.nodes())
 
     def __str__(self) -> str:
         """Return string representation of digraph."""

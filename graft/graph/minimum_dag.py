@@ -1,4 +1,4 @@
-"""Minimal digraph and associated Exceptions."""
+"""Minimal DAG and associated Exceptions."""
 
 from __future__ import annotations
 

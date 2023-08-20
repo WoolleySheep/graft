@@ -1,9 +1,9 @@
 """Bi-directional dictionary with set-like values and associated exceptions."""
 
 from collections.abc import (
-    Generator,
     Hashable,
     ItemsView,
+    Iterator,
     KeysView,
     Mapping,
     MutableMapping,
@@ -73,9 +73,9 @@ class SetView(Set[T]):
         """Check if item is in the set."""
         return item in self._set
 
-    def __iter__(self) -> Generator[T, None, None]:
-        """Return generator over values in the set."""
-        yield from self._set
+    def __iter__(self) -> Iterator[T]:
+        """Return iterator over values in the set."""
+        return iter(self._set)
 
     def __len__(self) -> int:
         """Return number of values in the set."""
@@ -94,9 +94,9 @@ class SetViewMappingView(Mapping[T, SetView[S]]):
         self.mapping: Mapping[T, Set[S]] = mapping
         super().__init__()
 
-    def __iter__(self) -> Generator[T, None, None]:
-        """Return generator over keys in the mapping."""
-        yield from self.mapping
+    def __iter__(self) -> Iterator[T]:
+        """Return iterator over keys in the mapping."""
+        return iter(self.mapping)
 
     def __len__(self) -> int:
         """Return number of keys in the mapping."""
@@ -141,9 +141,9 @@ class BiDirectionalSetValueDict(MutableMapping[T, SetView[T]]):
         """Check if item exists in SetValueMapping."""
         return item in self._forward
 
-    def __iter__(self) -> Generator[T, None, None]:
-        """Return generator over keys."""
-        yield from self._forward
+    def __iter__(self) -> Iterator[T]:
+        """Return iterator over keys."""
+        return iter(self._forward)
 
     def __getitem__(self, key: T) -> SetView[T]:
         """Return SetView over values of key."""
