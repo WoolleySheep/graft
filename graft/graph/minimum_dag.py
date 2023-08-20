@@ -64,10 +64,6 @@ class MinimumDAG(directed_acyclic_graph.DirectedAcyclicGraph[T]):
     Only the minimal number of edges to describe the graph is allowed.
     """
 
-    def __init__(self) -> None:
-        """Initialize MinimalDigraph."""
-        super().__init__()
-
     def add_edge(self, source: T, target: T) -> None:
         """Add edge to minimal digraph."""
 
@@ -76,12 +72,10 @@ class MinimumDAG(directed_acyclic_graph.DirectedAcyclicGraph[T]):
             source: T,
             target: T,
         ) -> directed_acyclic_graph.DirectedAcyclicGraph[T]:
-            """Return subgraph that shows ancestors of source that are
-            predecessors of target.
-            """
+            """Return subgraph that shows ancestors of source that are predecessors of target."""
 
             def get_ancestor_subgraph(
-                self: Self,
+                digraph: simple_digraph.SimpleDiGraph[T],
                 source: T,
                 target: T,
             ) -> tuple[set[T], Self]:
@@ -91,7 +85,7 @@ class MinimumDAG(directed_acyclic_graph.DirectedAcyclicGraph[T]):
                 whenever you encounter an ancestor that is a predecessor of
                 target.
                 """
-                target_predecessors = set[T](self.predecessors(target))
+                target_predecessors = set[T](digraph.predecessors(target))
                 subgraph = type(self)()
                 subgraph.add_node(source)
                 ancestors_of_interest = set[T]()
@@ -109,7 +103,7 @@ class MinimumDAG(directed_acyclic_graph.DirectedAcyclicGraph[T]):
                         ancestors_of_interest.add(node)
                         continue
 
-                    for predecessor in self.predecessors(node):
+                    for predecessor in digraph.predecessors(node):
                         if predecessor not in subgraph:
                             subgraph.add_node(predecessor)
                         subgraph.add_edge(predecessor, node)
@@ -118,9 +112,9 @@ class MinimumDAG(directed_acyclic_graph.DirectedAcyclicGraph[T]):
                 return ancestors_of_interest, subgraph
 
             def get_descendants_combined_subgraph(
-                self: Self,
+                digraph: simple_digraph.SimpleDiGraph[T],
                 nodes: Iterable[T],
-            ) -> directed_acyclic_graph.DirectedAcyclicGraph:
+            ) -> directed_acyclic_graph.DirectedAcyclicGraph[T]:
                 """Get combined descendant subgraph of nodes."""
                 visited = set[T]()
                 queue = collections.deque[T](nodes)
@@ -133,7 +127,7 @@ class MinimumDAG(directed_acyclic_graph.DirectedAcyclicGraph[T]):
                     if node in visited:
                         continue
                     visited.add(node)
-                    for successor in self.successors(node):
+                    for successor in digraph.successors(node):
                         if successor not in subgraph:
                             subgraph.add_node(successor)
                         subgraph.add_edge(node, successor)
@@ -147,8 +141,10 @@ class MinimumDAG(directed_acyclic_graph.DirectedAcyclicGraph[T]):
 
             # Generate a subgraph of all ancestors, stopping whenever you encounter
             # an ancestor that is a predecessor of target.
+            ancestors_of_interest: set[T]
+            ancestor_subgraph: Self
             ancestors_of_interest, ancestor_subgraph = get_ancestor_subgraph(
-                self=self,
+                digraph=self,
                 source=source,
                 target=target,
             )
@@ -158,7 +154,7 @@ class MinimumDAG(directed_acyclic_graph.DirectedAcyclicGraph[T]):
             # be the only leaf node. None of the ancestors of interest will be in
             # each other's path to source.
             subgraph = get_descendants_combined_subgraph(
-                self=ancestor_subgraph,
+                digraph=ancestor_subgraph,
                 nodes=ancestors_of_interest,
             )
 
@@ -168,13 +164,10 @@ class MinimumDAG(directed_acyclic_graph.DirectedAcyclicGraph[T]):
                 subgraph.add_edge(source=ancestor, target=target)
             return subgraph
 
-        if source == target:
-            raise simple_digraph.LoopError(node=source)
-
-        if self._has_edge(source=source, target=target):
+        if (source, target) in self.edges():
             raise simple_digraph.EdgeAlreadyExistsError(source=source, target=target)
 
-        if self._has_edge(source=target, target=source):
+        if (source, target) in self.edges():
             raise directed_acyclic_graph.InverseEdgeAlreadyExistsError(
                 source=target,
                 target=source,
@@ -197,7 +190,7 @@ class MinimumDAG(directed_acyclic_graph.DirectedAcyclicGraph[T]):
                 connecting_subgraph=connecting_subgraph,
             )
 
-        target_predecessors = set(self.predecessors(target))
+        target_predecessors = self.predecessors(target)
         if any(
             source_ancestor in target_predecessors
             for source_ancestor in self.ancestors_bfs(source)

@@ -1,7 +1,7 @@
 """Acyclic digraph and associated Exceptions."""
 
 import collections
-from collections.abc import Hashable, Iterator
+from collections.abc import Generator, Hashable
 from typing import Any, TypeVar
 
 from graft.graph import simple_digraph
@@ -54,19 +54,12 @@ class IntroducesCycleError(Exception):
 class DirectedAcyclicGraph(simple_digraph.SimpleDiGraph[T]):
     """Simple Digraph with no cycles."""
 
-    def __init__(self) -> None:
-        """Initialize DirectedAcyclicGraph."""
-        super().__init__()
-
     def add_edge(self, source: T, target: T) -> None:
         """Add edge to graph."""
-        if source == target:
-            raise simple_digraph.LoopError(node=source)
-
-        if self._has_edge(source, target):
+        if (source, target) in self.edges():
             raise simple_digraph.EdgeAlreadyExistsError(source=source, target=target)
 
-        if self._has_edge(source=target, target=source):
+        if (target, source) in self.edges():
             raise InverseEdgeAlreadyExistsError(source=target, target=source)
 
         if self.has_path(source=target, target=source):
@@ -80,7 +73,7 @@ class DirectedAcyclicGraph(simple_digraph.SimpleDiGraph[T]):
 
         return super().add_edge(source, target)
 
-    def topological_sort_with_grouping(self) -> Iterator[set[T]]:
+    def topological_sort_with_grouping(self) -> Generator[set[T], None, None]:
         """Return groups of nodes in topologically sorted order.
 
         Nodes should be in the lowest group possible.
@@ -102,7 +95,7 @@ class DirectedAcyclicGraph(simple_digraph.SimpleDiGraph[T]):
                 queue.append(successor)
 
         # Get the nodes in each group
-        group_nodes = collections.defaultdict[int, set[T]](set)
+        group_nodes = collections.defaultdict[int, set[T]](set[T])
         for node, group in node_group_num.items():
             group_nodes[group].add(node)
 

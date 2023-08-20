@@ -1,10 +1,16 @@
 """DiGraph and associated Exceptions."""
 
 import collections
-from collections.abc import Hashable, Iterable, Iterator
-from typing import Any, Generic, Self, TypeVar
+from collections.abc import (
+    Generator,
+    Hashable,
+    Iterable,
+    Mapping,
+    Set,
+)
+from typing import Any, Generic, Self, TypeGuard, TypeVar
 
-from graft.graph import bidirectional_multidict
+from graft.graph import bidict
 
 T = TypeVar("T", bound=Hashable)
 
@@ -99,7 +105,8 @@ class EdgeDoesNotExistError(Exception):
 class LoopError(Exception):
     """Loop error.
 
-    Raised when edge created from node to itself, creating a loop.
+    Raised when an edge is referenced that connects a node to itself, creating a
+    loop. These aren't allowed in simple digraphs.
     """
 
     def __init__(
@@ -133,54 +140,136 @@ class NoConnectingSubgraphError(Exception):
         )
 
 
+class NodesView(Set[T]):
+    """View of a set of nodes."""
+
+    def __init__(self, nodes: Set[T], /) -> None:
+        """Initialise NodesView."""
+        self._nodes: Set[T] | Mapping[T, Any] = nodes
+
+    def __bool__(self) -> bool:
+        """Check view has any nodes."""
+        return bool(self._nodes)
+
+    def __len__(self) -> int:
+        """Return number of nodes in view."""
+        return len(self._nodes)
+
+    def __contains__(self, item: object) -> bool:
+        """Check if item is in NodeView."""
+        return item in self._nodes
+
+    def __iter__(self) -> Generator[T, None, None]:
+        """Return generator over nodes in view."""
+        yield from self._nodes
+
+    def __str__(self) -> str:
+        """Return string representation of view."""
+        return f"nodes_view({{{', '.join(str(node) for node in self._nodes)}}})"
+
+
+class EdgesView(Set[tuple[T, T]]):
+    """View of a set of edges."""
+
+    def __init__(self, node_successors_map: Mapping[T, Set[T]], /) -> None:
+        """Initialise EdgesView."""
+        self._node_successors_map: Mapping[T, Set[T]] = node_successors_map
+
+    def __bool__(self) -> bool:
+        """Check view has any edges."""
+        return any(self._node_successors_map.values())
+
+    def __len__(self) -> int:
+        """Return number of edges in view."""
+        return sum(len(values) for values in self._node_successors_map.values())
+
+    def __contains__(self, item: object) -> bool:
+        """Check if item in EdgesView."""
+
+        def is_two_element_tuple_of_hashables(item: object) -> TypeGuard[tuple[T, T]]:
+            """Check if item is a two element tuple of type Hashable.
+
+            Bit of a hack, as hashable counted as equivalent to type T (not
+            strictly true). Done to get around impossibility of runtime checking
+            of T.
+            """
+            if not isinstance(item, tuple):
+                return False
+
+            if len(item) != 2:
+                return False
+
+            return all(isinstance(element, Hashable) for element in item)
+
+        if not is_two_element_tuple_of_hashables(item):
+            raise TypeError
+
+        source, target = item
+
+        if source == target:
+            raise LoopError(node=source)
+
+        for node in [source, target]:
+            if node not in self._node_successors_map:
+                raise NodeDoesNotExistError(node)
+
+        return target in self._node_successors_map[source]
+
+    def __iter__(self) -> Generator[tuple[T, T], None, None]:
+        """Return generator over edges in view."""
+        for node, successors in self._node_successors_map.items():
+            for successor in successors:
+                yield (node, successor)
+
+    def __str__(self) -> str:
+        """Return string representation of view."""
+        node_with_successors = list[str]()
+        for node, successors in self._node_successors_map.items():
+            node_with_successors.append(
+                ", ".join(f"({node}, {successor})" for successor in successors),
+            )
+        return f"edges_view({{{', '.join(node_with_successors)}}})"
+
+
 class SimpleDiGraph(Generic[T]):
     """Digraph with no loops or parallel edges."""
 
     def __init__(self) -> None:
-        """Initialize SimpleDiGraph."""
-        self._bidict = bidirectional_multidict.BiDirectionalMultiDict[T]()
+        """Initialize simple digraph."""
+        self._bidict = bidict.BiDirectionalSetValueDict[T]()
 
     def __bool__(self) -> bool:
         """Check if digraph has any nodes."""
-        return bool(self._bidict)
+        return bool(self.nodes())
 
-    def __contains__(self, node: T) -> bool:
-        """Check if node exists in digraph."""
-        return node in self._bidict
+    def __contains__(self, item: object) -> bool:
+        """Check if item is a node in digraph."""
+        return item in self.nodes()
 
-    def __iter__(self) -> Iterator[T]:
-        """Return iterator over digraph nodes."""
-        return iter(self._bidict)
-
-    def __getitem__(self, node: T) -> Iterator[T]:
-        """Return iterator over successors of node."""
-        yield from self._bidict[node]
+    def __iter__(self) -> Generator[T, None, None]:
+        """Return generator over digraph nodes."""
+        yield from self.nodes()
 
     def __str__(self) -> str:
         """Return string representation of digraph."""
-        return str(self._bidict)
-
-    def __repr__(self) -> str:
-        """Return string representation of digraph."""
-        return str(self._bidict)
+        nodes_with_successors = list[str]()
+        for node, successors in self._bidict.items():
+            nodes_with_successors.append(
+                f"{node}: {{{', '.join(str(value) for value in successors)}}}",
+            )
+        return f"simple_digraph({{{', '.join(nodes_with_successors)}}})"
 
     def __len__(self) -> int:
         """Return number of nodes in digraph."""
-        return len(self._bidict)
+        return len(self.nodes())
 
     def in_degree(self, node: T, /) -> int:
         """Return number of incoming edges to node."""
-        if node not in self:
-            raise NodeDoesNotExistError(node=node)
-
-        return sum(1 for _ in self.predecessors(node))
+        return len(self.predecessors(node))
 
     def out_degree(self, node: T, /) -> int:
         """Return number of outgoing edges from node."""
-        if node not in self:
-            raise NodeDoesNotExistError(node=node)
-
-        return sum(1 for _ in self.successors(node))
+        return len(self.successors(node))
 
     def degree(self, node: T, /) -> int:
         """Return number of edges to and from node."""
@@ -195,9 +284,6 @@ class SimpleDiGraph(Generic[T]):
 
     def remove_node(self, node: T, /) -> None:
         """Remove node from digraph."""
-        if node not in self:
-            raise NodeDoesNotExistError(node=node)
-
         if not self.is_isolated(node):
             raise HasEdgesError(
                 node=node,
@@ -207,78 +293,46 @@ class SimpleDiGraph(Generic[T]):
 
         del self._bidict[node]
 
-    def nodes(self) -> Iterator[T]:
-        """Return nodes of digraph."""
-        return iter(self)
+    def nodes(self) -> NodesView[T]:
+        """Return view of digraph nodes."""
+        return NodesView(self._bidict.keys())
 
     def add_edge(self, source: T, target: T) -> None:
         """Add edge to digraph."""
-        if source == target:
-            raise LoopError(node=source)
-
-        for node in [source, target]:
-            if node not in self:
-                raise NodeDoesNotExistError(node=node)
-
-        if self._has_edge(source=source, target=target):
+        if (source, target) in self.edges():
             raise EdgeAlreadyExistsError(source=source, target=target)
 
         self._bidict.add(key=source, value=target)
 
     def remove_edge(self, source: T, target: T) -> None:
         """Remove edge from digraph."""
-        for node in [source, target]:
-            if node not in self:
-                raise NodeDoesNotExistError(node=node)
-
-        if not self._has_edge(source=source, target=target):
+        if (source, target) not in self.edges():
             raise EdgeDoesNotExistError(source=source, target=target)
 
         self._bidict.remove(key=source, value=target)
 
-    def edges(self) -> Iterator[tuple[T, T]]:
-        """Return edges of digraph."""
-        for source, targets in self._bidict.items():
-            for target in targets:
-                yield (source, target)
+    def edges(self) -> EdgesView[T]:
+        """Return view of digraph edges."""
+        return EdgesView(self._bidict)
 
-    def _has_edge(self, source: T, target: T) -> bool:
-        """Check if edge exists in digraph."""
-        for node in [source, target]:
-            if node not in self:
-                raise NodeDoesNotExistError(node=node)
-
-        return target in self.successors(source)
-
-    def successors(self, node: T, /) -> Iterator[T]:
+    def successors(self, node: T, /) -> NodesView[T]:
         """Return successors of node."""
         if node not in self:
             raise NodeDoesNotExistError(node=node)
 
-        yield from self._bidict[node]
+        return NodesView(self._bidict[node])
 
-    def has_successors(self, node: T, /) -> bool:
-        """Check if node has any successors."""
-        return bool(self.out_degree(node))
-
-    def predecessors(self, node: T, /) -> Iterator[T]:
+    def predecessors(self, node: T, /) -> NodesView[T]:
         """Return predecessors of node."""
         if node not in self:
             raise NodeDoesNotExistError(node=node)
 
-        yield from self._bidict.inverse[node]
+        return NodesView(self._bidict.inverse[node])
 
-    def has_predecessors(self, node: T, /) -> bool:
-        """Check if node has any predecessors."""
-        return bool(self.in_degree(node))
-
-    def descendants_bfs(self, node: T, /) -> Iterator[T]:
+    def descendants_bfs(self, node: T, /) -> Generator[T, None, None]:
         """Return breadth first search of descendants of node."""
-        if node not in self:
-            raise NodeDoesNotExistError(node=node)
-
-        visited = set[T]([node])
         queue = collections.deque[T](self.successors(node))
+        visited = set[T]([node])
 
         while queue:
             node2 = queue.popleft()
@@ -288,13 +342,10 @@ class SimpleDiGraph(Generic[T]):
             queue.extend(self.successors(node2))
             yield node2
 
-    def descendants_dfs(self, node: T, /) -> Iterator[T]:
+    def descendants_dfs(self, node: T, /) -> Generator[T, None, None]:
         """Return depth first search of the descendants of node."""
-        if node not in self:
-            raise NodeDoesNotExistError(node=node)
-
-        visited = set[T]([node])
         stack = collections.deque[T](self.successors(node))
+        visited = set[T]([node])
 
         while stack:
             node2 = stack.pop()
@@ -328,13 +379,10 @@ class SimpleDiGraph(Generic[T]):
 
         return subgraph
 
-    def ancestors_bfs(self, node: T, /) -> Iterator[T]:
+    def ancestors_bfs(self, node: T, /) -> Generator[T, None, None]:
         """Return breadth first search of ancestors of node."""
-        if node not in self:
-            raise NodeDoesNotExistError(node=node)
-
-        visited = set[T]([node])
         queue = collections.deque[T](self.predecessors(node))
+        visited = set[T]([node])
 
         while queue:
             node2 = queue.popleft()
@@ -344,13 +392,10 @@ class SimpleDiGraph(Generic[T]):
             queue.extend(self.predecessors(node2))
             yield node2
 
-    def ancestors_dfs(self, node: T, /) -> Iterator[T]:
+    def ancestors_dfs(self, node: T, /) -> Generator[T, None, None]:
         """Return depth first search of ancestors of node."""
-        if node not in self:
-            raise NodeDoesNotExistError(node=node)
-
-        visited = set[T]([node])
         stack = collections.deque[T](self.predecessors(node))
+        visited = set[T]([node])
 
         while stack:
             node2 = stack.pop()
@@ -385,7 +430,10 @@ class SimpleDiGraph(Generic[T]):
         return subgraph
 
     def has_path(self, source: T, target: T) -> bool:
-        """Check if there is a path from source to target."""
+        """Check if there's a connecting subgraph/path from source to target."""
+        if source == target:
+            raise LoopError(node=source)
+
         for node in [source, target]:
             if node not in self:
                 raise NodeDoesNotExistError(node=node)
@@ -394,6 +442,9 @@ class SimpleDiGraph(Generic[T]):
 
     def connecting_subgraph(self, source: T, target: T) -> Self:
         """Return connecting subgraph from source to target."""
+        if source == target:
+            raise LoopError(node=source)
+
         for node in [source, target]:
             if node not in self:
                 raise NodeDoesNotExistError(node=node)
@@ -406,39 +457,30 @@ class SimpleDiGraph(Generic[T]):
 
     def is_root(self, node: T, /) -> bool:
         """Check if node is a root of the graph."""
-        if node not in self:
-            raise NodeDoesNotExistError(node=node)
+        return not self.predecessors(node)
 
-        return not self.has_predecessors(node)
-
-    def roots(self) -> Iterable[T]:
-        """Return all roots of the graph."""
+    def roots(self) -> Generator[T, None, None]:
+        """Yield all roots of the graph."""
         for node in self:
             if self.is_root(node):
                 yield node
 
     def is_leaf(self, node: T, /) -> bool:
         """Check if node is a leaf of the graph."""
-        if node not in self:
-            raise NodeDoesNotExistError(node=node)
+        return not self.successors(node)
 
-        return not self.has_successors(node)
-
-    def leaves(self) -> Iterable[T]:
-        """Return all leaves of the graph."""
+    def leaves(self) -> Generator[T, None, None]:
+        """Yield all leaves of the graph."""
         for node in self:
             if self.is_leaf(node):
                 yield node
 
     def is_isolated(self, node: T, /) -> bool:
         """Check if node is isolated."""
-        if node not in self:
-            raise NodeDoesNotExistError(node=node)
+        return not (self.successors(node) or self.predecessors(node))
 
-        return not (self.has_predecessors(node) or self.has_successors(node))
-
-    def isolated_nodes(self) -> Iterable[T]:
-        """Return all isolated nodes."""
+    def isolated_nodes(self) -> Generator[T, None, None]:
+        """Yield all isolated nodes."""
         for node in self:
             if self.is_isolated(node):
                 yield node
