@@ -10,13 +10,10 @@ from collections.abc import (
     Set,
     ValuesView,
 )
-from typing import Any, TypeVar
-
-T = TypeVar("T", bound=Hashable)
-S = TypeVar("S", bound=Hashable)
+from typing import Any, FrozenSet
 
 
-class KeyAlreadyExistsError(Exception):
+class KeyAlreadyExistsError[T: Hashable](Exception):
     """Raised when key already exists."""
 
     def __init__(
@@ -30,7 +27,7 @@ class KeyAlreadyExistsError(Exception):
         super().__init__(f"key [{key}] already exists", *args, **kwargs)
 
 
-class KeyDoesNotExistError(Exception):
+class KeyDoesNotExistError[T: Hashable](Exception):
     """Raised when key does not exist."""
 
     def __init__(
@@ -44,7 +41,7 @@ class KeyDoesNotExistError(Exception):
         super().__init__(f"key [{key}] does not exist", *args, **kwargs)
 
 
-class ValueDoesNotExistError(Exception):
+class ValueDoesNotExistError[T: Hashable](Exception):
     """Raised when value does not exist."""
 
     def __init__(
@@ -58,7 +55,7 @@ class ValueDoesNotExistError(Exception):
         super().__init__(f"value [{value}] does not exist", *args, **kwargs)
 
 
-class SetView(Set[T]):
+class SetView[T: Hashable](Set[T]):
     """View of a set."""
 
     def __init__(self, set_: Set[T], /) -> None:
@@ -86,26 +83,25 @@ class SetView(Set[T]):
         return f"set_view({{{', '.join(str(value) for value in self._set)}}})"
 
 
-class SetViewMappingView(Mapping[T, SetView[S]]):
-    """View of mapping with set-like view values."""
+class SetViewMapping[T: Hashable, S: Hashable](Mapping[T, SetView[S]]):
+    """Mapping with set-like view values."""
 
     def __init__(self, mapping: Mapping[T, Set[S]], /) -> None:
-        """Initialise SetViewMappingView."""
-        self.mapping: Mapping[T, Set[S]] = mapping
-        super().__init__()
+        """Initialise SetViewMapping."""
+        self._mapping: Mapping[T, Set[S]] = mapping
 
     def __iter__(self) -> Iterator[T]:
         """Return iterator over keys in the mapping."""
-        return iter(self.mapping)
+        return iter(self._mapping)
 
     def __len__(self) -> int:
         """Return number of keys in the mapping."""
-        return len(self.mapping)
+        return len(self._mapping)
 
     def __getitem__(self, key: T) -> SetView[S]:
         """Return SetView of values associated with key."""
         try:
-            values: Set[S] = self.mapping[key]
+            values: Set[S] = self._mapping[key]
         except KeyError as e:
             raise KeyDoesNotExistError(key) from e
 
@@ -114,14 +110,14 @@ class SetViewMappingView(Mapping[T, SetView[S]]):
     def __str__(self) -> str:
         """Return string representation of the SetValuesMappingView."""
         keys_with_values: list[str] = []
-        for key, values in self.mapping.items():
+        for key, values in self._mapping.items():
             keys_with_values.append(
                 f"{key}: set_view({{{', '.join(str(value) for value in values)}}})",
             )
-        return f"set_values_mapping_view({', '.join(keys_with_values)})"
+        return f"set_view_mapping({', '.join(keys_with_values)})"
 
 
-class BiDirectionalSetValueDict(MutableMapping[T, SetView[T]]):
+class BiDirectionalSetValueDict[T: Hashable](MutableMapping[T, SetView[T]]):
     """Bi-directional dictionary with set-like values.
 
     Each key can have multiple unique values associated with it, and vice-versa.
@@ -131,7 +127,7 @@ class BiDirectionalSetValueDict(MutableMapping[T, SetView[T]]):
         """Initialize bidict."""
         self._forward = dict[T, set[T]]()
         self._backward = dict[T, set[T]]()
-        self.inverse = SetViewMappingView[T, T](self._backward)
+        self.inverse = SetViewMapping[T, T](self._backward)
 
     def __bool__(self) -> bool:
         """Check if bidict has any keys."""
@@ -189,11 +185,11 @@ class BiDirectionalSetValueDict(MutableMapping[T, SetView[T]]):
 
     def values(self) -> ValuesView[SetView[T]]:
         """Return ValuesView of bidict."""
-        return SetViewMappingView[T, T](self._forward).values()
+        return SetViewMapping[T, T](self._forward).values()
 
     def items(self) -> ItemsView[T, SetView[T]]:
         """Return ItemsView of bidict."""
-        return SetViewMappingView[T, T](self._forward).items()
+        return SetViewMapping[T, T](self._forward).items()
 
     def add(self, key: T, value: T | None = None) -> None:
         """Add value to values associated with key.

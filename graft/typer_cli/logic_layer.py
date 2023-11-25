@@ -1,11 +1,8 @@
 import functools
 from collections.abc import Callable
-from typing import ParamSpec, TypeVar
 
 from graft import architecture
 
-T = TypeVar("T")
-P = ParamSpec("P")
 
 logic_layer: architecture.LogicLayer | None = None
 
@@ -14,7 +11,7 @@ class LogicLayerNotInitialisedError(Exception):
     """Raised when logic layer is not initialised."""
 
 
-def check_logic_layer_initialised(fn: Callable[P, T]) -> Callable[P, T]:
+def check_logic_layer_initialised[T, **P](fn: Callable[P, T]) -> Callable[P, T]:
     """Check that the logic layer is initialised."""
 
     @functools.wraps(fn)

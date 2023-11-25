@@ -4,14 +4,12 @@ from __future__ import annotations
 
 import collections
 from collections.abc import Hashable, Iterable
-from typing import Any, Self, TypeVar
+from typing import Any, Self
 
 from graft.graph import directed_acyclic_graph, simple_digraph
 
-T = TypeVar("T", bound=Hashable)
 
-
-class PathAlreadyExistsError(Exception):
+class PathAlreadyExistsError[T: Hashable](Exception):
     """Path already exists from source to target."""
 
     def __init__(
@@ -33,7 +31,7 @@ class PathAlreadyExistsError(Exception):
         )
 
 
-class TargetAlreadySuccessorOfSourceAncestorsError(Exception):
+class TargetAlreadySuccessorOfSourceAncestorsError[T: Hashable](Exception):
     """Target is already a successor of one or more of source's ancestors."""
 
     def __init__(
@@ -58,7 +56,7 @@ class TargetAlreadySuccessorOfSourceAncestorsError(Exception):
         )
 
 
-class MinimumDAG(directed_acyclic_graph.DirectedAcyclicGraph[T]):
+class MinimumDAG[T: Hashable](directed_acyclic_graph.DirectedAcyclicGraph[T]):
     """A DAG that does not have any superfluous edges.
 
     Only the minimal number of edges to describe the graph is allowed.

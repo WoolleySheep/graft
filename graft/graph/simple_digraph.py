@@ -9,14 +9,11 @@ from collections.abc import (
     Mapping,
     Set,
 )
-from typing import Any, Generic, Self, TypeGuard, TypeVar
+from typing import Any, Self, TypeGuard
 
 from graft.graph import bidict
 
-T = TypeVar("T", bound=Hashable)
-
-
-class NodeAlreadyExistsError(Exception):
+class NodeAlreadyExistsError[T: Hashable](Exception):
     """Raised when node already exists."""
 
     def __init__(
@@ -30,7 +27,7 @@ class NodeAlreadyExistsError(Exception):
         super().__init__(f"node [{node}] already exists", *args, **kwargs)
 
 
-class NodeDoesNotExistError(Exception):
+class NodeDoesNotExistError[T: Hashable](Exception):
     """Raised when node does not exist."""
 
     def __init__(
@@ -44,7 +41,7 @@ class NodeDoesNotExistError(Exception):
         super().__init__(f"node [{node}] does not exist", *args, **kwargs)
 
 
-class HasEdgesError(Exception):
+class HasEdgesError[T: Hashable](Exception):
     """Raised when node has edges."""
 
     def __init__(
@@ -63,7 +60,7 @@ class HasEdgesError(Exception):
         super().__init__(f"node [{node}] has edges", *args, **kwargs)
 
 
-class EdgeAlreadyExistsError(Exception):
+class EdgeAlreadyExistsError[T: Hashable](Exception):
     """Raised when edge already exists."""
 
     def __init__(
@@ -83,7 +80,7 @@ class EdgeAlreadyExistsError(Exception):
         )
 
 
-class EdgeDoesNotExistError(Exception):
+class EdgeDoesNotExistError[T: Hashable](Exception):
     """Raised when edge does not exist."""
 
     def __init__(
@@ -103,7 +100,7 @@ class EdgeDoesNotExistError(Exception):
         )
 
 
-class LoopError(Exception):
+class LoopError[T: Hashable](Exception):
     """Loop error.
 
     Raised when an edge is referenced that connects a node to itself, creating a
@@ -121,7 +118,7 @@ class LoopError(Exception):
         super().__init__(f"loop [{node}]", *args, **kwargs)
 
 
-class NoConnectingSubgraphError(Exception):
+class NoConnectingSubgraphError[T: Hashable](Exception):
     """Raised when no connecting subgraph exists."""
 
     def __init__(
@@ -141,12 +138,12 @@ class NoConnectingSubgraphError(Exception):
         )
 
 
-class NodesView(Set[T]):
+class NodesView[T: Hashable](Set[T]):
     """View of a set of nodes."""
 
     def __init__(self, nodes: Set[T], /) -> None:
         """Initialise NodesView."""
-        self._nodes: Set[T] | Mapping[T, Any] = nodes
+        self._nodes: Set[T] = nodes
 
     def __bool__(self) -> bool:
         """Check view has any nodes."""
@@ -169,7 +166,7 @@ class NodesView(Set[T]):
         return f"nodes_view({{{', '.join(str(node) for node in self._nodes)}}})"
 
 
-class EdgesView(Set[tuple[T, T]]):
+class EdgesView[T: Hashable](Set[tuple[T, T]]):
     """View of a set of edges."""
 
     def __init__(self, node_successors_map: Mapping[T, Set[T]], /) -> None:
@@ -232,7 +229,7 @@ class EdgesView(Set[tuple[T, T]]):
         return f"edges_view({{{', '.join(node_with_successors)}}})"
 
 
-class SimpleDiGraph(Generic[T]):
+class SimpleDiGraph[T: Hashable]:
     """Digraph with no loops or parallel edges."""
 
     def __init__(self) -> None:

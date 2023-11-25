@@ -2,14 +2,12 @@
 
 import collections
 from collections.abc import Generator, Hashable
-from typing import Any, TypeVar
+from typing import Any
 
 from graft.graph import simple_digraph
 
-T = TypeVar("T", bound=Hashable)
 
-
-class InverseEdgeAlreadyExistsError(Exception):
+class InverseEdgeAlreadyExistsError[T: Hashable](Exception):
     """Inverse edge already exists."""
 
     def __init__(
@@ -29,7 +27,7 @@ class InverseEdgeAlreadyExistsError(Exception):
         )
 
 
-class IntroducesCycleError(Exception):
+class IntroducesCycleError[T: Hashable](Exception):
     """Adding the edge introduces a cycle to the graph."""
 
     def __init__(
@@ -51,7 +49,7 @@ class IntroducesCycleError(Exception):
         )
 
 
-class DirectedAcyclicGraph(simple_digraph.SimpleDiGraph[T]):
+class DirectedAcyclicGraph[T: Hashable](simple_digraph.SimpleDiGraph[T]):
     """Simple Digraph with no cycles."""
 
     def add_edge(self, source: T, target: T) -> None:

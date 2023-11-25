@@ -21,7 +21,7 @@ ruff format graft
 ```
 ### Lint
 ```
-mypy --strict graft
+pyright graft
 pylint graft
 ruff --fix graft
 vulture graft

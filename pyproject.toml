@@ -9,20 +9,29 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.12"
 typer = "^0.9.0"
-networkx = "^3.2.1"
 
 [tool.poetry.group.dev.dependencies]
-mypy = "^1.7.1"
 ruff = "^0.1.6"
 pylint = "^3.0.2"
 autoflake = "^2.2.1"
 pydocstringformatter = "^0.7.3"
 vulture = "^2.10"
+pyright = "^1.1.337"
 
 [tool.ruff]
 line-length = 88
 select = ["ALL"]
-ignore = ["E203", "D203", "D213", "ANN101", "ANN102", "COM812", "ISC001"]
+ignore = [
+    "E203",
+    "D203",
+    "D213",
+    "ANN101",
+    "ANN102",
+    "COM812",
+    "ISC001",
+    "FA102",
+    "PY1025",
+]
 ignore-init-module-imports = true
 show-fixes = true
 
