@@ -7,26 +7,22 @@ license = "GNU GENERAL PUBLIC LICENSE"
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.11"
-networkx = "^3.1"
+python = "^3.12"
 typer = "^0.9.0"
+networkx = "^3.2.1"
 
 [tool.poetry.group.dev.dependencies]
-black = "^23.7.0"
-mypy = "^1.4.1"
-vulture = "^2.7"
-autoflake = "^2.2.0"
+mypy = "^1.7.1"
+ruff = "^0.1.6"
+pylint = "^3.0.2"
+autoflake = "^2.2.1"
 pydocstringformatter = "^0.7.3"
-ruff = "^0.0.280"
-pylint = "^2.17.4"
-
-[tool.isort]
-profile = "black"
+vulture = "^2.10"
 
 [tool.ruff]
 line-length = 88
 select = ["ALL"]
-ignore = ["E203", "D203", "D213", "ANN101", "ANN102"]
+ignore = ["E203", "D203", "D213", "ANN101", "ANN102", "COM812", "ISC001"]
 ignore-init-module-imports = true
 show-fixes = true
 

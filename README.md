@@ -17,7 +17,7 @@ TODO
 ```poetry install```
 ### Format
 ```
-black graft
+ruff format graft
 ```
 ### Lint
 ```
