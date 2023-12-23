@@ -4,34 +4,6 @@ from graft import graph
 from graft.domain import event, task
 
 
-class TaskUIDsView(Set[task.UID]):
-    """View of a set of task UIDs."""
-
-    def __init__(self, tasks: Set[task.UID], /) -> None:
-        """Initialise TaskUIDsView."""
-        self._tasks: Set[task.UID] = tasks
-
-    def __bool__(self) -> bool:
-        """Check view has any tasks."""
-        return bool(self._tasks)
-
-    def __len__(self) -> int:
-        """Return number of tasks in view."""
-        return len(self._tasks)
-
-    def __contains__(self, item: object) -> bool:
-        """Check if item is in TaskUIDsView."""
-        return item in self._tasks
-
-    def __iter__(self) -> Iterator[task.UID]:
-        """Return iterator over tasks in view."""
-        return iter(self._tasks)
-
-    def __str__(self) -> str:
-        """Return string representation of view."""
-        return f"task_uids_view({{{', '.join(str(task) for task in self._tasks)}}})"
-
-
 class EventUIDsView(Set[event.UID]):
     """View of a set of event UIDs."""
 

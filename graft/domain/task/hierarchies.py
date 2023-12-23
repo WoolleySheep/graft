@@ -54,3 +54,5 @@ class Hierarchies:
             ) from e
         except Exception as e:
             raise e
+        
+    def supertasks(self, /, uid: task.UID) -> TasksV

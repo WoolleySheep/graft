@@ -145,10 +145,10 @@ class UIDDoesNotExistError(Exception):
         super().__init__(f"uid [{uid}] is not registered", *args, **kwargs)
 
 
-class UIDsView(Set[UID]):
+class UIDsView(Iterator[UID]):
     """View of a set of task UIDs."""
 
-    def __init__(self, tasks: Set[UID], /) -> None:
+    def __init__(self, tasks: Iterator[UID], /) -> None:
         """Initialise UIDsView."""
         self._tasks = tasks
 
@@ -170,4 +170,4 @@ class UIDsView(Set[UID]):
 
     def __str__(self) -> str:
         """Return string representation of view."""
-        return f"task_uids_view({{{', '.join(str(task) for task in self._tasks)}}})"
+        return f"uids_view({{{', '.join(str(task) for task in self._tasks)}}})"
