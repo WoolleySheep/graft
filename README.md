@@ -9,16 +9,21 @@ Graft seeks to solve the two problems I run into when deciding what to work on:
 ## Installation instructions
 TODO
 
-## How to run
-```python -m main.py```
+## How to run app
+```python main.py```
 
 ## For developers
 ### Install developer dependencies
 ```poetry install```
+
+### Launch poetry environment
+```poetry shell```
+
 ### Format
 ```
 ruff format graft
 ```
+
 ### Lint
 ```
 pyright graft

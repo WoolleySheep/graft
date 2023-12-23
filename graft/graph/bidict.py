@@ -10,7 +10,7 @@ from collections.abc import (
     Set,
     ValuesView,
 )
-from typing import Any, FrozenSet
+from typing import Any
 
 
 class KeyAlreadyExistsError[T: Hashable](Exception):

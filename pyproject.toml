@@ -30,7 +30,7 @@ ignore = [
     "COM812",
     "ISC001",
     "FA102",
-    "PY1025",
+    "PYI025",
 ]
 ignore-init-module-imports = true
 show-fixes = true

@@ -1,4 +1,4 @@
-from graft.graft import run_graft_app
+import graft
 
 if __name__ == "__main__":
-    run_graft_app()
+    graft.run()

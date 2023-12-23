@@ -13,6 +13,7 @@ from typing import Any, Self, TypeGuard
 
 from graft.graph import bidict
 
+
 class NodeAlreadyExistsError[T: Hashable](Exception):
     """Raised when node already exists."""
 

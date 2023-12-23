@@ -1,3 +1,5 @@
+"""Presentation-layer interface and associated exceptions."""
+
 import abc
 
 from graft.architecture import logic
@@ -8,4 +10,4 @@ class PresentationLayer(abc.ABC):
 
     def __init__(self, logic_layer: logic.LogicLayer) -> None:
         """Initialise presentation layer."""
-        self.logic_layer = logic_layer
+        self._logic_layer = logic_layer
