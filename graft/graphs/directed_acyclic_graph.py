@@ -4,7 +4,7 @@ import collections
 from collections.abc import Generator, Hashable
 from typing import Any
 
-from graft.graph import simple_digraph
+from graft.graphs import simple_digraph
 
 
 class InverseEdgeAlreadyExistsError[T: Hashable](Exception):

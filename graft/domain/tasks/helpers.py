@@ -1,6 +1,6 @@
 from typing import Any
 
-from graft.domain.task.uid import UID
+from graft.domain.tasks.uid import UID
 
 
 class TaskAlreadyExistsError(Exception):

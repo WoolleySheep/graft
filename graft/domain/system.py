@@ -1,4 +1,4 @@
-from graft.domain import task
+from graft.domain import tasks
 
 
 class System:
@@ -9,15 +9,15 @@ class System:
 
     def __init__(
         self,
-        task_system: task.System,
+        task_system: tasks.System,
     ) -> None:
         """Initialise System."""
         self._task_system = task_system
 
-    def task_system_view(self) -> task.SystemView:
+    def task_system_view(self) -> tasks.SystemView:
         """Return a view of the task system."""
-        return task.SystemView(self._task_system)
+        return tasks.SystemView(self._task_system)
 
-    def add_task(self, uid: task.UID) -> None:
+    def add_task(self, task: tasks.UID) -> None:
         """Add a task."""
-        self._task_system.add_task(uid)
+        self._task_system.add_task(task)

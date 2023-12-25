@@ -1,2 +1,2 @@
-from graft.domain import event, task
+from graft.domain import events, tasks
 from graft.domain.system import System

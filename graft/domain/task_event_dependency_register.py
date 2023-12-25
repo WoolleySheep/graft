@@ -1,62 +1,6 @@
-from collections.abc import Collection, Generator, Iterator, Set
+from collections.abc import Generator
 
-from graft.domain import event, task
-
-
-class TaskUIDsView(Collection[task.UID]):
-    """View of a collection of task UIDs."""
-
-    def __init__(self, tasks: Collection[task.UID], /) -> None:
-        """Initialise TaskUIDsView."""
-        self._tasks: Collection[task.UID] = tasks
-
-    def __bool__(self) -> bool:
-        """Check view has any tasks."""
-        return bool(self._tasks)
-
-    def __len__(self) -> int:
-        """Return number of tasks in view."""
-        return len(self._tasks)
-
-    def __contains__(self, item: object) -> bool:
-        """Check if item is in TaskUIDsView."""
-        return item in self._tasks
-
-    def __iter__(self) -> Iterator[task.UID]:
-        """Return iterator over tasks in view."""
-        return iter(self._tasks)
-
-    def __str__(self) -> str:
-        """Return string representation of view."""
-        return f"task_uids_view({{{', '.join(str(task) for task in self._tasks)}}})"
-
-
-class EventUIDsView(Collection[event.UID]):
-    """View of a collection of event UIDs."""
-
-    def __init__(self, events: Collection[event.UID], /) -> None:
-        """Initialise EventUIDsView."""
-        self._events: Collection[event.UID] = events
-
-    def __bool__(self) -> bool:
-        """Check view has any events."""
-        return bool(self._events)
-
-    def __len__(self) -> int:
-        """Return number of events in view."""
-        return len(self._events)
-
-    def __contains__(self, item: object) -> bool:
-        """Check if item is in EventUIDsView."""
-        return item in self._events
-
-    def __iter__(self) -> Iterator[event.UID]:
-        """Return iterator over events in view."""
-        return iter(self._events)
-
-    def __str__(self) -> str:
-        """Return string representation of view."""
-        return f"event_uids_view({{{', '.join(str(event) for event in self._events)}}})"
+from graft.domain import events, tasks
 
 
 class TaskEventDependencyRegister:
@@ -66,26 +10,26 @@ class TaskEventDependencyRegister:
     tasks will also be able to use events as start-after dates.
     """
 
-    def add_task(self, uid: task.UID, /) -> None:
+    def add_task(self, task: tasks.UID, /) -> None:
         """Add task to register."""
         raise NotImplementedError
 
-    def add_event(self, uid: event.UID, /) -> None:
+    def add_event(self, event: events.UID, /) -> None:
         """Add event to register."""
         raise NotImplementedError
 
-    def add_dependency(self, task_uid: task.UID, event_uid: event.UID) -> None:
+    def add_dependency(self, task: tasks.UID, event: events.UID) -> None:
         """Add dependency between task and event."""
         raise NotImplementedError
 
-    def tasks_due_by(self, uid: event.UID) -> TaskUIDsView:
+    def tasks_due_by(self, event: events.UID) -> tasks.UIDsView:
         """Tasks due by the specified event."""
         raise NotImplementedError
 
-    def events_due_by(self, uid: task.UID) -> EventUIDsView:
+    def events_due_by(self, task: tasks.UID) -> events.UIDsView:
         """Events a the specified task is due by."""
         raise NotImplementedError
 
-    def dependencies(self) -> Generator[tuple[task.UID, event.UID], None, None]:
+    def dependencies(self) -> Generator[tuple[tasks.UID, events.UID], None, None]:
         """Return all dependencies."""
         raise NotImplementedError

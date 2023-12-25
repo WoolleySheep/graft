@@ -13,6 +13,18 @@ from collections.abc import (
 from typing import Any
 
 
+def invert[T: Hashable, S: Hashable](mapping: Mapping[T, Set[S]]) -> dict[S, set[T]]:
+    """Invert mapping of keys to hashable sets."""
+    inverted: dict[S, set[T]] = {}
+    for key, values in mapping.items():
+        for value in values:
+            if value not in inverted:
+                inverted[value] = set[T]()
+            inverted[value].add(key)
+
+    return inverted
+
+
 class KeyAlreadyExistsError[T: Hashable](Exception):
     """Raised when key already exists."""
 
@@ -123,10 +135,13 @@ class BiDirectionalSetValueDict[T: Hashable](MutableMapping[T, SetView[T]]):
     Each key can have multiple unique values associated with it, and vice-versa.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, forward: Mapping[T, Set[T]] | None = None) -> None:
         """Initialize bidict."""
+        self._forward = (
+            {a: set(b) for a, b in forward.items()} if forward else dict[T, set[T]]()
+        )
+        self._backward = invert(mapping=self._forward)
         self._forward = dict[T, set[T]]()
-        self._backward = dict[T, set[T]]()
         self.inverse = SetViewMapping[T, T](self._backward)
 
     def __bool__(self) -> bool:

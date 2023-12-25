@@ -1,14 +1,14 @@
-from graft.domain.task.description import Description
-from graft.domain.task.name import Name
+from graft.domain.events.description import Description
+from graft.domain.events.name import Name
 
 
 class Attributes:
-    """Task attributes."""
+    """Event attributes."""
 
     def __init__(
         self,
-        name: Name | None,
-        description: Description | None,
+        name: Name | None = None,
+        description: Description | None = None,
     ) -> None:
         """Initialise Attributes."""
         self.name = name
@@ -16,7 +16,7 @@ class Attributes:
 
 
 class AttributesView:
-    """Attributes view."""
+    """View of event attributes."""
 
     def __init__(self, attributes: Attributes) -> None:
         """Initialise AttributesView."""

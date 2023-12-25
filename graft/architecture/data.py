@@ -4,7 +4,7 @@ import abc
 from xml import dom
 
 from graft import domain
-from graft.domain import task
+from graft.domain import tasks
 
 
 class DataLayer(abc.ABC):
@@ -20,7 +20,7 @@ class DataLayer(abc.ABC):
         """
 
     @abc.abstractmethod
-    def get_next_task_uid(self) -> task.UID:
+    def get_next_task_uid(self) -> tasks.UID:
         """Get the next task UID."""
 
     @abc.abstractmethod

@@ -1,7 +1,7 @@
 class Description:
     """Task description."""
 
-    def __init__(self, *, text: str) -> None:
+    def __init__(self, /, text: str) -> None:
         """Initialise Description."""
         self._text = text
 

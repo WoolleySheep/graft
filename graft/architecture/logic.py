@@ -3,7 +3,7 @@
 import abc
 
 from graft.architecture import data
-from graft.domain import task
+from graft.domain import tasks
 
 
 class LogicLayer(abc.ABC):
@@ -23,5 +23,5 @@ class LogicLayer(abc.ABC):
         """
 
     @abc.abstractmethod
-    def create_task(self) -> task.UID:
+    def create_task(self) -> tasks.UID:
         """Create a new task and return its ID."""

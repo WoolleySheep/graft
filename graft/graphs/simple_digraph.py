@@ -11,7 +11,7 @@ from collections.abc import (
 )
 from typing import Any, Self, TypeGuard
 
-from graft.graph import bidict
+from graft.graphs import bidict as bd
 
 
 class NodeAlreadyExistsError[T: Hashable](Exception):
@@ -233,9 +233,15 @@ class EdgesView[T: Hashable](Set[tuple[T, T]]):
 class SimpleDiGraph[T: Hashable]:
     """Digraph with no loops or parallel edges."""
 
-    def __init__(self) -> None:
-        """Initialize simple digraph."""
-        self._bidict = bidict.BiDirectionalSetValueDict[T]()
+    def __init__(self, bidict: bd.BiDirectionalSetValueDict[T] | None = None) -> None:
+        """Initialize simple digraph.
+
+        We are relying on the bi-dict being well formed - no validation is done.
+        This may be changed in the future.
+        """
+        self._bidict = (
+            bidict if bidict is not None else bd.BiDirectionalSetValueDict[T]()
+        )
 
     def __bool__(self) -> bool:
         """Check if digraph has any nodes."""

@@ -1,14 +1,14 @@
 from collections.abc import Generator, Iterator
 
-from graft import graph
-from graft.domain.task.helpers import TaskAlreadyExistsError, TaskDoesNotExistError
-from graft.domain.task.uid import UID, UIDsView
+from graft import graphs
+from graft.domain.tasks.helpers import TaskAlreadyExistsError, TaskDoesNotExistError
+from graft.domain.tasks.uid import UID, UIDsView
 
 
 class DependenciesView:
     """View of a set of dependencies."""
 
-    def __init__(self, dag: graph.DirectedAcyclicGraph[UID]) -> None:
+    def __init__(self, dag: graphs.DirectedAcyclicGraph[UID]) -> None:
         """Initialise DependenciesView."""
         self._dag = dag
 
@@ -24,7 +24,7 @@ class DependenciesView:
         """Check if item in DependenciesView."""
         try:
             return item in self._dag.edges()
-        except graph.NodeDoesNotExistError as e:
+        except graphs.NodeDoesNotExistError as e:
             raise TaskDoesNotExistError(e.node) from e
 
     def __iter__(self) -> Generator[tuple[UID, UID], None, None]:
@@ -48,7 +48,7 @@ class DependencyGraph:
     Acts as a DAG.
     """
 
-    def __init__(self, dag: graph.DirectedAcyclicGraph[UID]) -> None:
+    def __init__(self, dag: graphs.DirectedAcyclicGraph[UID]) -> None:
         """Initialise Hierarchies."""
         self._dag = dag
 
@@ -64,7 +64,7 @@ class DependencyGraph:
         """Add a task."""
         try:
             self._dag.add_node(task)
-        except graph.NodeAlreadyExistsError as e:
+        except graphs.NodeAlreadyExistsError as e:
             raise TaskAlreadyExistsError(task) from e
 
     def dependencies(self) -> DependenciesView:
@@ -75,14 +75,14 @@ class DependencyGraph:
         """Return a view of the dependees of a task."""
         try:
             return UIDsView(self._dag.predecessors(task))
-        except graph.NodeDoesNotExistError as e:
+        except graphs.NodeDoesNotExistError as e:
             raise TaskDoesNotExistError(task) from e
 
     def dependents(self, task: UID) -> UIDsView:
         """Return a view of the dependents of a task."""
         try:
             return UIDsView(self._dag.successors(task))
-        except graph.NodeDoesNotExistError as e:
+        except graphs.NodeDoesNotExistError as e:
             raise TaskDoesNotExistError(task) from e
 
     def task_dependents_pairs(self) -> Generator[tuple[UID, UIDsView], None, None]:

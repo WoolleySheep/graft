@@ -1,8 +1,8 @@
 from collections.abc import Generator, Iterator
 
-from graft import graph
-from graft.domain.task.helpers import TaskAlreadyExistsError, TaskDoesNotExistError
-from graft.domain.task.uid import (
+from graft import graphs
+from graft.domain.tasks.helpers import TaskAlreadyExistsError, TaskDoesNotExistError
+from graft.domain.tasks.uid import (
     UID,
     UIDsView,
 )
@@ -11,7 +11,7 @@ from graft.domain.task.uid import (
 class HierarchiesView:
     """View of a set of hierarchies."""
 
-    def __init__(self, min_dag: graph.MinimumDAG[UID]) -> None:
+    def __init__(self, min_dag: graphs.MinimumDAG[UID]) -> None:
         """Initialise HierarchiesView."""
         self._min_dag = min_dag
 
@@ -27,7 +27,7 @@ class HierarchiesView:
         """Check if item in HierarchiesView."""
         try:
             return item in self._min_dag.edges()
-        except graph.NodeDoesNotExistError as e:
+        except graphs.NodeDoesNotExistError as e:
             raise TaskDoesNotExistError(e.node) from e
 
     def __iter__(self) -> Generator[tuple[UID, UID], None, None]:
@@ -51,7 +51,7 @@ class HierarchyGraph:
     Acts as a Minimum DAG.
     """
 
-    def __init__(self, min_dag: graph.MinimumDAG[UID]) -> None:
+    def __init__(self, min_dag: graphs.MinimumDAG[UID]) -> None:
         """Initialise HierarchyGraph."""
         self._min_dag = min_dag
 
@@ -79,7 +79,7 @@ class HierarchyGraph:
         """Add a task."""
         try:
             self._min_dag.add_node(task)
-        except graph.NodeAlreadyExistsError as e:
+        except graphs.NodeAlreadyExistsError as e:
             raise TaskAlreadyExistsError(task) from e
 
     def hierarchies(self) -> HierarchiesView:

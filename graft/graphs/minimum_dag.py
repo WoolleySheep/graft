@@ -6,7 +6,7 @@ import collections
 from collections.abc import Hashable, Iterable
 from typing import Any, Self
 
-from graft.graph import directed_acyclic_graph, simple_digraph
+from graft.graphs import directed_acyclic_graph, simple_digraph
 
 
 class PathAlreadyExistsError[T: Hashable](Exception):
