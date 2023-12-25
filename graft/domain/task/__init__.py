@@ -1,11 +1,24 @@
-from graft.domain.task.hierarchies import Hierarchies
-from graft.domain.task.network import Network
-from graft.domain.task.register import Register, RegisterView
-from graft.domain.task.task import (
+from graft.domain.task.attributes import Attributes, AttributesView
+from graft.domain.task.attributes_register import (
+    AttributesRegister,
+    AttributesRegisterView,
+)
+from graft.domain.task.dependency_graph import (
+    DependenciesView,
+    DependencyGraph,
+    DependencyGraphView,
+)
+from graft.domain.task.description import Description
+from graft.domain.task.helpers import TaskAlreadyExistsError, TaskDoesNotExistError
+from graft.domain.task.hierarchy_graph import (
+    HierarchiesView,
+    HierarchyGraph,
+    HierarchyGraphView,
+)
+from graft.domain.task.name import Name
+from graft.domain.task.system import System, SystemView
+from graft.domain.task.uid import (
     UID,
-    Attributes,
-    AttributesView,
-    Description,
-    Importance,
-    Name,
+    InvalidUIDNumberError,
+    UIDsView,
 )

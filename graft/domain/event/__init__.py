@@ -1,2 +1,12 @@
-from graft.domain.event.event import UID, Attributes, Description, Name
-from graft.domain.event.register import Register, RegisterView
+from graft.domain.event.attributes_register import (
+    AttributesRegister,
+    AttributesRegisterView,
+)
+from graft.domain.event.description import Description
+from graft.domain.event.name import Name
+from graft.domain.event.uid import (
+    UID,
+    InvalidUIDNumberError,
+    UIDAlreadyExistsError,
+    UIDDoesNotExistError,
+)

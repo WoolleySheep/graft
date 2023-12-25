@@ -483,3 +483,8 @@ class SimpleDiGraph[T: Hashable]:
         for node in self:
             if self.is_isolated(node):
                 yield node
+
+    def node_successors_pairs(self) -> Generator[tuple[T, NodesView[T]], None, None]:
+        """Yield all node-successors pairs."""
+        for node in self:
+            yield node, self.successors(node)
