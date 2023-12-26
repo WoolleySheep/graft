@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import collections
-from collections.abc import Hashable, Iterable
+from collections.abc import Hashable
 from typing import Any, Self
 
 from graft.graphs import directed_acyclic_graph, simple_digraph
@@ -32,13 +32,16 @@ class PathAlreadyExistsError[T: Hashable](Exception):
 
 
 class TargetAlreadySuccessorOfSourceAncestorsError[T: Hashable](Exception):
-    """Target is already a successor of one or more of source's ancestors."""
+    """Target is already a successor of one or more of source's ancestors.
+
+    The relevant ancestors are the roots of the subgraph.
+    """
 
     def __init__(
         self,
         source: T,
         target: T,
-        subgraph: directed_acyclic_graph.DirectedAcyclicGraph[T],
+        subgraph: MinimumDAG[T],
         *args: tuple[Any, ...],
         **kwargs: dict[str, Any],
     ) -> None:
@@ -69,11 +72,11 @@ class MinimumDAG[T: Hashable](directed_acyclic_graph.DirectedAcyclicGraph[T]):
             self: Self,
             source: T,
             target: T,
-        ) -> directed_acyclic_graph.DirectedAcyclicGraph[T]:
+        ) -> Self:
             """Return ancestors of source that are also predecessors of target."""
 
             def get_ancestor_subgraph(
-                digraph: simple_digraph.SimpleDiGraph[T],
+                digraph: Self,
                 source: T,
                 target: T,
             ) -> tuple[set[T], Self]:
@@ -109,30 +112,6 @@ class MinimumDAG[T: Hashable](directed_acyclic_graph.DirectedAcyclicGraph[T]):
 
                 return ancestors_of_interest, subgraph
 
-            def get_descendants_combined_subgraph(
-                digraph: simple_digraph.SimpleDiGraph[T],
-                nodes: Iterable[T],
-            ) -> directed_acyclic_graph.DirectedAcyclicGraph[T]:
-                """Get combined descendant subgraph of nodes."""
-                visited = set[T]()
-                queue = collections.deque[T](nodes)
-                subgraph = directed_acyclic_graph.DirectedAcyclicGraph[T]()
-                for node in queue:
-                    subgraph.add_node(node)
-
-                while queue:
-                    node = queue.popleft()
-                    if node in visited:
-                        continue
-                    visited.add(node)
-                    for successor in digraph.successors(node):
-                        if successor not in subgraph:
-                            subgraph.add_node(successor)
-                        subgraph.add_edge(node, successor)
-                        queue.append(successor)
-
-                return subgraph
-
             for node in [source, target]:
                 if node not in self:
                     raise simple_digraph.NodeDoesNotExistError(node=node)
@@ -151,33 +130,25 @@ class MinimumDAG[T: Hashable](directed_acyclic_graph.DirectedAcyclicGraph[T]):
             # into one subgraph. As ancestors_subgraph started from source, it will
             # be the only leaf node. None of the ancestors of interest will be in
             # each other's path to source.
-            subgraph = get_descendants_combined_subgraph(
-                digraph=ancestor_subgraph,
-                nodes=ancestors_of_interest,
+            return ancestor_subgraph.descendants_subgraph_multi(
+                nodes=ancestors_of_interest
             )
-
-            # Add the problematic edges
-            subgraph.add_edge(source=source, target=target)
-            for ancestor in ancestors_of_interest:
-                subgraph.add_edge(source=ancestor, target=target)
-            return subgraph
 
         if (source, target) in self.edges():
             raise simple_digraph.EdgeAlreadyExistsError(source=source, target=target)
 
-        if (source, target) in self.edges():
+        if (target, source) in self.edges():
             raise directed_acyclic_graph.InverseEdgeAlreadyExistsError(
                 source=target,
                 target=source,
             )
 
         if self.has_path(source=target, target=source):
-            cyclic_subgraph = self.connecting_subgraph(source=target, target=source)
-            cyclic_subgraph.add_edge(source=source, target=target)
+            connecting_subgraph = self.connecting_subgraph(source=target, target=source)
             raise directed_acyclic_graph.IntroducesCycleError(
                 source=source,
                 target=target,
-                cyclic_subgraph=cyclic_subgraph,
+                connecting_subgraph=connecting_subgraph,
             )
 
         if self.has_path(source=source, target=target):

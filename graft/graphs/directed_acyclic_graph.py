@@ -27,21 +27,21 @@ class InverseEdgeAlreadyExistsError[T: Hashable](Exception):
         )
 
 
-class IntroducesCycleError[T: Hashable](Exception):
+class IntroducesCycleError[T: Hashable, G: "DirectedAcyclicGraph"](Exception):
     """Adding the edge introduces a cycle to the graph."""
 
     def __init__(
         self,
         source: T,
         target: T,
-        cyclic_subgraph: simple_digraph.SimpleDiGraph[T],
+        connecting_subgraph: G,
         *args: tuple[Any, ...],
         **kwargs: dict[str, Any],
     ) -> None:
         """Initialize IntroducesCycleError."""
         self.source = source
         self.target = target
-        self.cyclic_subgraph = cyclic_subgraph
+        self.connecting_subgraph = connecting_subgraph
         super().__init__(
             f"edge [{source}] -> [{target}] introduces cycle",
             *args,
@@ -61,12 +61,11 @@ class DirectedAcyclicGraph[T: Hashable](simple_digraph.SimpleDiGraph[T]):
             raise InverseEdgeAlreadyExistsError(source=target, target=source)
 
         if self.has_path(source=target, target=source):
-            cyclic_subgraph = self.connecting_subgraph(source=target, target=source)
-            cyclic_subgraph.add_edge(source=source, target=target)
+            connecting_subgraph = self.connecting_subgraph(source=target, target=source)
             raise IntroducesCycleError(
                 source=source,
                 target=target,
-                cyclic_subgraph=cyclic_subgraph,
+                connecting_subgraph=connecting_subgraph,
             )
 
         return super().add_edge(source, target)

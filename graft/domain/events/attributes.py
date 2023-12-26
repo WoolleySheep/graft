@@ -5,7 +5,7 @@ from graft.domain.events.name import Name
 
 
 class Attributes:
-    """Event attributes."""
+    """Attributes of an event."""
 
     def __init__(
         self,

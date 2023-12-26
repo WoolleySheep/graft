@@ -1,6 +1,7 @@
 """DiGraph and associated Exceptions."""
 
 import collections
+import itertools
 from collections.abc import (
     Generator,
     Hashable,
@@ -121,7 +122,7 @@ class LoopError[T: Hashable](Exception):
         *args: tuple[Any, ...],
         **kwargs: dict[str, Any],
     ) -> None:
-        """Initialize SelfLoopError."""
+        """Initialize LoopError."""
         self.node = node
         super().__init__(f"loop [{node}]", *args, **kwargs)
 
@@ -131,16 +132,19 @@ class NoConnectingSubgraphError[T: Hashable](Exception):
 
     def __init__(
         self,
-        source: T,
-        target: T,
+        sources: Iterable[T],
+        targets: Iterable[T],
         *args: tuple[Any, ...],
         **kwargs: dict[str, Any],
     ) -> None:
         """Initialize NoConnectingSubgraphError."""
-        self.source = source
-        self.target = target
+        self.sources = list(sources)
+        self.targets = list(targets)
+
+        formatted_sources = ", ".join(str(source) for source in sources)
+        formatted_targets = ", ".join(str(target) for target in targets)
         super().__init__(
-            f"no connecting subgraph from [{source}] to [{target}] exists",
+            f"no connecting subgraph from [{formatted_sources}] to [{formatted_targets}] exists",
             *args,
             **kwargs,
         )
@@ -339,7 +343,7 @@ class SimpleDiGraph[T: Hashable]:
         return NodesView(self._bidict.inverse[node])
 
     def descendants_bfs(self, node: T, /) -> Generator[T, None, None]:
-        """Return breadth first search of descendants of node."""
+        """Return breadth-first search of descendants of node(s)."""
         queue = collections.deque[T](self.successors(node))
         visited = set[T]([node])
 
@@ -352,7 +356,7 @@ class SimpleDiGraph[T: Hashable]:
             yield node2
 
     def descendants_dfs(self, node: T, /) -> Generator[T, None, None]:
-        """Return depth first search of the descendants of node."""
+        """Return depth-first search of the descendants of node."""
         stack = collections.deque[T](self.successors(node))
         visited = set[T]([node])
 
@@ -365,7 +369,10 @@ class SimpleDiGraph[T: Hashable]:
             yield node2
 
     def descendants_subgraph(self, node: T, /) -> Self:
-        """Return a subgraph of the descendants of node."""
+        """Return a subgraph of the descendants of node.
+
+        The original node is part of the subgraph.
+        """
         if node not in self:
             raise NodeDoesNotExistError(node=node)
 
@@ -388,8 +395,38 @@ class SimpleDiGraph[T: Hashable]:
 
         return subgraph
 
+    def descendants_subgraph_multi(self, nodes: Iterable[T]) -> Self:
+        """Return a subgraph of the descendants of multiple nodes.
+
+        This effectively OR's together the descendant subgraphs of several
+        nodes.
+
+        The original nodes are part of the subgraph.
+        """
+        subgraph = type(self)()
+        for node in nodes:
+            if node not in self:
+                raise NodeDoesNotExistError(node=node)
+            subgraph.add_node(node)
+
+        visited = set[T]()
+        queue = collections.deque[T](subgraph)
+
+        while queue:
+            node2 = queue.popleft()
+            if node2 in visited:
+                continue
+            visited.add(node2)
+            for successor in self.successors(node2):
+                if successor not in subgraph:
+                    subgraph.add_node(successor)
+                subgraph.add_edge(node2, successor)
+                queue.append(successor)
+
+        return subgraph
+
     def ancestors_bfs(self, node: T, /) -> Generator[T, None, None]:
-        """Return breadth first search of ancestors of node."""
+        """Return breadth-first search of ancestors of node."""
         queue = collections.deque[T](self.predecessors(node))
         visited = set[T]([node])
 
@@ -402,7 +439,7 @@ class SimpleDiGraph[T: Hashable]:
             yield node2
 
     def ancestors_dfs(self, node: T, /) -> Generator[T, None, None]:
-        """Return depth first search of ancestors of node."""
+        """Return depth-first search of ancestors of node."""
         stack = collections.deque[T](self.predecessors(node))
         visited = set[T]([node])
 
@@ -424,6 +461,36 @@ class SimpleDiGraph[T: Hashable]:
 
         visited = set[T]()
         queue = collections.deque[T]([node])
+
+        while queue:
+            node2 = queue.popleft()
+            if node2 in visited:
+                continue
+            visited.add(node2)
+            for predecessor in self.predecessors(node2):
+                if predecessor not in subgraph:
+                    subgraph.add_node(predecessor)
+                subgraph.add_edge(predecessor, node2)
+                queue.append(predecessor)
+
+        return subgraph
+
+    def ancestors_subgraph_multi(self, nodes: Iterable[T], /) -> Self:
+        """Return a subgraph of the ancestors of multiple nodes.
+
+        This effectively OR's together the ancestor subgraphs of several
+        nodes.
+
+        The original nodes are part of the subgraph.
+        """
+        subgraph = type(self)()
+        for node in nodes:
+            if node not in self:
+                raise NodeDoesNotExistError(node=node)
+            subgraph.add_node(node)
+
+        visited = set[T]()
+        queue = collections.deque[T](subgraph)
 
         while queue:
             node2 = queue.popleft()
@@ -462,7 +529,32 @@ class SimpleDiGraph[T: Hashable]:
         try:
             return source_descendants_subgraph.ancestors_subgraph(target)
         except NodeDoesNotExistError as e:
-            raise NoConnectingSubgraphError(source=source, target=target) from e
+            raise NoConnectingSubgraphError(sources=[source], targets=[target]) from e
+
+    def connecting_subgraph_multi(
+        self, sources: Iterable[T], targets: Iterable[T]
+    ) -> Self:
+        """Return connecting subgraph from sources to targets.
+
+        Every target must be reachable by one or more sources.
+        """
+        sources_set = set(sources)
+        targets_set = set(targets)
+        for source in sources_set:
+            if source in targets_set:
+                raise LoopError(node=source)
+
+        for node in itertools.chain(sources_set, targets_set):
+            if node not in self:
+                raise NodeDoesNotExistError(node=node)
+
+        sources_descendants_subgraph = self.descendants_subgraph_multi(sources_set)
+        try:
+            return sources_descendants_subgraph.ancestors_subgraph_multi(targets_set)
+        except NodeDoesNotExistError as e:
+            raise NoConnectingSubgraphError(
+                sources=sources_set, targets=targets_set
+            ) from e
 
     def is_root(self, node: T, /) -> bool:
         """Check if node is a root of the graph."""

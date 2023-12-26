@@ -29,3 +29,7 @@ class LogicLayer(abc.ABC):
     @abc.abstractmethod
     def delete_task(self, task: tasks.UID) -> None:
         """Delete the specified task."""
+
+    @abc.abstractmethod
+    def create_hierarchy(self, supertask: tasks.UID, subtask: tasks.UID) -> None:
+        """Create a new hierarchy between the specified tasks."""

@@ -5,7 +5,7 @@ from graft.domain.tasks.name import Name
 
 
 class Attributes:
-    """Task attributes."""
+    """Attributes of a task."""
 
     def __init__(
         self,

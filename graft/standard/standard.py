@@ -20,6 +20,7 @@ class StandardLogicLayer(architecture.LogicLayer):
 
     @override
     def create_task(self) -> tasks.UID:
+        """Create a new task."""
         uid = self._data_layer.get_next_task_uid()
         system = self._data_layer.load_system()
         system.add_task(uid)
@@ -29,6 +30,14 @@ class StandardLogicLayer(architecture.LogicLayer):
 
     @override
     def delete_task(self, task: tasks.UID) -> None:
+        """Delete a task."""
         system = self._data_layer.load_system()
         system.remove_task(task)
+        self._data_layer.save_system(system=system)
+
+    @override
+    def create_hierarchy(self, supertask: tasks.UID, subtask: tasks.UID) -> None:
+        """Create a new hierarchy between the specified tasks."""
+        system = self._data_layer.load_system()
+        system.add_hierarchy(supertask=supertask, subtask=subtask)
         self._data_layer.save_system(system=system)

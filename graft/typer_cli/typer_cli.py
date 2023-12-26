@@ -23,5 +23,5 @@ def init() -> None:
     try:
         logic_layer.initialise()
     except Exception as e:
-        typer.echo(f"Failed to initialise graft: {e}")
+        typer.echo(f"Failed to initialise graft: exception [{e}] raised")
         raise
