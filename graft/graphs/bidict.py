@@ -13,12 +13,12 @@ from collections.abc import (
 from typing import Any
 
 
-def invert_set_mapping[T: Hashable, S: Hashable](
-    mapping: Mapping[T, Set[S]], /
-) -> dict[S, set[T]]:
+def invert_set_mapping[T: Hashable](mapping: Mapping[T, Set[T]], /) -> dict[T, set[T]]:
     """Invert mapping of keys to hashable sets."""
-    inverted: dict[S, set[T]] = {}
+    inverted: dict[T, set[T]] = {}
     for key, values in mapping.items():
+        if key not in inverted:
+            inverted[key] = set[T]()
         for value in values:
             if value not in inverted:
                 inverted[value] = set[T]()
@@ -87,7 +87,6 @@ class SetViewMapping[T: Hashable, S: Hashable](Mapping[T, SetView[S]]):
     def __getitem__(self, key: T) -> SetView[S]:
         """Return SetView of values associated with key."""
         return SetView[S](self._mapping[key])
-
 
     def __str__(self) -> str:
         """Return string representation of the SetValuesMappingView."""

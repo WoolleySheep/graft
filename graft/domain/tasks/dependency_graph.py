@@ -1,10 +1,40 @@
 """Task Dependency Graph and associated classes/exceptions."""
 
-from collections.abc import Generator, Iterator, Set
+from collections.abc import Generator, Iterable, Iterator, Set
 
 from graft import graphs
 from graft.domain.tasks.helpers import TaskAlreadyExistsError, TaskDoesNotExistError
 from graft.domain.tasks.uid import UID, UIDsView
+
+
+class HasDependeeTasksError(Exception):
+    """Raised when a task has dependee-tasks."""
+
+    def __init__(self, task: UID, dependee_tasks: Iterable[UID]) -> None:
+        """Initialise HasDependeeTasksError."""
+        self.task = task
+        self.dependee_tasks = set(dependee_tasks)
+        formatted_dependee_tasks = (
+            str(dependee_task) for dependee_task in dependee_tasks
+        )
+        super().__init__(
+            f"Task [{task}] has dependee-tasks [{", ".join(formatted_dependee_tasks)}]"
+        )
+
+
+class HasDependentTasksError(Exception):
+    """Raised when a task has dependent-tasks."""
+
+    def __init__(self, task: UID, dependent_tasks: Iterable[UID]) -> None:
+        """Initialise HasDependentTasksError."""
+        self.task = task
+        self.dependent_tasks = set(dependent_tasks)
+        formatted_dependent_tasks = (
+            str(dependent_task) for dependent_task in dependent_tasks
+        )
+        super().__init__(
+            f"Task [{task}] has sub-tasks [{", ".join(formatted_dependent_tasks)}]"
+        )
 
 
 class DependenciesView(Set[tuple[UID, UID]]):
@@ -68,6 +98,17 @@ class DependencyGraph:
         except graphs.NodeAlreadyExistsError as e:
             raise TaskAlreadyExistsError(task) from e
 
+    def remove_task(self, /, task: UID) -> None:
+        """Remove a task."""
+        try:
+            self._dag.remove_node(task)
+        except graphs.NodeDoesNotExistError as e:
+            raise TaskDoesNotExistError(task) from e
+        except graphs.HasPredecessorsError as e:
+            raise HasDependeeTasksError(task=task, dependee_tasks=e.predecessors) from e
+        except graphs.HasSuccessorsError as e:
+            raise HasDependentTasksError(task=task, dependent_tasks=e.successors) from e
+
     def tasks(self) -> UIDsView:
         """Return a view of the tasks."""
         return UIDsView(self._dag.nodes())
@@ -76,15 +117,15 @@ class DependencyGraph:
         """Return a view of the dependencies."""
         return DependenciesView(self._dag.edges())
 
-    def dependees(self, task: UID) -> UIDsView:
-        """Return a view of the dependees of a task."""
+    def dependee_tasks(self, task: UID) -> UIDsView:
+        """Return a view of the dependee-tasks of a task."""
         try:
             return UIDsView(self._dag.predecessors(task))
         except graphs.NodeDoesNotExistError as e:
             raise TaskDoesNotExistError(task) from e
 
-    def dependents(self, task: UID) -> UIDsView:
-        """Return a view of the dependents of a task."""
+    def dependent_tasks(self, task: UID) -> UIDsView:
+        """Return a view of the dependent-tasks of a task."""
         try:
             return UIDsView(self._dag.successors(task))
         except graphs.NodeDoesNotExistError as e:

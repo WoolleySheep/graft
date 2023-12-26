@@ -1,6 +1,6 @@
 """UID and associated classes/exceptions."""
 
-from collections.abc import Collection, Iterator
+from collections.abc import Iterator, Set
 from typing import Any
 
 
@@ -28,6 +28,10 @@ class UID:
 
         self._number = number
 
+    def __eq__(self, other: object) -> bool:
+        """Check if UID is equal to other."""
+        return isinstance(other, UID) and self._number == int(other)
+
     def __hash__(self) -> int:
         """Return hash of the UID number."""
         return hash(self._number)
@@ -37,14 +41,18 @@ class UID:
         return self._number
 
     def __str__(self) -> str:
-        """Return UID number as a string."""
+        """Return string representation of UID."""
         return str(self._number)
 
+    def __repr__(self) -> str:
+        """Return string representation of UID."""
+        return f"uid({self._number})"
 
-class UIDsView(Collection[UID]):
+
+class UIDsView(Set[UID]):
     """View of a set of task UIDs."""
 
-    def __init__(self, tasks: Collection[UID], /) -> None:
+    def __init__(self, tasks: Set[UID], /) -> None:
         """Initialise UIDsView."""
         self._tasks = tasks
 
@@ -66,4 +74,8 @@ class UIDsView(Collection[UID]):
 
     def __str__(self) -> str:
         """Return string representation of view."""
-        return f"uids_view({{{', '.join(str(task) for task in self._tasks)}}})"
+        return f"{{{', '.join(str(task) for task in self._tasks)}}}"
+
+    def __repr__(self) -> str:
+        """Return string representation of view."""
+        return f"uids_view({', '.join(repr(task) for task in self._tasks)})"

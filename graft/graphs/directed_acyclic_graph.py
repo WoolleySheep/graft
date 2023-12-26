@@ -98,5 +98,5 @@ class DirectedAcyclicGraph[T: Hashable](simple_digraph.SimpleDiGraph[T]):
             group_nodes[group].add(node)
 
         # Yield node groups from lowest to highest
-        for group in range(len(group_nodes)):
+        for group, _ in enumerate(group_nodes):
             yield group_nodes[group]

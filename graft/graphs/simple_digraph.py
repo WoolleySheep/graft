@@ -42,23 +42,30 @@ class NodeDoesNotExistError[T: Hashable](Exception):
         super().__init__(f"node [{node}] does not exist", *args, **kwargs)
 
 
-class HasEdgesError[T: Hashable](Exception):
-    """Raised when node has edges."""
+class HasPredecessorsError[T: Hashable](Exception):
+    """Raised when a task has predecessors."""
 
-    def __init__(
-        self,
-        node: T,
-        successors: Iterable[T],
-        predecessors: Iterable[T],
-        *args: tuple[Any, ...],
-        **kwargs: dict[str, Any],
-    ) -> None:
-        """Initialize HasEdgesError."""
+    def __init__(self, node: T, predecessors: Iterable[T]) -> None:
+        """Initialise HasPredecessorsError."""
         self.node = node
-        self.successors = set[T](successors)
-        self.predecessors = set[T](predecessors)
+        self.predecessors = set(predecessors)
+        formatted_predecessors = (str(predecessor) for predecessor in predecessors)
+        super().__init__(
+            f"Node [{node}] has predecessors [{", ".join(formatted_predecessors)}]"
+        )
+
+
+class HasSuccessorsError[T: Hashable](Exception):
+    """Raised when a task has successors."""
+
+    def __init__(self, node: T, successors: Iterable[T]) -> None:
+        """Initialise HasSucessorsError."""
         self.node = node
-        super().__init__(f"node [{node}] has edges", *args, **kwargs)
+        self.successors = set(successors)
+        formatted_successors = (str(successor) for successor in successors)
+        super().__init__(
+            f"Node [{node}] has successors [{", ".join(formatted_successors)}]"
+        )
 
 
 class EdgeAlreadyExistsError[T: Hashable](Exception):
@@ -287,12 +294,11 @@ class SimpleDiGraph[T: Hashable]:
 
     def remove_node(self, node: T, /) -> None:
         """Remove node from digraph."""
-        if not self.is_isolated(node):
-            raise HasEdgesError(
-                node=node,
-                successors=self.successors(node),
-                predecessors=self.predecessors(node),
-            )
+        if predecessors := self.predecessors(node):
+            raise HasPredecessorsError(node=node, predecessors=predecessors)
+
+        if successors := self.successors(node):
+            raise HasSuccessorsError(node=node, successors=successors)
 
         del self._bidict[node]
 

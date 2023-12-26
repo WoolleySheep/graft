@@ -26,3 +26,9 @@ class StandardLogicLayer(architecture.LogicLayer):
         self._data_layer.save_system(system=system)
         self._data_layer.increment_next_task_uid_counter()
         return uid
+
+    @override
+    def delete_task(self, task: tasks.UID) -> None:
+        system = self._data_layer.load_system()
+        system.remove_task(task)
+        self._data_layer.save_system(system=system)

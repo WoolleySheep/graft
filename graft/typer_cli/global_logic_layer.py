@@ -1,7 +1,5 @@
 """Module for sharing global logic layer initialisation state."""
 
-import functools
-from collections.abc import Callable
 
 from graft import architecture
 
@@ -27,15 +25,3 @@ def get_logic_layer() -> architecture.LogicLayer:
         raise LogicLayerNotInitialisedError
 
     return _global_logic_layer
-
-
-def check_initialised[T, **P](fn: Callable[P, T]) -> Callable[P, T]:
-    """Check that the global logic layer is initialised."""
-
-    @functools.wraps(fn)
-    def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-        if _global_logic_layer is None:
-            raise LogicLayerNotInitialisedError
-        return fn(*args, **kwargs)
-
-    return wrapper

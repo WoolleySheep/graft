@@ -1,7 +1,7 @@
 """Hierarchy Graph and associated classes/exceptions."""
 
 
-from collections.abc import Generator, Iterator, Set
+from collections.abc import Generator, Iterable, Iterator, Set
 
 from graft import graphs
 from graft.domain.tasks.helpers import TaskAlreadyExistsError, TaskDoesNotExistError
@@ -9,6 +9,32 @@ from graft.domain.tasks.uid import (
     UID,
     UIDsView,
 )
+
+
+class HasSuperTasksError(Exception):
+    """Raised when a task has super-tasks."""
+
+    def __init__(self, task: UID, supertasks: Iterable[UID]) -> None:
+        """Initialise HasSuperTasksError."""
+        self.task = task
+        self.supertasks = set(supertasks)
+        formatted_supertasks = (str(supertask) for supertask in supertasks)
+        super().__init__(
+            f"Task [{task}] has super-tasks [{", ".join(formatted_supertasks)}]"
+        )
+
+
+class HasSubTasksError(Exception):
+    """Raised when a task has sub-tasks."""
+
+    def __init__(self, task: UID, subtasks: Iterable[UID]) -> None:
+        """Initialise HasSubTasksError."""
+        self.task = task
+        self.subtasks = set(subtasks)
+        formatted_subtasks = (str(task) for task in subtasks)
+        super().__init__(
+            f"Task [{task}] has sub-tasks [{", ".join(formatted_subtasks)}]"
+        )
 
 
 class HierarchiesView(Set[tuple[UID, UID]]):
@@ -71,11 +97,21 @@ class HierarchyGraph:
 
     def supertasks(self, /, task: UID) -> UIDsView:
         """Return view of supertasks of task."""
-        return UIDsView(self._min_dag.predecessors(task))
+        try:
+            supertasks = self._min_dag.predecessors(task)
+        except graphs.NodeDoesNotExistError as e:
+            raise TaskDoesNotExistError(task=task) from e
+
+        return UIDsView(supertasks)
 
     def subtasks(self, /, task: UID) -> UIDsView:
         """Return view of subtasks of task."""
-        return UIDsView(self._min_dag.successors(task))
+        try:
+            subtasks = self._min_dag.successors(task)
+        except graphs.NodeDoesNotExistError as e:
+            raise TaskDoesNotExistError(task=task) from e
+
+        return UIDsView(subtasks)
 
     def add_task(self, /, task: UID) -> None:
         """Add a task."""
@@ -83,6 +119,17 @@ class HierarchyGraph:
             self._min_dag.add_node(task)
         except graphs.NodeAlreadyExistsError as e:
             raise TaskAlreadyExistsError(task) from e
+
+    def remove_task(self, /, task: UID) -> None:
+        """Remove a task."""
+        try:
+            self._min_dag.remove_node(task)
+        except graphs.NodeDoesNotExistError as e:
+            raise TaskDoesNotExistError(task) from e
+        except graphs.HasPredecessorsError as e:
+            raise HasSuperTasksError(task=task, supertasks=e.predecessors) from e
+        except graphs.HasSuccessorsError as e:
+            raise HasSubTasksError(task=task, subtasks=e.successors) from e
 
     def hierarchies(self) -> HierarchiesView:
         """Return a view of the hierarchies."""

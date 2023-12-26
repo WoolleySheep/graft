@@ -1,6 +1,6 @@
 """UID and associated classes/exceptions."""
 
-from collections.abc import Collection, Iterator
+from collections.abc import Iterator, Set
 from typing import Any
 
 
@@ -27,6 +27,10 @@ class UID:
             raise InvalidUIDNumberError(number=number)
 
         self._number = number
+
+    def __eq__(self, other: object) -> bool:
+        """Check if UID is equal to other."""
+        return isinstance(other, UID) and self._number == int(other)
 
     def __hash__(self) -> int:
         """Return hash of the UID number."""
@@ -65,10 +69,10 @@ class UIDDoesNotExistError(Exception):
         super().__init__(f"uid [{uid}] does not exist", *args, **kwargs)
 
 
-class UIDsView(Collection[UID]):
+class UIDsView(Set[UID]):
     """View of a set of event UIDs."""
 
-    def __init__(self, events: Collection[UID], /) -> None:
+    def __init__(self, events: Set[UID], /) -> None:
         """Initialise UIDsView."""
         self._events = events
 

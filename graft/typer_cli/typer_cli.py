@@ -9,24 +9,13 @@ _app = typer.Typer()
 _app.add_typer(typer_instance=task.app, name="task", help="Task management")
 
 
-class TyperCLIPresentationLayer(architecture.PresentationLayer):
-    """Typer CLI presentation layer."""
-
-    def __init__(self, logic_layer: architecture.LogicLayer) -> None:
-        """Initialise Typer CLI presentation layer.
-
-        Set the logic layer shared by the typer cli module.
-        """
-        global_logic_layer.set_logic_layer(layer=logic_layer)
-        super().__init__(logic_layer=logic_layer)
-
-    def run(self) -> None:
-        """Run the typer CLI."""
-        _app()
+def run_app(logic_layer: architecture.LogicLayer) -> None:
+    """Run Typer CLI app."""
+    global_logic_layer.set_logic_layer(layer=logic_layer)
+    _app()
 
 
 @_app.command()
-@global_logic_layer.check_initialised
 def init() -> None:
     """Initialise graft."""
     typer.echo("Initialising graft")

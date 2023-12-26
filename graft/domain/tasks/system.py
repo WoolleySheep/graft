@@ -6,8 +6,19 @@ from graft.domain.tasks.attributes_register import (
     AttributesRegister,
     AttributesRegisterView,
 )
-from graft.domain.tasks.dependency_graph import DependencyGraph, DependencyGraphView
-from graft.domain.tasks.hierarchy_graph import HierarchyGraph, HierarchyGraphView
+from graft.domain.tasks.dependency_graph import (
+    DependencyGraph,
+    DependencyGraphView,
+    HasDependeeTasksError,
+    HasDependentTasksError,
+)
+from graft.domain.tasks.helpers import TaskDoesNotExistError
+from graft.domain.tasks.hierarchy_graph import (
+    HasSubTasksError,
+    HasSuperTasksError,
+    HierarchyGraph,
+    HierarchyGraphView,
+)
 from graft.domain.tasks.uid import UID
 
 
@@ -54,6 +65,27 @@ class System:
         self._attributes_register.add(task)
         self._hierarchy_graph.add_task(task)
         self._dependency_graph.add_task(task)
+
+    def remove_task(self, /, task: UID) -> None:
+        """Remove a task."""
+        if task not in self:
+            raise TaskDoesNotExistError(task=task)
+
+        if supertasks := self._hierarchy_graph.supertasks(task):
+            raise HasSuperTasksError(task=task, supertasks=supertasks)
+
+        if subtasks := self._hierarchy_graph.subtasks(task):
+            raise HasSubTasksError(task=task, subtasks=subtasks)
+
+        if dependee_tasks := self._dependency_graph.dependee_tasks(task):
+            raise HasDependeeTasksError(task=task, dependee_tasks=dependee_tasks)
+
+        if dependent_tasks := self._dependency_graph.dependent_tasks(task):
+            raise HasDependentTasksError(task=task, dependent_tasks=dependent_tasks)
+
+        self._attributes_register.remove(task)
+        self._hierarchy_graph.remove_task(task)
+        self._dependency_graph.remove_task(task)
 
 
 class SystemView:

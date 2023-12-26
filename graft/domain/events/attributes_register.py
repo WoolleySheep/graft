@@ -15,6 +15,29 @@ class AttributesRegister(Mapping[UID, AttributesView]):
         """Initialise AttributesRegister."""
         self._uid_to_attributes_map = uid_to_attributes_map
 
+    def __contains__(self, item: object) -> bool:
+        """Check if UID registered."""
+        return item in self._uid_to_attributes_map
+
+    def __len__(self) -> int:
+        """Return number of events in register."""
+        return len(self._uid_to_attributes_map)
+
+    def __bool__(self) -> bool:
+        """Check if any events registered."""
+        return bool(self._uid_to_attributes_map)
+
+    def __getitem__(self, key: UID) -> AttributesView:
+        """Get view of attributes for UID."""
+        if key in self._uid_to_attributes_map:
+            raise UIDDoesNotExistError(uid=key)
+
+        return AttributesView(self._uid_to_attributes_map[key])
+
+    def __iter__(self) -> Iterator[UID]:
+        """Return iterator over event UIDs in register."""
+        return iter(self._uid_to_attributes_map)
+
     def add(self, /, uid: UID) -> None:
         """Add a new event."""
         if uid in self:
@@ -42,25 +65,6 @@ class AttributesRegister(Mapping[UID, AttributesView]):
             raise UIDDoesNotExistError(uid=uid)
 
         self._uid_to_attributes_map[uid].description = description
-
-    def __contains__(self, item: object) -> bool:
-        """Check if UID registered."""
-        return item in self._uid_to_attributes_map
-
-    def __bool__(self) -> bool:
-        """Check if any events registered."""
-        return bool(self._uid_to_attributes_map)
-
-    def __getitem__(self, key: UID) -> AttributesView:
-        """Get view of attributes for UID."""
-        if key in self._uid_to_attributes_map:
-            raise UIDDoesNotExistError(uid=key)
-
-        return AttributesView(self._uid_to_attributes_map[key])
-
-    def __iter__(self) -> Iterator[UID]:
-        """Return iterator over event UIDs in register."""
-        return iter(self._uid_to_attributes_map)
 
 
 class AttributesRegisterView(Mapping[UID, AttributesView]):

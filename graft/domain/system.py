@@ -23,3 +23,7 @@ class System:
     def add_task(self, task: tasks.UID) -> None:
         """Add a task."""
         self._task_system.add_task(task)
+
+    def remove_task(self, task: tasks.UID) -> None:
+        """Remove a task."""
+        self._task_system.remove_task(task)
