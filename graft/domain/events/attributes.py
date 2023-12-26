@@ -1,3 +1,5 @@
+"""Task Attributes and associated classes/exceptions."""
+
 from graft.domain.events.description import Description
 from graft.domain.events.name import Name
 

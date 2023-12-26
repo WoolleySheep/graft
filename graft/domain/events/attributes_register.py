@@ -1,4 +1,4 @@
-"""Task Register and associated exceptions."""
+"""AttributesRegister and associated exceptions."""
 
 from collections.abc import Iterator, Mapping, MutableMapping
 

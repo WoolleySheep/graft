@@ -1,10 +1,12 @@
+"""Task-Event Dependency Register construct and associated classes/exceptions."""
+
 from collections.abc import Generator
 
 from graft.domain import events, tasks
 
 
 class TaskEventDependencyRegister:
-    """Dependencies between tasks and events.
+    """Register of dependencies between tasks and events.
 
     For now this only captures tasks and the events they're due by. Eventually,
     tasks will also be able to use events as start-after dates.

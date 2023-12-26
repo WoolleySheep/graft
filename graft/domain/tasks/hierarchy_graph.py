@@ -1,4 +1,7 @@
-from collections.abc import Generator, Iterator
+"""Hierarchy Graph and associated classes/exceptions."""
+
+
+from collections.abc import Generator, Iterator, Set
 
 from graft import graphs
 from graft.domain.tasks.helpers import TaskAlreadyExistsError, TaskDoesNotExistError
@@ -8,37 +11,36 @@ from graft.domain.tasks.uid import (
 )
 
 
-class HierarchiesView:
-    """View of a set of hierarchies."""
+class HierarchiesView(Set[tuple[UID, UID]]):
+    """View of the hierarchies in the graph."""
 
-    def __init__(self, min_dag: graphs.MinimumDAG[UID]) -> None:
+    def __init__(self, hirarchies: Set[tuple[UID, UID]], /) -> None:
         """Initialise HierarchiesView."""
-        self._min_dag = min_dag
+        self._hierarchies = hirarchies
 
     def __bool__(self) -> bool:
         """Check view has any hierarchies."""
-        return bool(self._min_dag.edges())
+        return bool(self._hierarchies)
 
     def __len__(self) -> int:
         """Return number of hierarchies."""
-        return len(self._min_dag.edges())
+        return len(self._hierarchies)
 
     def __contains__(self, item: object) -> bool:
         """Check if item in HierarchiesView."""
         try:
-            return item in self._min_dag.edges()
+            return item in self._hierarchies
         except graphs.NodeDoesNotExistError as e:
             raise TaskDoesNotExistError(e.node) from e
 
-    def __iter__(self) -> Generator[tuple[UID, UID], None, None]:
+    def __iter__(self) -> Iterator[tuple[UID, UID]]:
         """Return generator over hierarchies in view."""
-        return iter(self._min_dag.edges())
+        return iter(self._hierarchies)
 
     def __str__(self) -> str:
         """Return string representation of view."""
-        hierarchies = iter(self)
         formatted_hierarchies = (
-            f"({supertask}, {subtask})" for supertask, subtask in hierarchies
+            f"({supertask}, {subtask})" for supertask, subtask in self
         )
         return f"hierarchies_view({', '.join(formatted_hierarchies)})"
 
@@ -84,7 +86,7 @@ class HierarchyGraph:
 
     def hierarchies(self) -> HierarchiesView:
         """Return a view of the hierarchies."""
-        return HierarchiesView(min_dag=self._min_dag)
+        return HierarchiesView(self._min_dag.edges())
 
     def task_subtasks_pairs(self) -> Generator[tuple[UID, UIDsView], None, None]:
         """Return generator over task-subtasks pairs."""

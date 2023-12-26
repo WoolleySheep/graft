@@ -13,7 +13,9 @@ from collections.abc import (
 from typing import Any
 
 
-def invert[T: Hashable, S: Hashable](mapping: Mapping[T, Set[S]]) -> dict[S, set[T]]:
+def invert_set_mapping[T: Hashable, S: Hashable](
+    mapping: Mapping[T, Set[S]], /
+) -> dict[S, set[T]]:
     """Invert mapping of keys to hashable sets."""
     inverted: dict[S, set[T]] = {}
     for key, values in mapping.items():
@@ -23,34 +25,6 @@ def invert[T: Hashable, S: Hashable](mapping: Mapping[T, Set[S]]) -> dict[S, set
             inverted[value].add(key)
 
     return inverted
-
-
-class KeyAlreadyExistsError[T: Hashable](Exception):
-    """Raised when key already exists."""
-
-    def __init__(
-        self,
-        key: T,
-        *args: tuple[Any, ...],
-        **kwargs: dict[str, Any],
-    ) -> None:
-        """Initialize KeyAlreadyExistsError."""
-        self.key = key
-        super().__init__(f"key [{key}] already exists", *args, **kwargs)
-
-
-class KeyDoesNotExistError[T: Hashable](Exception):
-    """Raised when key does not exist."""
-
-    def __init__(
-        self,
-        key: T,
-        *args: tuple[Any, ...],
-        **kwargs: dict[str, Any],
-    ) -> None:
-        """Initialize KeyDoesNotExistError."""
-        self.key = key
-        super().__init__(f"key [{key}] does not exist", *args, **kwargs)
 
 
 class ValueDoesNotExistError[T: Hashable](Exception):
@@ -112,24 +86,16 @@ class SetViewMapping[T: Hashable, S: Hashable](Mapping[T, SetView[S]]):
 
     def __getitem__(self, key: T) -> SetView[S]:
         """Return SetView of values associated with key."""
-        try:
-            values: Set[S] = self._mapping[key]
-        except KeyError as e:
-            raise KeyDoesNotExistError(key) from e
+        return SetView[S](self._mapping[key])
 
-        return SetView[S](values)
 
     def __str__(self) -> str:
         """Return string representation of the SetValuesMappingView."""
-        keys_with_values: list[str] = []
-        for key, values in self._mapping.items():
-            keys_with_values.append(
-                f"{key}: set_view({{{', '.join(str(value) for value in values)}}})",
-            )
+        keys_with_values = (f"{key}: {values}" for key, values in self._mapping.items())
         return f"set_view_mapping({', '.join(keys_with_values)})"
 
 
-class BiDirectionalSetValueDict[T: Hashable](MutableMapping[T, SetView[T]]):
+class BiDirectionalSetDict[T: Hashable](MutableMapping[T, SetView[T]]):
     """Bi-directional dictionary with set-like values.
 
     Each key can have multiple unique values associated with it, and vice-versa.
@@ -140,8 +106,7 @@ class BiDirectionalSetValueDict[T: Hashable](MutableMapping[T, SetView[T]]):
         self._forward = (
             {a: set(b) for a, b in forward.items()} if forward else dict[T, set[T]]()
         )
-        self._backward = invert(mapping=self._forward)
-        self._forward = dict[T, set[T]]()
+        self._backward = invert_set_mapping(self._forward)
         self.inverse = SetViewMapping[T, T](self._backward)
 
     def __bool__(self) -> bool:
@@ -158,17 +123,12 @@ class BiDirectionalSetValueDict[T: Hashable](MutableMapping[T, SetView[T]]):
 
     def __getitem__(self, key: T) -> SetView[T]:
         """Return SetView over values of key."""
-        try:
-            values = self._forward[key]
-        except KeyError as e:
-            raise KeyDoesNotExistError(key=key) from e
-
-        return SetView[T](values)
+        return SetView[T](self._forward[key])
 
     def __delitem__(self, key: T) -> None:
         """Remove key and associated values from bidict."""
         if key not in self:
-            raise KeyDoesNotExistError(key=key)
+            raise KeyError
 
         for value in self._forward[key]:
             self._backward[value].remove(key)
@@ -231,7 +191,7 @@ class BiDirectionalSetValueDict[T: Hashable](MutableMapping[T, SetView[T]]):
         If the value is not associated with they key, nothing will happen.
         """
         if key not in self:
-            raise KeyDoesNotExistError(key=key)
+            raise KeyError
 
         if value not in self:
             raise ValueDoesNotExistError(value=value)

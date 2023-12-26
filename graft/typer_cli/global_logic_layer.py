@@ -15,13 +15,13 @@ class LogicLayerNotInitialisedError(Exception):
     """Raised when logic layer is not initialised."""
 
 
-def set(logic_layer: architecture.LogicLayer) -> None:
+def set_logic_layer(layer: architecture.LogicLayer) -> None:
     """Set the global logic layer."""
     global _global_logic_layer
-    _global_logic_layer = logic_layer
+    _global_logic_layer = layer
 
 
-def get() -> architecture.LogicLayer:
+def get_logic_layer() -> architecture.LogicLayer:
     """Get the global logic layer."""
     if _global_logic_layer is None:
         raise LogicLayerNotInitialisedError

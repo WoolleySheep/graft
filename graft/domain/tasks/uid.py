@@ -1,3 +1,5 @@
+"""UID and associated classes/exceptions."""
+
 from collections.abc import Collection, Iterator
 from typing import Any
 

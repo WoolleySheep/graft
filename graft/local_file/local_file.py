@@ -29,6 +29,8 @@ _TASK_NEXT_UID_FILEPATH: Final = _DATA_DIRECTORY_PATH / _TASK_NEXT_UID_FILENAME
 
 
 class TaskAttributesJSONDict(TypedDict):
+    """Dictionary representation of Task Attributes in JSON format."""
+
     name: str | None
     description: str | None
 
@@ -79,7 +81,7 @@ def _decode_task_attributes_register(
     d: dict,
 ) -> tasks.AttributesRegister | dict:
     """Decode task register.
-    
+
     This function will be called on all dictionaries. If it is not the right
     format, return the original dictionary.
     """
@@ -87,7 +89,7 @@ def _decode_task_attributes_register(
     def decode_attributes(d: TaskAttributesJSONDict) -> tasks.Attributes:
         """Decode task attributes."""
         if "name" not in d or "description" not in d:
-                raise ValueError    # TODO: Use better named error
+            raise ValueError  # TODO (mjw): Use better named error
 
         return tasks.Attributes(
             name=tasks.Name(d["name"]) if d["name"] is not None else None,
@@ -129,7 +131,7 @@ def _decode_task_hierarchy_graph(d: dict[str, list[str]]) -> tasks.HierarchyGrap
     }
     return tasks.HierarchyGraph(
         min_dag=graphs.MinimumDAG(
-            bidict=graphs.BiDirectionalSetValueDict(forward=task_subtasks_map)
+            bidict=graphs.BiDirectionalSetDict(forward=task_subtasks_map)
         )
     )
 
@@ -154,7 +156,7 @@ def _decode_task_dependency_graph(d: dict[str, list[str]]) -> tasks.DependencyGr
     }
     return tasks.DependencyGraph(
         dag=graphs.DirectedAcyclicGraph(
-            bidict=graphs.BiDirectionalSetValueDict(forward=task_dependents_map)
+            bidict=graphs.BiDirectionalSetDict(forward=task_dependents_map)
         )
     )
 

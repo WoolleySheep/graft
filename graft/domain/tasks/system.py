@@ -1,3 +1,5 @@
+"""System and associated classes/exceptions."""
+
 from collections.abc import Iterator
 
 from graft.domain.tasks.attributes_register import (

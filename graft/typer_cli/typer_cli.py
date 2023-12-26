@@ -17,7 +17,7 @@ class TyperCLIPresentationLayer(architecture.PresentationLayer):
 
         Set the logic layer shared by the typer cli module.
         """
-        global_logic_layer.set(logic_layer=logic_layer)
+        global_logic_layer.set_logic_layer(layer=logic_layer)
         super().__init__(logic_layer=logic_layer)
 
     def run(self) -> None:
@@ -30,7 +30,7 @@ class TyperCLIPresentationLayer(architecture.PresentationLayer):
 def init() -> None:
     """Initialise graft."""
     typer.echo("Initialising graft")
-    logic_layer = global_logic_layer.get()
+    logic_layer = global_logic_layer.get_logic_layer()
     try:
         logic_layer.initialise()
     except Exception as e:

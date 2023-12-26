@@ -1,3 +1,5 @@
+"""Event-specific classes and exceptions."""
+
 from graft.domain.events.attributes_register import (
     AttributesRegister,
     AttributesRegisterView,

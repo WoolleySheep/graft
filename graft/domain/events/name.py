@@ -1,3 +1,6 @@
+"""Name and associated classes/exceptions."""
+
+
 class Name:
     """Event name."""
 

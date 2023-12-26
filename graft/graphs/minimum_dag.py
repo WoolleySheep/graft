@@ -70,7 +70,7 @@ class MinimumDAG[T: Hashable](directed_acyclic_graph.DirectedAcyclicGraph[T]):
             source: T,
             target: T,
         ) -> directed_acyclic_graph.DirectedAcyclicGraph[T]:
-            """Return subgraph that shows ancestors of source that are predecessors of target."""
+            """Return ancestors of source that are also predecessors of target."""
 
             def get_ancestor_subgraph(
                 digraph: simple_digraph.SimpleDiGraph[T],

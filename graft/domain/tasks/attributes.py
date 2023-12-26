@@ -1,3 +1,5 @@
+"""Attributes and associated classes/exceptions."""
+
 from graft.domain.tasks.description import Description
 from graft.domain.tasks.name import Name
 

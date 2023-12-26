@@ -1,3 +1,3 @@
-"""graft app."""
+"""Graft app."""
 
 from graft.app import run

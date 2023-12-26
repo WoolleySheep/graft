@@ -1,41 +1,42 @@
-from collections.abc import Generator, Iterator
+"""Task Dependency Graph and associated classes/exceptions."""
+
+from collections.abc import Generator, Iterator, Set
 
 from graft import graphs
 from graft.domain.tasks.helpers import TaskAlreadyExistsError, TaskDoesNotExistError
 from graft.domain.tasks.uid import UID, UIDsView
 
 
-class DependenciesView:
-    """View of a set of dependencies."""
+class DependenciesView(Set[tuple[UID, UID]]):
+    """View of the dependencies in a graph."""
 
-    def __init__(self, dag: graphs.DirectedAcyclicGraph[UID]) -> None:
+    def __init__(self, dependencies: Set[tuple[UID, UID]], /) -> None:
         """Initialise DependenciesView."""
-        self._dag = dag
+        self._dependencies = dependencies
 
     def __bool__(self) -> bool:
         """Check view has any dependencies."""
-        return bool(self._dag.edges())
+        return bool(self._dependencies)
 
     def __len__(self) -> int:
         """Return number of dependencies."""
-        return len(self._dag.edges())
+        return len(self._dependencies)
 
     def __contains__(self, item: object) -> bool:
         """Check if item in DependenciesView."""
         try:
-            return item in self._dag.edges()
+            return item in self._dependencies
         except graphs.NodeDoesNotExistError as e:
             raise TaskDoesNotExistError(e.node) from e
 
-    def __iter__(self) -> Generator[tuple[UID, UID], None, None]:
+    def __iter__(self) -> Iterator[tuple[UID, UID]]:
         """Return generator over dependencies in view."""
-        return iter(self._dag.edges())
+        return iter(self._dependencies)
 
     def __str__(self) -> str:
         """Return string representation of view."""
-        dependencies = iter(self)
         formatted_dependencies = (
-            f"({dependee}, {dependent})" for dependee, dependent in dependencies
+            f"({dependee}, {dependent})" for dependee, dependent in self
         )
         return f"dependencies_view({', '.join(formatted_dependencies)})"
 
@@ -67,9 +68,13 @@ class DependencyGraph:
         except graphs.NodeAlreadyExistsError as e:
             raise TaskAlreadyExistsError(task) from e
 
+    def tasks(self) -> UIDsView:
+        """Return a view of the tasks."""
+        return UIDsView(self._dag.nodes())
+
     def dependencies(self) -> DependenciesView:
         """Return a view of the dependencies."""
-        return DependenciesView(dag=self._dag)
+        return DependenciesView(self._dag.edges())
 
     def dependees(self, task: UID) -> UIDsView:
         """Return a view of the dependees of a task."""

@@ -1,3 +1,6 @@
+"""Description and associated classes/exceptions."""
+
+
 class Description:
     """Task description."""
 

@@ -12,7 +12,7 @@ app = typer.Typer()
 def create() -> None:
     """Create a new task."""
     typer.echo("Creating new task")
-    logic_layer = global_logic_layer.get()
+    logic_layer = global_logic_layer.get_logic_layer()
     try:
         uid = logic_layer.create_task()
     except Exception as e:

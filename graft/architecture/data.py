@@ -1,7 +1,6 @@
 """Data-layer interface and associated exceptions."""
 
 import abc
-from xml import dom
 
 from graft import domain
 from graft.domain import tasks

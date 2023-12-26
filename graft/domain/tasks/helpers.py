@@ -1,3 +1,5 @@
+"""Exceptions that don't logically live anywhere else."""
+
 from typing import Any
 
 from graft.domain.tasks.uid import UID
