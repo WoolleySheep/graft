@@ -6,6 +6,7 @@ from typing import Final, TypedDict, override
 
 from graft import architecture, domain, graphs
 from graft.domain import tasks
+from graft.domain.tasks.hierarchy_graph import HierarchyGraph
 
 _DATA_DIRECTORY_NAME: Final = "data"
 
@@ -209,11 +210,13 @@ class LocalFileDataLayer(architecture.DataLayer):
         return domain.System(task_system=task_system)
 
     @override
-    def load_tasks_attributes_register_view(self) -> tasks.AttributesRegisterView:
+    def load_task_attributes_register(self) -> tasks.AttributesRegister:
         """Return a view of the task attributes register."""
-        register = _load_task_attributes_register()
-        return tasks.AttributesRegisterView(attributes_register=register)
+        return _load_task_attributes_register()
 
+    @override
+    def load_task_hierarchy_graph(self) -> HierarchyGraph:
+        return _load_task_hierarchy_graph()
 
 def _save_task_attributes_register(register: tasks.AttributesRegisterView) -> None:
     """Save the task attributes register."""

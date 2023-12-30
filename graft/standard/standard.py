@@ -4,6 +4,7 @@ from typing import override
 
 from graft import architecture
 from graft.domain import tasks
+from graft.domain.tasks.hierarchy_graph import HierarchyGraphView
 from graft.domain.tasks.uid import UID
 
 
@@ -39,7 +40,12 @@ class StandardLogicLayer(architecture.LogicLayer):
     @override
     def get_task_attributes_register_view(self) -> tasks.AttributesRegisterView:
         """Return a view of the task attributes register."""
-        return self._data_layer.load_tasks_attributes_register_view()
+        return tasks.AttributesRegisterView(self._data_layer.load_task_attributes_register())
+    
+    @override
+    def get_hierarchy_graph_view(self) -> tasks.HierarchyGraphView:
+        """Return a view of the hierarchy graph."""
+        return tasks.HierarchyGraphView(self._data_layer.load_task_hierarchy_graph())
 
     @override
     def create_hierarchy(self, supertask: tasks.UID, subtask: tasks.UID) -> None:

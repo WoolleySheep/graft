@@ -32,7 +32,11 @@ class LogicLayer(abc.ABC):
 
     @abc.abstractmethod
     def get_task_attributes_register_view(self) -> tasks.AttributesRegisterView:
-        """Return a view of the task attributes register."""
+        """Return the task attributes register."""
+
+    @abc.abstractmethod
+    def get_hierarchy_graph_view(self) -> tasks.HierarchyGraphView:
+        """Return the hierarchy graph."""
 
     @abc.abstractmethod
     def create_hierarchy(self, supertask: tasks.UID, subtask: tasks.UID) -> None:

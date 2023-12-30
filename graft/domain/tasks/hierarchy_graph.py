@@ -526,6 +526,14 @@ class HierarchyGraphView:
     def __contains__(self, item: object) -> bool:
         """Check if item in graph view."""
         return item in self._hierarchy_graph
+    
+    def tasks(self) -> UIDsView:
+        """Return tasks in view."""
+        return self.tasks()
+    
+    def hierarchies(self) -> HierarchiesView:
+        """Return hierarchies in view."""
+        return self._hierarchy_graph.hierarchies()
 
     def task_subtasks_pairs(self) -> Generator[tuple[UID, UIDsView], None, None]:
         """Return generator over task-subtasks pairs."""

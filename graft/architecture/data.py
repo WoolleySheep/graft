@@ -37,5 +37,9 @@ class DataLayer(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def load_tasks_attributes_register_view(self) -> tasks.AttributesRegisterView:
-        """Return a view of the task attributes register."""
+    def load_task_attributes_register(self) -> tasks.AttributesRegister:
+        """Return the task attributes register."""
+
+    @abc.abstractmethod
+    def load_task_hierarchy_graph(self) -> tasks.HierarchyGraph:
+        """Return the task hierarchy graph."""

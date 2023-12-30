@@ -7,15 +7,15 @@ from graft.typer_cli import global_logic_layer
 from graft.typer_cli.task.hierarchy import app as hierarchy_app
 
 app = typer.Typer()
-app.add_typer(typer_instance=hierarchy_app, name="hierarchy")
+app.add_typer(typer_instance=hierarchy_app, name="hierarchy", help="Hierarchy commands.")
 
 
 @app.command()
 def create() -> None:
     """Create a new task."""
     typer.echo("Creating new task")
-    logic_layer = global_logic_layer.get_logic_layer()
     try:
+        logic_layer = global_logic_layer.get_logic_layer()
         uid = logic_layer.create_task()
     except Exception as e:
         typer.echo(f"Failed to create task; exception [{e}] raised")
@@ -34,9 +34,8 @@ def delete(task: int) -> None:
         typer.echo(f"Failed to delete task; [{task}] is an invalid UID")
         raise
 
-    logic_layer = global_logic_layer.get_logic_layer()
-
     try:
+        logic_layer = global_logic_layer.get_logic_layer()
         logic_layer.delete_task(task_uid)
     except Exception as e:
         typer.echo(f"Failed to delete task; exception [{e}] raised")
@@ -49,8 +48,8 @@ def delete(task: int) -> None:
 def ls() -> None:
     """List all tasks."""
     typer.echo("Listing tasks")
-    logic_layer = global_logic_layer.get_logic_layer()
     try:
+        logic_layer = global_logic_layer.get_logic_layer()
         register = logic_layer.get_task_attributes_register_view()
     except Exception as e:
         typer.echo(f"Failed to list tasks; exception [{e}] raised")

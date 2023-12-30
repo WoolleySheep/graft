@@ -8,6 +8,21 @@ from graft.typer_cli import global_logic_layer
 
 app = typer.Typer()
 
+@app.command()
+def ls() -> None:
+    """List all hierarchies."""
+    typer.echo("Listing all hierarchies")
+    try:
+        logic_layer = global_logic_layer.get_logic_layer()
+        graph = logic_layer.get_hierarchy_graph_view()
+    except Exception as e:
+        typer.echo(f"Failed to list hierarchies; exception [{e}] raised")
+        raise
+
+    for supertask, subtask in sorted(graph.hierarchies()):
+        typer.echo(f"[{supertask}] -> [{subtask}]")
+
+
 
 @app.command()
 def create(supertask: int, subtask: int) -> None:
@@ -30,9 +45,8 @@ def create(supertask: int, subtask: int) -> None:
         typer.echo(f"Failed to create hierarchy; subtask [{subtask}] is an invalid UID")
         raise
 
-    logic_layer = global_logic_layer.get_logic_layer()
-
     try:
+        logic_layer = global_logic_layer.get_logic_layer()
         logic_layer.create_hierarchy(supertask=supertask_uid, subtask=subtask_uid)
     except Exception as e:
         typer.echo(f"Failed to create hierarchy; exception [{e}] raised")
@@ -64,9 +78,8 @@ def delete(supertask: int, subtask: int) -> None:
         typer.echo(f"Failed to delete hierarchy; subtask [{subtask}] is an invalid UID")
         raise
 
-    logic_layer = global_logic_layer.get_logic_layer()
-
     try:
+        logic_layer = global_logic_layer.get_logic_layer()
         logic_layer.delete_hierarchy(supertask=supertask_uid, subtask=subtask_uid)
     except Exception as e:
         typer.echo(f"Failed to delete hierarchy; exception [{e}] raised")
