@@ -1,6 +1,7 @@
 """Hierarchy Graph and associated classes/exceptions."""
 
 
+import copy
 from collections.abc import Callable, Generator, Iterable, Iterator, Set
 from typing import Any, Self
 
@@ -226,6 +227,13 @@ class HierarchiesView(Set[tuple[UID, UID]]):
         """Return generator over hierarchies in view."""
         return iter(self._hierarchies)
 
+    def __eq__(self, other: object) -> bool:
+        """Check if two views are equal."""
+        if not isinstance(other, HierarchiesView):
+            return False
+
+        return set(self) == set(other)
+
     def __str__(self) -> str:
         """Return string representation of view."""
         formatted_hierarchies = (
@@ -242,9 +250,11 @@ class HierarchyGraph:
     Acts as a Minimum DAG.
     """
 
-    def __init__(self, reduced_dag: graphs.ReducedDAG[UID]) -> None:
+    def __init__(self, reduced_dag: graphs.ReducedDAG[UID] | None = None) -> None:
         """Initialise HierarchyGraph."""
-        self._reduced_dag = reduced_dag
+        self._reduced_dag = (
+            copy.deepcopy(reduced_dag) if reduced_dag else graphs.ReducedDAG[UID]()
+        )
 
     def __iter__(self) -> Iterator[UID]:
         """Return generator over tasks in graph."""
@@ -253,6 +263,17 @@ class HierarchyGraph:
     def __contains__(self, item: object) -> bool:
         """Check if item in graph."""
         return item in self._reduced_dag
+
+    def __len__(self) -> int:
+        """Return number of tasks in graph."""
+        return len(self._reduced_dag)
+
+    def __eq__(self, other: object) -> bool:
+        """Check if two graphs are equal."""
+        if not isinstance(other, HierarchyGraph):
+            return False
+
+        return self.hierarchies() == other.hierarchies()
 
     def tasks(self) -> UIDsView:
         """Return view of tasks in graph."""
@@ -523,14 +544,25 @@ class HierarchyGraphView:
         """Return generator over tasks in view."""
         return iter(self._hierarchy_graph)
 
+    def __len__(self) -> int:
+        """Return number of tasks in view."""
+        return len(self._hierarchy_graph)
+
+    def __eq__(self, other: object) -> bool:
+        """Check if two hierarchy graph views are equal."""
+        if not isinstance(other, HierarchyGraphView):
+            return False
+
+        return self.hierarchies() == other.hierarchies()
+
     def __contains__(self, item: object) -> bool:
         """Check if item in graph view."""
         return item in self._hierarchy_graph
-    
+
     def tasks(self) -> UIDsView:
         """Return tasks in view."""
         return self.tasks()
-    
+
     def hierarchies(self) -> HierarchiesView:
         """Return hierarchies in view."""
         return self._hierarchy_graph.hierarchies()

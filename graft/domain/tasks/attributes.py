@@ -13,6 +13,13 @@ class Attributes:
     name: Name | None = None
     description: Description | None = None
 
+    def __eq__(self, other: object) -> bool:
+        """Check if two attributes are equal."""
+        if not isinstance(other, Attributes):
+            return False
+
+        return self.name == other.name and self.description == other.description
+
 
 class AttributesView:
     """Attributes view."""
@@ -20,6 +27,13 @@ class AttributesView:
     def __init__(self, attributes: Attributes) -> None:
         """Initialise AttributesView."""
         self._attributes = attributes
+
+    def __eq__(self, other: object) -> bool:
+        """Check if two attributes views are equal."""
+        if not isinstance(other, AttributesView):
+            return False
+
+        return self.name == other.name and self.description == other.description
 
     @property
     def name(self) -> Name | None:

@@ -40,8 +40,10 @@ class StandardLogicLayer(architecture.LogicLayer):
     @override
     def get_task_attributes_register_view(self) -> tasks.AttributesRegisterView:
         """Return a view of the task attributes register."""
-        return tasks.AttributesRegisterView(self._data_layer.load_task_attributes_register())
-    
+        return tasks.AttributesRegisterView(
+            self._data_layer.load_task_attributes_register()
+        )
+
     @override
     def get_hierarchy_graph_view(self) -> tasks.HierarchyGraphView:
         """Return a view of the hierarchy graph."""

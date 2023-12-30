@@ -21,7 +21,7 @@ class InvalidUIDNumberError(Exception):
 class UID:
     """Unique task identifier."""
 
-    def __init__(self, /, number: int) -> None:
+    def __init__(self, number: int, /) -> None:
         """Initialise UID."""
         if number < 0:
             raise InvalidUIDNumberError(number=number)
@@ -75,6 +75,13 @@ class UIDsView(Set[UID]):
     def __iter__(self) -> Iterator[UID]:
         """Return iterator over tasks in view."""
         return iter(self._tasks)
+
+    def __eq__(self, other: object) -> bool:
+        """Check if two views are equal."""
+        if not isinstance(other, UIDsView):
+            return False
+
+        return set(self) == set(other)
 
     def __str__(self) -> str:
         """Return string representation of view."""

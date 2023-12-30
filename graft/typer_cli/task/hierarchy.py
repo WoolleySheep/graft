@@ -8,6 +8,7 @@ from graft.typer_cli import global_logic_layer
 
 app = typer.Typer()
 
+
 @app.command()
 def ls() -> None:
     """List all hierarchies."""
@@ -21,7 +22,6 @@ def ls() -> None:
 
     for supertask, subtask in sorted(graph.hierarchies()):
         typer.echo(f"[{supertask}] -> [{subtask}]")
-
 
 
 @app.command()

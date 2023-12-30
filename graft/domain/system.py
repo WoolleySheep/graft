@@ -16,6 +16,13 @@ class System:
         """Initialise System."""
         self._task_system = task_system
 
+    def __eq__(self, other: object) -> bool:
+        """Check if two systems are equal."""
+        if not isinstance(other, System):
+            return False
+
+        return self.task_system_view() == other.task_system_view()
+
     def task_system_view(self) -> tasks.SystemView:
         """Return a view of the task system."""
         return tasks.SystemView(self._task_system)

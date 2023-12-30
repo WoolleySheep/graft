@@ -1,5 +1,6 @@
 """AttributesRegister and associated classes/exceptions."""
 
+import copy
 from collections.abc import Iterator, Mapping, MutableMapping
 
 from graft.domain.tasks.attributes import Attributes, AttributesView
@@ -12,9 +13,18 @@ from graft.domain.tasks.uid import UID
 class AttributesRegister(Mapping[UID, AttributesView]):
     """Register mapping task UIDs to attributes."""
 
-    def __init__(self, task_to_attributes_map: MutableMapping[UID, Attributes]) -> None:
+    def __init__(
+        self, task_to_attributes_map: Mapping[UID, Attributes] | None = None
+    ) -> None:
         """Initialise Register."""
-        self._task_to_attributes_map = task_to_attributes_map
+        self._task_to_attributes_map = (
+            {
+                task: copy.deepcopy(attributes)
+                for task, attributes in task_to_attributes_map.items()
+            }
+            if task_to_attributes_map
+            else dict[UID, Attributes]()
+        )
 
     def __contains__(self, item: object) -> bool:
         """Check if UID registered."""
@@ -31,6 +41,13 @@ class AttributesRegister(Mapping[UID, AttributesView]):
     def __len__(self) -> int:
         """Return number of tasks in the register."""
         return len(self._task_to_attributes_map)
+
+    def __eq__(self, other: object) -> bool:
+        """Check if two registers are equal."""
+        if not isinstance(other, AttributesRegister):
+            return False
+
+        return dict(self.items()) == dict(other.items())
 
     def __getitem__(self, key: UID) -> AttributesView:
         """Get view of attributes for UID."""
@@ -88,6 +105,13 @@ class AttributesRegisterView(Mapping[UID, AttributesView]):
     def __len__(self) -> int:
         """Return number of tasks in the register."""
         return len(self._attributes_register)
+
+    def __eq__(self, other: object) -> bool:
+        """Check if two register views are equal."""
+        if not isinstance(other, AttributesRegisterView):
+            return False
+
+        return dict(self.items()) == dict(other.items())
 
     def __getitem__(self, key: UID) -> AttributesView:
         """Return view of attributes associated with key."""

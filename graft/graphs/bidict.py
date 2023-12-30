@@ -7,6 +7,7 @@ from collections.abc import (
     KeysView,
     Mapping,
     MutableMapping,
+    MutableSet,
     Set,
     ValuesView,
 )
@@ -103,10 +104,16 @@ class BiDirectionalSetDict[T: Hashable](MutableMapping[T, SetView[T]]):
     def __init__(self, forward: Mapping[T, Set[T]] | None = None) -> None:
         """Initialize bidict."""
         self._forward = (
-            {a: set(b) for a, b in forward.items()} if forward else dict[T, set[T]]()
+            {key: set(values) for key, values in forward.items()}
+            if forward
+            else dict[T, set[T]]()
         )
         self._backward = invert_set_mapping(self._forward)
-        self.inverse = SetViewMapping[T, T](self._backward)
+
+    @property
+    def inverse(self) -> SetViewMapping[T, T]:
+        """Return inverse view (value-to-keys mapping)."""
+        return SetViewMapping[T, T](self._backward)
 
     def __bool__(self) -> bool:
         """Check if bidict has any keys."""
@@ -119,6 +126,13 @@ class BiDirectionalSetDict[T: Hashable](MutableMapping[T, SetView[T]]):
     def __iter__(self) -> Iterator[T]:
         """Return iterator over keys."""
         return iter(self._forward)
+
+    def __eq__(self, other: object) -> bool:
+        """Check if bidict is equal to other."""
+        if not isinstance(other, BiDirectionalSetDict):
+            return False
+
+        return dict(self.items()) == dict(other.items())
 
     def __getitem__(self, key: T) -> SetView[T]:
         """Return SetView over values of key."""

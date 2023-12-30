@@ -33,3 +33,10 @@ vulture graft
 autoflake -r graft
 pydocstringformatter graft
 ```
+
+### Run tests
+```pytest```
+### Generate & view code coverage report
+```pytest --cov-report html --cov=graft```
+
+Open htmlcov/index.html in a browser to view the report

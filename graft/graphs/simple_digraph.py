@@ -1,6 +1,7 @@
 """DiGraph and associated Exceptions."""
 
 import collections
+import copy
 import itertools
 from collections.abc import (
     Callable,
@@ -174,6 +175,13 @@ class NodesView[T: Hashable](Set[T]):
         """Return iterator over nodes in view."""
         return iter(self._nodes)
 
+    def __eq__(self, other: object) -> bool:
+        """Check if nodeview is equal to other."""
+        if not isinstance(other, NodesView):
+            return False
+
+        return set(self._nodes) == set(other)
+
     def __str__(self) -> str:
         """Return string representation of view."""
         return f"nodes_view({{{', '.join(str(node) for node in self._nodes)}}})"
@@ -251,7 +259,7 @@ class SimpleDiGraph[T: Hashable]:
         We are relying on the bi-dict being well formed - no validation is done.
         This may be changed in the future.
         """
-        self._bidict = bidict if bidict is not None else bd.BiDirectionalSetDict[T]()
+        self._bidict = copy.deepcopy(bidict) if bidict else bd.BiDirectionalSetDict[T]()
 
     def __bool__(self) -> bool:
         """Check if digraph has any nodes."""
@@ -264,6 +272,13 @@ class SimpleDiGraph[T: Hashable]:
     def __iter__(self) -> Iterator[T]:
         """Return iterator over digraph nodes."""
         return iter(self.nodes())
+
+    def __eq__(self, other: object) -> bool:
+        """Check if digraph is equal to other."""
+        if not isinstance(other, SimpleDiGraph):
+            return False
+
+        return set(self.edges()) == set(other.edges())
 
     def __str__(self) -> str:
         """Return string representation of digraph."""

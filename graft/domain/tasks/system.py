@@ -105,6 +105,33 @@ class System:
         self._hierarchy_graph = hierarchy_graph
         self._dependency_graph = dependency_graph
 
+    def __bool__(self) -> bool:
+        """Return True if the system is not empty."""
+        return bool(self._attributes_register)
+
+    def __contains__(self, key: UID) -> bool:
+        """Return True if key is in the task system."""
+        return key in self._attributes_register
+
+    def __len__(self) -> int:
+        """Return the number of tasks in the system."""
+        return len(self._attributes_register)
+
+    def __iter__(self) -> Iterator[UID]:
+        """Iterate over the task UIDs in the system."""
+        return iter(self._attributes_register)
+
+    def __eq__(self, other: object) -> bool:
+        """Check if two systems are equal."""
+        if not isinstance(other, System):
+            return False
+
+        return (
+            self.attributes_register_view() == other.attributes_register_view()
+            and self.hierarchy_graph_view() == other.hierarchy_graph_view()
+            and self.dependency_graph_view() == other.dependency_graph_view()
+        )
+
     def attributes_register_view(self) -> AttributesRegisterView:
         """Return a view of the attributes register."""
         return AttributesRegisterView(self._attributes_register)
@@ -116,18 +143,6 @@ class System:
     def dependency_graph_view(self) -> DependencyGraphView:
         """Return a view of the dependency graph."""
         return DependencyGraphView(self._dependency_graph)
-
-    def __bool__(self) -> bool:
-        """Return True if the system is not empty."""
-        return bool(self._attributes_register)
-
-    def __contains__(self, key: UID) -> bool:
-        """Return True if key is in the task network."""
-        return key in self._attributes_register
-
-    def __iter__(self) -> Iterator[UID]:
-        """Iterate over the task UIDs in the network."""
-        return iter(self._attributes_register)
 
     def _downstream_tasks(self, task: UID, /) -> Generator[UID, None, None]:
         """Return tasks downstream of task.
@@ -473,6 +488,30 @@ class SystemView:
     def __init__(self, system: System) -> None:
         """Initialise SystemView."""
         self._system = system
+
+    def __len__(self) -> int:
+        """Return number of tasks in system."""
+        return len(self._system)
+
+    def __eq__(self, other: object) -> bool:
+        """Check if system views are equal."""
+        if not isinstance(other, SystemView):
+            return False
+
+        print(
+            "attributes",
+            self.attributes_register_view() == other.attributes_register_view(),
+        )
+        print("hierarchy", self.hierarchy_graph_view() == other.hierarchy_graph_view())
+        print(
+            "dependency", self.dependency_graph_view() == other.dependency_graph_view()
+        )
+
+        return (
+            self.attributes_register_view() == other.attributes_register_view()
+            and self.hierarchy_graph_view() == other.hierarchy_graph_view()
+            and self.dependency_graph_view() == other.dependency_graph_view()
+        )
 
     def attributes_register_view(self) -> AttributesRegisterView:
         """Return a view of the attributes register."""

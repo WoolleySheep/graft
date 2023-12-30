@@ -218,6 +218,7 @@ class LocalFileDataLayer(architecture.DataLayer):
     def load_task_hierarchy_graph(self) -> HierarchyGraph:
         return _load_task_hierarchy_graph()
 
+
 def _save_task_attributes_register(register: tasks.AttributesRegisterView) -> None:
     """Save the task attributes register."""
     with _TASK_ATTRIBUTES_REGISTER_FILEPATH.open("w") as fp:
