@@ -27,8 +27,8 @@ ruff format graft
 ### Lint
 ```
 pyright graft
-pylint graft
 ruff --fix graft
+pylint graft
 vulture graft
 autoflake -r graft
 pydocstringformatter graft

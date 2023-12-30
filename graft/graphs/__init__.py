@@ -6,13 +6,14 @@ from graft.graphs.directed_acyclic_graph import (
     IntroducesCycleError,
     InverseEdgeAlreadyExistsError,
 )
-from graft.graphs.minimum_dag import (
-    MinimumDAG,
+from graft.graphs.reduced_dag import (
     PathAlreadyExistsError,
+    ReducedDAG,
     TargetAlreadySuccessorOfSourceAncestorsError,
 )
 from graft.graphs.simple_digraph import (
     EdgeAlreadyExistsError,
+    EdgeDoesNotExistError,
     HasPredecessorsError,
     HasSuccessorsError,
     LoopError,

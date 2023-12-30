@@ -1,20 +1,17 @@
 """Attributes and associated classes/exceptions."""
 
+import dataclasses
+
 from graft.domain.events.description import Description
 from graft.domain.events.name import Name
 
 
+@dataclasses.dataclass
 class Attributes:
     """Attributes of an event."""
 
-    def __init__(
-        self,
-        name: Name | None = None,
-        description: Description | None = None,
-    ) -> None:
-        """Initialise Attributes."""
-        self.name = name
-        self.description = description
+    name: Name | None = None
+    description: Description | None = None
 
 
 class AttributesView:

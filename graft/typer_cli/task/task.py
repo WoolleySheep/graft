@@ -43,3 +43,18 @@ def delete(task: int) -> None:
         raise
 
     typer.echo(f"Task [{task_uid}] deleted")
+
+
+@app.command()
+def ls() -> None:
+    """List all tasks."""
+    typer.echo("Listing tasks")
+    logic_layer = global_logic_layer.get_logic_layer()
+    try:
+        register = logic_layer.get_task_attributes_register_view()
+    except Exception as e:
+        typer.echo(f"Failed to list tasks; exception [{e}] raised")
+        raise
+
+    for uid, attributes in sorted(register.items()):
+        typer.echo(f"[{uid}] {attributes.name or ""} : {attributes.description or ""}")

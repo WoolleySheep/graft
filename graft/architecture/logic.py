@@ -31,5 +31,13 @@ class LogicLayer(abc.ABC):
         """Delete the specified task."""
 
     @abc.abstractmethod
+    def get_task_attributes_register_view(self) -> tasks.AttributesRegisterView:
+        """Return a view of the task attributes register."""
+
+    @abc.abstractmethod
     def create_hierarchy(self, supertask: tasks.UID, subtask: tasks.UID) -> None:
         """Create a new hierarchy between the specified tasks."""
+
+    @abc.abstractmethod
+    def delete_hierarchy(self, supertask: tasks.UID, subtask: tasks.UID) -> None:
+        """Delete the specified hierarchy."""

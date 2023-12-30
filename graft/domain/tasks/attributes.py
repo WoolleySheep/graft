@@ -1,20 +1,17 @@
 """Attributes and associated classes/exceptions."""
 
+import dataclasses
+
 from graft.domain.tasks.description import Description
 from graft.domain.tasks.name import Name
 
 
+@dataclasses.dataclass
 class Attributes:
     """Attributes of a task."""
 
-    def __init__(
-        self,
-        name: Name | None,
-        description: Description | None,
-    ) -> None:
-        """Initialise Attributes."""
-        self.name = name
-        self.description = description
+    name: Name | None = None
+    description: Description | None = None
 
 
 class AttributesView:

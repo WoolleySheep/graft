@@ -187,7 +187,7 @@ class BiDirectionalSetDict[T: Hashable](MutableMapping[T, SetView[T]]):
     def remove(self, key: T, value: T) -> None:
         """Remove value from values associated with key.
 
-        If the value is not associated with they key, nothing will happen.
+        If the value is not associated with the key, nothing will happen.
         """
         if key not in self:
             raise KeyError

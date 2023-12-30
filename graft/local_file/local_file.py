@@ -130,7 +130,7 @@ def _decode_task_hierarchy_graph(d: dict[str, list[str]]) -> tasks.HierarchyGrap
         _decode_task_uid(number): _decode_task_uids(uids) for number, uids in d.items()
     }
     return tasks.HierarchyGraph(
-        min_dag=graphs.MinimumDAG(
+        reduced_dag=graphs.ReducedDAG(
             bidict=graphs.BiDirectionalSetDict(forward=task_subtasks_map)
         )
     )
@@ -207,6 +207,12 @@ class LocalFileDataLayer(architecture.DataLayer):
     def load_system(self) -> domain.System:
         task_system = _load_task_system()
         return domain.System(task_system=task_system)
+
+    @override
+    def load_tasks_attributes_register_view(self) -> tasks.AttributesRegisterView:
+        """Return a view of the task attributes register."""
+        register = _load_task_attributes_register()
+        return tasks.AttributesRegisterView(attributes_register=register)
 
 
 def _save_task_attributes_register(register: tasks.AttributesRegisterView) -> None:

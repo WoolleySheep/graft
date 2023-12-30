@@ -221,8 +221,6 @@ class DependencyGraph:
         """Check if there is a path from source to target tasks."""
         try:
             return self._dag.has_path(source=source_task, target=target_task)
-        except graphs.LoopError as e:
-            raise DependencyLoopError(task=source_task) from e
         except graphs.NodeDoesNotExistError as e:
             raise TaskDoesNotExistError(task=e.node) from e
 
@@ -232,8 +230,6 @@ class DependencyGraph:
             connecting_subgraph = self._dag.connecting_subgraph(
                 source=source_task, target=target_task
             )
-        except graphs.LoopError as e:
-            raise DependencyLoopError(task=source_task) from e
         except graphs.NodeDoesNotExistError as e:
             raise TaskDoesNotExistError(task=e.node) from e
         except graphs.NoConnectingSubgraphError as e:

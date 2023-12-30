@@ -1,7 +1,7 @@
 """Hierarchy Graph and associated classes/exceptions."""
 
 
-from collections.abc import Generator, Iterable, Iterator, Set
+from collections.abc import Callable, Generator, Iterable, Iterator, Set
 from typing import Any, Self
 
 from graft import graphs
@@ -55,6 +55,18 @@ class HierarchyAlreadyExistsError(Exception):
             f"Hierarchy between supertask [{supertask}] and subtask [{subtask}] already exists",
             *args,
             **kwargs,
+        )
+
+
+class HierarchyDoesNotExistError(Exception):
+    """Raised when a hierarchy between tasks does not exists."""
+
+    def __init__(self, supertask: UID, subtask: UID) -> None:
+        """Initialise HierarchyDoesNotExistError."""
+        self.supertask = supertask
+        self.subtask = subtask
+        super().__init__(
+            f"Hierarchy between supertask [{supertask}] and subtask [{subtask}] does not exist",
         )
 
 
@@ -163,7 +175,7 @@ class HierarchyPathAlreadyExistsError(Exception):
         )
 
 
-class SubTaskAlreadySubTaskOfSuperTaskSuperiorTasksError(Exception):
+class SubTaskIsAlreadySubTaskOfSuperiorTaskOfSuperTaskError(Exception):
     """Subtask is already a sub-task of one or more of the super-task's superior tasks."""
 
     def __init__(
@@ -174,7 +186,7 @@ class SubTaskAlreadySubTaskOfSuperTaskSuperiorTasksError(Exception):
         *args: tuple[Any, ...],
         **kwargs: dict[str, Any],
     ) -> None:
-        """Initialize SubTaskAlreadySubTaskOfSuperTaskSuperiorTasksError."""
+        """Initialize SubTaskIsAlreadySubTaskOfSuperiorTaskOfSuperTaskError."""
         self.supertask = supertask
         self.subtask = subtask
         self.subgraph = subgraph
@@ -230,30 +242,30 @@ class HierarchyGraph:
     Acts as a Minimum DAG.
     """
 
-    def __init__(self, min_dag: graphs.MinimumDAG[UID]) -> None:
+    def __init__(self, reduced_dag: graphs.ReducedDAG[UID]) -> None:
         """Initialise HierarchyGraph."""
-        self._min_dag = min_dag
+        self._reduced_dag = reduced_dag
 
     def __iter__(self) -> Iterator[UID]:
         """Return generator over tasks in graph."""
-        return iter(self._min_dag)
+        return iter(self._reduced_dag)
 
     def __contains__(self, item: object) -> bool:
         """Check if item in graph."""
-        return item in self._min_dag
+        return item in self._reduced_dag
 
     def tasks(self) -> UIDsView:
         """Return view of tasks in graph."""
-        return UIDsView(self._min_dag.nodes())
+        return UIDsView(self._reduced_dag.nodes())
 
     def hierarchies(self) -> HierarchiesView:
         """Return a view of the hierarchies."""
-        return HierarchiesView(self._min_dag.edges())
+        return HierarchiesView(self._reduced_dag.edges())
 
     def supertasks(self, task: UID, /) -> UIDsView:
         """Return view of supertasks of task."""
         try:
-            supertasks = self._min_dag.predecessors(task)
+            supertasks = self._reduced_dag.predecessors(task)
         except graphs.NodeDoesNotExistError as e:
             raise TaskDoesNotExistError(task=task) from e
 
@@ -262,7 +274,7 @@ class HierarchyGraph:
     def subtasks(self, task: UID, /) -> UIDsView:
         """Return view of subtasks of task."""
         try:
-            subtasks = self._min_dag.successors(task)
+            subtasks = self._reduced_dag.successors(task)
         except graphs.NodeDoesNotExistError as e:
             raise TaskDoesNotExistError(task=task) from e
 
@@ -271,64 +283,124 @@ class HierarchyGraph:
     def inferior_tasks_bfs(self, task: UID, /) -> Generator[UID, None, None]:
         """Return breadth-first search of inferior tasks of task."""
         try:
-            yield from self._min_dag.descendants_bfs(task)
+            yield from self._reduced_dag.descendants_bfs(task)
         except graphs.NodeDoesNotExistError as e:
             raise TaskDoesNotExistError(task=task) from e
 
     def inferior_tasks_dfs(self, task: UID, /) -> Generator[UID, None, None]:
         """Return depth-first search of inferior tasks of task."""
         try:
-            yield from self._min_dag.descendants_dfs(task)
+            yield from self._reduced_dag.descendants_dfs(task)
         except graphs.NodeDoesNotExistError as e:
             raise TaskDoesNotExistError(task=task) from e
 
     def superior_tasks_bfs(self, task: UID, /) -> Generator[UID, None, None]:
         """Return breadth-first search of superior tasks of task."""
         try:
-            yield from self._min_dag.ancestors_bfs(task)
+            yield from self._reduced_dag.ancestors_bfs(task)
         except graphs.NodeDoesNotExistError as e:
             raise TaskDoesNotExistError(task=task) from e
 
     def superior_tasks_dfs(self, task: UID, /) -> Generator[UID, None, None]:
         """Return depth-first search of superior tasks of task."""
         try:
-            yield from self._min_dag.ancestors_dfs(task)
+            yield from self._reduced_dag.ancestors_dfs(task)
         except graphs.NodeDoesNotExistError as e:
             raise TaskDoesNotExistError(task=task) from e
 
-    def inferior_tasks_subgraph(self, task: UID, /) -> Self:
-        """Return subgraph of inferior tasks of task."""
+    def inferior_tasks_subgraph(
+        self, task: UID, /, stop_condition: Callable[[UID], bool] | None = None
+    ) -> Self:
+        """Return subgraph of inferior tasks of task.
+
+        Stop searching beyond a specific task if the stop condition is met. If
+        the starting task meets the stop condition, this will be ignored.
+        """
         try:
-            inferior_tasks_subgraph = self._min_dag.descendants_subgraph(task)
+            inferior_tasks_subgraph = self._reduced_dag.descendants_subgraph(
+                task, stop_condition=stop_condition
+            )
         except graphs.NodeDoesNotExistError as e:
             raise TaskDoesNotExistError(task=task) from e
         return type(self)(inferior_tasks_subgraph)
 
-    def superior_tasks_subgraph(self, task: UID, /) -> Self:
-        """Return subgraph of superior tasks of task."""
+    def superior_tasks_subgraph(
+        self, task: UID, /, stop_condition: Callable[[UID], bool] | None = None
+    ) -> Self:
+        """Return subgraph of superior tasks of task.
+
+        Stop searching beyond a specific task if the stop condition is met. If
+        the starting task meets the stop condition, this will be ignored.
+        """
         try:
-            superior_tasks_subgraph = self._min_dag.ancestors_subgraph(task)
+            superior_tasks_subgraph = self._reduced_dag.ancestors_subgraph(
+                task, stop_condition=stop_condition
+            )
         except graphs.NodeDoesNotExistError as e:
             raise TaskDoesNotExistError(task=task) from e
+        return type(self)(superior_tasks_subgraph)
+
+    def inferior_tasks_subgraph_multi(
+        self,
+        tasks: Iterable[UID],
+        /,
+        stop_condition: Callable[[UID], bool] | None = None,
+    ) -> Self:
+        """Return subgraph of inferior tasks of multiple tasks.
+
+        This effectively OR's together the superior-task subgraphs of several
+        tasks.
+
+        The original tasks are part of the subgraph.
+
+        Stop searching beyond a specific task if the stop condition is met. If
+        the starting task meets the stop condition, this will be ignored.
+        """
+        try:
+            inferior_tasks_subgraph = self._reduced_dag.descendants_subgraph_multi(
+                tasks, stop_condition=stop_condition
+            )
+        except graphs.NodeDoesNotExistError as e:
+            raise TaskDoesNotExistError(task=e.node) from e
+        return type(self)(inferior_tasks_subgraph)
+
+    def superior_tasks_subgraph_multi(
+        self,
+        tasks: Iterable[UID],
+        /,
+        stop_condition: Callable[[UID], bool] | None = None,
+    ) -> Self:
+        """Return subgraph of superior tasks of multiple tasks.
+
+        This effectively OR's together the inferior-task subgraphs of several
+        tasks.
+
+        The original tasks are part of the subgraph.
+
+        Stop searching beyond a specific task if the stop condition is met. If
+        the starting task meets the stop condition, this will be ignored.
+        """
+        try:
+            superior_tasks_subgraph = self._reduced_dag.ancestors_subgraph_multi(
+                tasks, stop_condition=stop_condition
+            )
+        except graphs.NodeDoesNotExistError as e:
+            raise TaskDoesNotExistError(task=e.node) from e
         return type(self)(superior_tasks_subgraph)
 
     def has_path(self, source_task: UID, target_task: UID, /) -> bool:
         """Check if there is a path from source to target tasks."""
         try:
-            return self._min_dag.has_path(source=source_task, target=target_task)
-        except graphs.LoopError as e:
-            raise HierarchyLoopError(task=source_task) from e
+            return self._reduced_dag.has_path(source=source_task, target=target_task)
         except graphs.NodeDoesNotExistError as e:
             raise TaskDoesNotExistError(task=e.node) from e
 
     def connecting_subgraph(self, source_task: UID, target_task: UID, /) -> Self:
         """Return subgraph of tasks between source and target tasks."""
         try:
-            connecting_subgraph = self._min_dag.connecting_subgraph(
+            connecting_subgraph = self._reduced_dag.connecting_subgraph(
                 source=source_task, target=target_task
             )
-        except graphs.LoopError as e:
-            raise HierarchyLoopError(task=source_task) from e
         except graphs.NodeDoesNotExistError as e:
             raise TaskDoesNotExistError(task=e.node) from e
         except graphs.NoConnectingSubgraphError as e:
@@ -341,14 +413,14 @@ class HierarchyGraph:
     def add_task(self, task: UID, /) -> None:
         """Add a task."""
         try:
-            self._min_dag.add_node(task)
+            self._reduced_dag.add_node(task)
         except graphs.NodeAlreadyExistsError as e:
             raise TaskAlreadyExistsError(task) from e
 
     def remove_task(self, task: UID, /) -> None:
         """Remove a task."""
         try:
-            self._min_dag.remove_node(task)
+            self._reduced_dag.remove_node(task)
         except graphs.NodeDoesNotExistError as e:
             raise TaskDoesNotExistError(task) from e
         except graphs.HasPredecessorsError as e:
@@ -359,7 +431,7 @@ class HierarchyGraph:
     def add_hierarchy(self, supertask: UID, subtask: UID, /) -> None:
         """Add a hierarchy between the specified tasks."""
         try:
-            self._min_dag.add_edge(source=supertask, target=subtask)
+            self._reduced_dag.add_edge(source=supertask, target=subtask)
         except graphs.LoopError as e:
             raise HierarchyLoopError(supertask) from e
         except graphs.NodeDoesNotExistError as e:
@@ -387,9 +459,20 @@ class HierarchyGraph:
 
         except graphs.TargetAlreadySuccessorOfSourceAncestorsError as e:
             subgraph = HierarchyGraph(e.subgraph)
-            raise SubTaskAlreadySubTaskOfSuperTaskSuperiorTasksError(
+            raise SubTaskIsAlreadySubTaskOfSuperiorTaskOfSuperTaskError(
                 supertask=supertask, subtask=subtask, subgraph=subgraph
             ) from e
+
+    def remove_hierarchy(self, supertask: UID, subtask: UID, /) -> None:
+        """Remove the hierarchy between the specified tasks."""
+        try:
+            self._reduced_dag.remove_edge(source=supertask, target=subtask)
+        except graphs.LoopError as e:
+            raise HierarchyLoopError(supertask) from e
+        except graphs.NodeDoesNotExistError as e:
+            raise TaskDoesNotExistError(e.node) from e
+        except graphs.EdgeDoesNotExistError as e:
+            raise HierarchyDoesNotExistError(supertask, subtask) from e
 
     def is_concrete(self, task: UID, /) -> bool:
         """Check if task is concrete.
@@ -397,13 +480,13 @@ class HierarchyGraph:
         Concrete tasks have no sub-tasks.
         """
         try:
-            return self._min_dag.is_leaf(task)
+            return self._reduced_dag.is_leaf(task)
         except graphs.NodeDoesNotExistError as e:
             raise TaskDoesNotExistError(task) from e
 
     def concrete_tasks(self) -> Generator[UID, None, None]:
         """Return generator over concrete tasks."""
-        yield from self._min_dag.leaves()
+        yield from self._reduced_dag.leaves()
 
     def is_top_level(self, task: UID, /) -> bool:
         """Check if task is top-level.
@@ -411,17 +494,17 @@ class HierarchyGraph:
         Top-level tasks have no super-tasks.
         """
         try:
-            return self._min_dag.is_root(task)
+            return self._reduced_dag.is_root(task)
         except graphs.NodeDoesNotExistError as e:
             raise TaskDoesNotExistError(task) from e
 
     def top_level_tasks(self) -> Generator[UID, None, None]:
         """Return generator over top-level tasks."""
-        yield from self._min_dag.roots()
+        yield from self._reduced_dag.roots()
 
     def task_subtasks_pairs(self) -> Generator[tuple[UID, UIDsView], None, None]:
         """Return generator over task-subtasks pairs."""
-        for task, subtasks in self._min_dag.node_successors_pairs():
+        for task, subtasks in self._reduced_dag.node_successors_pairs():
             yield task, UIDsView(subtasks)
 
 

@@ -35,3 +35,7 @@ class DataLayer(abc.ABC):
     def load_system(self) -> domain.System:
         """Load the state of the system."""
         raise NotImplementedError
+
+    @abc.abstractmethod
+    def load_tasks_attributes_register_view(self) -> tasks.AttributesRegisterView:
+        """Return a view of the task attributes register."""

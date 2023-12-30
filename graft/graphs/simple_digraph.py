@@ -3,6 +3,7 @@
 import collections
 import itertools
 from collections.abc import (
+    Callable,
     Generator,
     Hashable,
     Iterable,
@@ -343,7 +344,10 @@ class SimpleDiGraph[T: Hashable]:
         return NodesView(self._bidict.inverse[node])
 
     def descendants_bfs(self, node: T, /) -> Generator[T, None, None]:
-        """Return breadth-first search of descendants of node(s)."""
+        """Return breadth-first search of descendants of node(s).
+
+        The starting node is not included.
+        """
         queue = collections.deque[T](self.successors(node))
         visited = set[T]([node])
 
@@ -356,7 +360,10 @@ class SimpleDiGraph[T: Hashable]:
             yield node2
 
     def descendants_dfs(self, node: T, /) -> Generator[T, None, None]:
-        """Return depth-first search of the descendants of node."""
+        """Return depth-first search of the descendants of node.
+
+        The starting node is not included.
+        """
         stack = collections.deque[T](self.successors(node))
         visited = set[T]([node])
 
@@ -368,10 +375,15 @@ class SimpleDiGraph[T: Hashable]:
             stack.extend(self.successors(node2))
             yield node2
 
-    def descendants_subgraph(self, node: T, /) -> Self:
+    def descendants_subgraph(
+        self, node: T, /, stop_condition: Callable[[T], bool] | None = None
+    ) -> Self:
         """Return a subgraph of the descendants of node.
 
         The original node is part of the subgraph.
+
+        Stop searching beyond a specific node if the stop condition is met. If
+        the starting node meets the stop condition, this will be ignored.
         """
         if node not in self:
             raise NodeDoesNotExistError(node=node)
@@ -384,7 +396,7 @@ class SimpleDiGraph[T: Hashable]:
 
         while queue:
             node2 = queue.popleft()
-            if node2 in visited:
+            if node2 in visited or (stop_condition and stop_condition(node2)):
                 continue
             visited.add(node2)
             for successor in self.successors(node2):
@@ -395,13 +407,18 @@ class SimpleDiGraph[T: Hashable]:
 
         return subgraph
 
-    def descendants_subgraph_multi(self, nodes: Iterable[T]) -> Self:
+    def descendants_subgraph_multi(
+        self, nodes: Iterable[T], stop_condition: Callable[[T], bool] | None = None
+    ) -> Self:
         """Return a subgraph of the descendants of multiple nodes.
 
         This effectively OR's together the descendant subgraphs of several
         nodes.
 
         The original nodes are part of the subgraph.
+
+        Stop searching beyond a specific node if the stop condition is met. If
+        a starting node meets the stop condition, this will be ignored.
         """
         subgraph = type(self)()
         for node in nodes:
@@ -414,7 +431,7 @@ class SimpleDiGraph[T: Hashable]:
 
         while queue:
             node2 = queue.popleft()
-            if node2 in visited:
+            if node2 in visited or (stop_condition and stop_condition(node2)):
                 continue
             visited.add(node2)
             for successor in self.successors(node2):
@@ -426,7 +443,10 @@ class SimpleDiGraph[T: Hashable]:
         return subgraph
 
     def ancestors_bfs(self, node: T, /) -> Generator[T, None, None]:
-        """Return breadth-first search of ancestors of node."""
+        """Return breadth-first search of ancestors of node.
+
+        The starting node is not included.
+        """
         queue = collections.deque[T](self.predecessors(node))
         visited = set[T]([node])
 
@@ -439,7 +459,10 @@ class SimpleDiGraph[T: Hashable]:
             yield node2
 
     def ancestors_dfs(self, node: T, /) -> Generator[T, None, None]:
-        """Return depth-first search of ancestors of node."""
+        """Return depth-first search of ancestors of node.
+
+        The starting node is not included.
+        """
         stack = collections.deque[T](self.predecessors(node))
         visited = set[T]([node])
 
@@ -451,8 +474,14 @@ class SimpleDiGraph[T: Hashable]:
             stack.extend(self.predecessors(node2))
             yield node2
 
-    def ancestors_subgraph(self, node: T, /) -> Self:
-        """Return a subgraph of the ancestors of node."""
+    def ancestors_subgraph(
+        self, node: T, /, stop_condition: Callable[[T], bool] | None = None
+    ) -> Self:
+        """Return a subgraph of the ancestors of node.
+
+        Stop searching beyond a specific node if the stop condition is met. If
+        the starting node meets the stop condition, this will be ignored.
+        """
         if node not in self:
             raise NodeDoesNotExistError(node=node)
 
@@ -464,7 +493,7 @@ class SimpleDiGraph[T: Hashable]:
 
         while queue:
             node2 = queue.popleft()
-            if node2 in visited:
+            if node2 in visited or (stop_condition and stop_condition(node2)):
                 continue
             visited.add(node2)
             for predecessor in self.predecessors(node2):
@@ -475,16 +504,23 @@ class SimpleDiGraph[T: Hashable]:
 
         return subgraph
 
-    def ancestors_subgraph_multi(self, nodes: Iterable[T], /) -> Self:
+    def ancestors_subgraph_multi(
+        self, nodes: Iterable[T], /, stop_condition: Callable[[T], bool] | None = None
+    ) -> Self:
         """Return a subgraph of the ancestors of multiple nodes.
 
         This effectively OR's together the ancestor subgraphs of several
         nodes.
 
         The original nodes are part of the subgraph.
+
+        Stop searching beyond a specific node if the stop condition is met. If
+        a starting node meets the stop condition, this will be ignored.
         """
         subgraph = type(self)()
         for node in nodes:
+            if node in subgraph:
+                continue
             if node not in self:
                 raise NodeDoesNotExistError(node=node)
             subgraph.add_node(node)
@@ -494,7 +530,7 @@ class SimpleDiGraph[T: Hashable]:
 
         while queue:
             node2 = queue.popleft()
-            if node2 in visited:
+            if node2 in visited or (stop_condition and stop_condition(node2)):
                 continue
             visited.add(node2)
             for predecessor in self.predecessors(node2):
@@ -506,21 +542,21 @@ class SimpleDiGraph[T: Hashable]:
         return subgraph
 
     def has_path(self, source: T, target: T) -> bool:
-        """Check if there's a connecting subgraph/path from source to target."""
-        if source == target:
-            raise LoopError(node=source)
+        """Check if there's a connecting subgraph/path from source to target.
 
+        If the source and target are the same (and exist), will return True.
+        """
         for node in [source, target]:
             if node not in self:
                 raise NodeDoesNotExistError(node=node)
+
+        if source == target:
+            return True
 
         return target in self.descendants_bfs(source)
 
     def connecting_subgraph(self, source: T, target: T) -> Self:
         """Return connecting subgraph from source to target."""
-        if source == target:
-            raise LoopError(node=source)
-
         for node in [source, target]:
             if node not in self:
                 raise NodeDoesNotExistError(node=node)
@@ -538,11 +574,8 @@ class SimpleDiGraph[T: Hashable]:
 
         Every target must be reachable by one or more sources.
         """
-        sources_set = set(sources)
-        targets_set = set(targets)
-        for source in sources_set:
-            if source in targets_set:
-                raise LoopError(node=source)
+        sources_set = list(sources)
+        targets_set = list(targets)
 
         for node in itertools.chain(sources_set, targets_set):
             if node not in self:

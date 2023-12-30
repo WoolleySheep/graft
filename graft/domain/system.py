@@ -30,4 +30,8 @@ class System:
 
     def add_hierarchy(self, supertask: tasks.UID, subtask: tasks.UID) -> None:
         """Add a hierarchy between the specified tasks."""
-        self._task_system.add_hierarchy(supertask, subtask)
+        self._task_system.add_hierarchy(supertask=supertask, subtask=subtask)
+
+    def remove_hierarchy(self, supertask: tasks.UID, subtask: tasks.UID) -> None:
+        """Remove a hierarchy between the specified tasks."""
+        self._task_system.remove_hierarchy(supertask=supertask, subtask=subtask)
