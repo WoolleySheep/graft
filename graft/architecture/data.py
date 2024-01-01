@@ -29,12 +29,10 @@ class DataLayer(abc.ABC):
     @abc.abstractmethod
     def save_system(self, system: domain.System) -> None:
         """Save the state of the system."""
-        raise NotImplementedError
 
     @abc.abstractmethod
     def load_system(self) -> domain.System:
         """Load the state of the system."""
-        raise NotImplementedError
 
     @abc.abstractmethod
     def load_task_attributes_register(self) -> tasks.AttributesRegister:
@@ -43,3 +41,7 @@ class DataLayer(abc.ABC):
     @abc.abstractmethod
     def load_task_hierarchy_graph(self) -> tasks.HierarchyGraph:
         """Return the task hierarchy graph."""
+
+    @abc.abstractmethod
+    def load_task_dependency_graph(self) -> tasks.DependencyGraph:
+        """Return the task dependency graph."""

@@ -8,8 +8,12 @@ from graft.domain.tasks.attributes_register import (
 )
 from graft.domain.tasks.dependency_graph import (
     DependenciesView,
+    DependencyAlreadyExistsError,
+    DependencyDoesNotExistError,
     DependencyGraph,
     DependencyGraphView,
+    DependencyIntroducesCycleError,
+    DependencyLoopError,
     HasDependeeTasksError,
     HasDependentTasksError,
 )

@@ -290,6 +290,17 @@ class DependencyGraph:
                 connecting_subgraph=connecting_subgraph,
             ) from e
 
+    def remove_dependency(self, dependee_task: UID, dependent_task: UID) -> None:
+        """Remove the dependency between the specified tasks."""
+        try:
+            self._dag.remove_edge(source=dependee_task, target=dependent_task)
+        except graphs.LoopError as e:
+            raise DependencyLoopError(e.node) from e
+        except graphs.NodeDoesNotExistError as e:
+            raise TaskDoesNotExistError(e.node) from e
+        except graphs.EdgeDoesNotExistError as e:
+            raise DependencyDoesNotExistError(dependee_task, dependent_task) from e
+
     def tasks(self) -> UIDsView:
         """Return a view of the tasks."""
         return UIDsView(self._dag.nodes())

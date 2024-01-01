@@ -39,6 +39,10 @@ class LogicLayer(abc.ABC):
         """Return the hierarchy graph."""
 
     @abc.abstractmethod
+    def get_dependency_graph_view(self) -> tasks.DependencyGraphView:
+        """Return the dependency graph."""
+
+    @abc.abstractmethod
     def create_hierarchy(self, supertask: tasks.UID, subtask: tasks.UID) -> None:
         """Create a new hierarchy between the specified tasks."""
 
@@ -51,3 +55,9 @@ class LogicLayer(abc.ABC):
         self, dependee_task: tasks.UID, dependent_task: tasks.UID
     ) -> None:
         """Create a new dependency between the specified tasks."""
+
+    @abc.abstractmethod
+    def delete_dependency(
+        self, dependee_task: tasks.UID, dependent_task: tasks.UID
+    ) -> None:
+        """Delete the specified dependency."""

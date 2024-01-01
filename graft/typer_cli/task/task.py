@@ -4,11 +4,15 @@ import typer
 
 from graft.domain import tasks
 from graft.typer_cli import global_logic_layer
+from graft.typer_cli.task.dependency import app as dependency_app
 from graft.typer_cli.task.hierarchy import app as hierarchy_app
 
 app = typer.Typer()
 app.add_typer(
     typer_instance=hierarchy_app, name="hierarchy", help="Hierarchy commands."
+)
+app.add_typer(
+    typer_instance=dependency_app, name="dependency", help="Dependency commands."
 )
 
 

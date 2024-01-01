@@ -4,6 +4,7 @@ from typing import override
 
 from graft import architecture
 from graft.domain import tasks
+from graft.domain.tasks.dependency_graph import DependencyGraphView
 from graft.domain.tasks.hierarchy_graph import HierarchyGraphView
 from graft.domain.tasks.uid import UID
 
@@ -48,6 +49,10 @@ class StandardLogicLayer(architecture.LogicLayer):
     def get_hierarchy_graph_view(self) -> tasks.HierarchyGraphView:
         """Return a view of the hierarchy graph."""
         return tasks.HierarchyGraphView(self._data_layer.load_task_hierarchy_graph())
+    
+    @override
+    def get_dependency_graph_view(self) -> DependencyGraphView:
+        return tasks.DependencyGraphView(self._data_layer.load_task_dependency_graph())
 
     @override
     def create_hierarchy(self, supertask: tasks.UID, subtask: tasks.UID) -> None:
@@ -65,8 +70,18 @@ class StandardLogicLayer(architecture.LogicLayer):
 
     @override
     def create_dependency(self, dependee_task: UID, dependent_task: UID) -> None:
+        """Create a new dependency between the specified tasks."""
         system = self._data_layer.load_system()
         system.add_dependency(
+            dependee_task=dependee_task, dependent_task=dependent_task
+        )
+        self._data_layer.save_system(system=system)
+
+    @override
+    def delete_dependency(self, dependee_task: UID, dependent_task: UID) -> None:
+        """Delete the specified dependency."""
+        system = self._data_layer.load_system()
+        system.remove_dependency(
             dependee_task=dependee_task, dependent_task=dependent_task
         )
         self._data_layer.save_system(system=system)

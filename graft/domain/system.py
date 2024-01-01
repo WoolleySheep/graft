@@ -50,3 +50,11 @@ class System:
         self._task_system.add_dependency(
             dependee_task=dependee_task, dependent_task=dependent_task
         )
+
+    def remove_dependency(
+        self, dependee_task: tasks.UID, dependent_task: tasks.UID
+    ) -> None:
+        """Remove a dependency between the specified tasks."""
+        self._task_system.remove_dependency(
+            dependee_task=dependee_task, dependent_task=dependent_task
+        )

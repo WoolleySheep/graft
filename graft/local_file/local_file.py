@@ -211,12 +211,18 @@ class LocalFileDataLayer(architecture.DataLayer):
 
     @override
     def load_task_attributes_register(self) -> tasks.AttributesRegister:
-        """Return a view of the task attributes register."""
+        """Return the task attributes register."""
         return _load_task_attributes_register()
 
     @override
-    def load_task_hierarchy_graph(self) -> HierarchyGraph:
+    def load_task_hierarchy_graph(self) -> tasks.HierarchyGraph:
+        """Return the task hierarchy graph."""
         return _load_task_hierarchy_graph()
+    
+    @override
+    def load_task_dependency_graph(self) -> tasks.DependencyGraph:
+        """Return the task dependency graph."""
+        return _load_task_dependency_graph()
 
 
 def _save_task_attributes_register(register: tasks.AttributesRegisterView) -> None:

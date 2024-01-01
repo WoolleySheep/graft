@@ -10,10 +10,14 @@ from graft.domain.tasks.attributes_register import (
     AttributesRegisterView,
 )
 from graft.domain.tasks.dependency_graph import (
+    DependencyAlreadyExistsError,
     DependencyGraph,
     DependencyGraphView,
+    DependencyIntroducesCycleError,
+    DependencyLoopError,
     HasDependeeTasksError,
     HasDependentTasksError,
+    InverseDependencyAlreadyExistsError,
 )
 from graft.domain.tasks.helpers import TaskDoesNotExistError
 from graft.domain.tasks.hierarchy_graph import (
@@ -130,6 +134,130 @@ class HierarchyIntroducesDependencyClashError(Exception):
         self.subtask = subtask
         super().__init__(
             f"Hierarchy introduces dependency clash between [{supertask}] and [{subtask}].",
+            *args,
+            **kwargs,
+        )
+
+
+class HierarchyPathAlreadyExistsFromDependeeTaskToDependentTaskError(Exception):
+    """Raised when there is already a hierarchy path from dependee-task to dependent-task."""
+
+    def __init__(
+        self,
+        dependee_task: UID,
+        dependent_task: UID,
+        connecting_subgraph: HierarchyGraph,
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
+        """Initialise HierarchyPathAlreadyExistsError."""
+        self.dependee_task = dependee_task
+        self.dependent_task = dependent_task
+        self.connecting_subgraph = connecting_subgraph
+        super().__init__(
+            f"Hierarchy path already exists from dependee-task [{dependee_task}] to dependent-task [{dependent_task}].",
+            *args,
+            **kwargs,
+        )
+
+
+class HierarchyPathAlreadyExistsFromDependentTaskToDependeeTaskError(Exception):
+    """Raised when there is already a hierarchy path from dependent-task to dependee-task."""
+
+    def __init__(
+        self,
+        dependee_task: UID,
+        dependent_task: UID,
+        connecting_subgraph: HierarchyGraph,
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
+        """Initialise HierarchyPathAlreadyExistsError."""
+        self.dependee_task = dependee_task
+        self.dependent_task = dependent_task
+        self.connecting_subgraph = connecting_subgraph
+        super().__init__(
+            f"Hierarchy path already exists between dependent-task [{dependent_task}] to dependee-task [{dependee_task}].",
+            *args,
+            **kwargs,
+        )
+
+
+class DependencyIntroducesStreamCycleError(Exception):
+    """Raised when a dependency introduces a stream cycle."""
+
+    def __init__(
+        self,
+        dependee_task: UID,
+        dependent_task: UID,
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
+        """Initialise DependencyIntroducesStreamCycleError."""
+        self.dependee_task = dependee_task
+        self.dependent_task = dependent_task
+        super().__init__(
+            f"Dependency from dependee-task [{dependee_task}] to dependent-task [{dependent_task}] introduces stream cycle.",
+            *args,
+            **kwargs,
+        )
+
+
+class StreamPathFromInferiorTaskOfDependentTaskToDependeeTaskExistsError(Exception):
+    """Raised when a stream path from an inferior task of a dependent task to a dependee task exists."""
+
+    def __init__(
+        self,
+        dependee_task: UID,
+        dependent_task: UID,
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
+        """Initialise StreamPathFromInferiorTaskOfDependentTaskToDependeeTaskExistsError."""
+        self.dependee_task = dependee_task
+        self.dependent_task = dependent_task
+        super().__init__(
+            f"Stream path from inferior task of dependent-task [{dependent_task}] to dependee-task [{dependee_task}] exists.",
+            *args,
+            **kwargs,
+        )
+
+
+class StreamPathFromDependentTaskToInferiorTaskOfDependeeTaskExistsError(Exception):
+    """Raised when a stream path from a dependent-task to an inferior-task of a dependee-task exists."""
+
+    def __init__(
+        self,
+        dependee_task: UID,
+        dependent_task: UID,
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
+        """Initialise StreamPathFromDependentTaskToInferiorTaskOfDependeeTaskExistsError."""
+        self.dependee_task = dependee_task
+        self.dependent_task = dependent_task
+        super().__init__(
+            f"Stream path from dependent-task [{dependent_task}] to inferior task of dependee-task [{dependee_task}] exists.",
+            *args,
+            **kwargs,
+        )
+
+
+class DependencyIntroducesHierarchyClashError(Exception):
+    """Raised when a dependency introduces a hierarchy clash."""
+
+    def __init__(
+        self,
+        dependee_task: UID,
+        dependent_task: UID,
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
+        """Initialise DependencyIntroducesHierarchyClashError."""
+        self.dependee_task = dependee_task
+        self.dependent_task = dependent_task
+        super().__init__(
+            f"Dependency from dependee-task [{dependee_task}] to dependent-task [{dependent_task}] introduces hierarchy clash.",
             *args,
             **kwargs,
         )
@@ -323,11 +451,35 @@ class System:
                     supertasks_to_check_queue.append(dependee_task)
 
     def _has_stream_path(self, source_task: UID, target_task: UID) -> bool:
-        """Check if there is a path from source to target tasks.
+        """Check if there is a stream path from source to target tasks.
 
         Same as checking if target task is downstream of source task.
         """
         return target_task in self._downstream_tasks(source_task)
+
+    def _has_stream_path_from_source_to_inferior_task_of_target(
+        self, source_task: UID, target_task: UID
+    ) -> bool:
+        """Check if there is a stream path from source-task to an inferior task of target-task."""
+        inferior_tasks_of_target = set(
+            self._hierarchy_graph.inferior_tasks_bfs(target_task)
+        )
+        return any(
+            downstream_task in inferior_tasks_of_target
+            for downstream_task in self._downstream_tasks(source_task)
+        )
+
+    def _has_stream_path_from_inferior_task_of_source_to_target(
+        self, source_task: UID, target_task: UID
+    ) -> bool:
+        """Check if there is a stream path from an inferior task of source-task to target-task."""
+        inferior_tasks_of_source = set(
+            self._hierarchy_graph.inferior_tasks_bfs(source_task)
+        )
+        return any(
+            upstream_task in inferior_tasks_of_source
+            for upstream_task in self._upstream_tasks(target_task)
+        )
 
     def add_task(self, task: UID, /) -> None:
         """Add a task."""
@@ -358,30 +510,6 @@ class System:
 
     def add_hierarchy(self, supertask: UID, subtask: UID) -> None:
         """Create a new hierarchy between the specified tasks."""
-
-        def has_stream_path_from_supertask_to_inferior_task_of_subtask(
-            self: Self, supertask: UID, subtask: UID
-        ) -> bool:
-            """Check if there is a stream path from the super-task to an inferior task of the sub-task."""
-            inferior_tasks_of_subtask = set(
-                self._hierarchy_graph.inferior_tasks_bfs(subtask)
-            )
-            return any(
-                downstream_task in inferior_tasks_of_subtask
-                for downstream_task in self._downstream_tasks(supertask)
-            )
-
-        def has_stream_path_from_inferior_task_of_subtask_to_supertask(
-            self: Self, supertask: UID, subtask: UID
-        ) -> bool:
-            """Check if there is a stream path from an inferior task of the sub-task to the super-task."""
-            inferior_tasks_of_subtask = set(
-                self._hierarchy_graph.inferior_tasks_bfs(subtask)
-            )
-            return any(
-                upstream_task in inferior_tasks_of_subtask
-                for upstream_task in self._upstream_tasks(supertask)
-            )
 
         def has_dependency_clash(self: Self, supertask: UID, subtask: UID) -> bool:
             """Quite a complicated little check - read the description.
@@ -499,16 +627,16 @@ class System:
             # TODO: Get relevant subgraph and return as part of exception
             raise StreamPathFromSubTaskToSuperTaskExistsError(supertask, subtask)
 
-        if has_stream_path_from_supertask_to_inferior_task_of_subtask(
-            self, supertask, subtask
+        if self._has_stream_path_from_source_to_inferior_task_of_target(
+            supertask, subtask
         ):
             # TODO: Get relevant subgraph and return as part of exception
             raise StreamPathFromSuperTaskToInferiorTaskOfSubTaskExistsError(
                 supertask, subtask
             )
 
-        if has_stream_path_from_inferior_task_of_subtask_to_supertask(
-            self, supertask, subtask
+        if self._has_stream_path_from_inferior_task_of_source_to_target(
+            subtask, supertask
         ):
             # TODO: Get relevant subgraph and return as part of exception
             raise StreamPathFromInferiorTaskOfSubTaskToSuperTaskExistsError(
@@ -527,7 +655,118 @@ class System:
 
     def add_dependency(self, dependee_task: UID, dependent_task: UID) -> None:
         """Add a dependency between the specified tasks."""
-        raise NotImplementedError
+
+        def has_hierarchy_clash(
+            self: Self, dependee_task: UID, dependent_task: UID
+        ) -> bool:
+            """Quite a complicated little check - read the description.
+
+            Check if any of (the dependee-task or the superior-tasks of the
+            dependee-task or the inferior-tasks of the dependee-task) and (the
+            dependent-task or the superior-tasks of the dependent-task or the
+            inferior-tasks of the dependent-task) are dependency-linked with one
+            another.
+            """
+            dependency_linked_tasks_of_dependee_task_hierarchical_line = set[UID]()
+            for task in itertools.chain(
+                [dependee_task],
+                self._hierarchy_graph.superior_tasks_bfs(dependee_task),
+                self._hierarchy_graph.inferior_tasks_bfs(dependee_task),
+            ):
+                dependee_tasks = self._dependency_graph.dependee_tasks(task)
+                dependency_linked_tasks_of_dependee_task_hierarchical_line.update(
+                    dependee_tasks
+                )
+                dependent_tasks = self._dependency_graph.dependent_tasks(task)
+                dependency_linked_tasks_of_dependee_task_hierarchical_line.update(
+                    dependent_tasks
+                )
+
+            dependent_task_hierarchical_line = itertools.chain(
+                [dependent_task],
+                self._hierarchy_graph.superior_tasks_bfs(dependent_task),
+                self._hierarchy_graph.inferior_tasks_bfs(dependent_task),
+            )
+
+            return any(
+                task in dependency_linked_tasks_of_dependee_task_hierarchical_line
+                for task in dependent_task_hierarchical_line
+            )
+
+        if dependee_task == dependent_task:
+            raise DependencyLoopError(task=dependee_task)
+
+        for task in [dependee_task, dependent_task]:
+            if task not in self:
+                raise TaskDoesNotExistError(task=task)
+
+        if (dependee_task, dependent_task) in self._dependency_graph.dependencies():
+            raise DependencyAlreadyExistsError(dependee_task, dependent_task)
+
+        if (dependent_task, dependee_task) in self._dependency_graph.dependencies():
+            raise InverseDependencyAlreadyExistsError(dependent_task, dependee_task)
+
+        if self._dependency_graph.has_path(dependee_task, dependent_task):
+            connecting_subgraph = self._dependency_graph.connecting_subgraph(
+                dependee_task, dependent_task
+            )
+            raise DependencyIntroducesCycleError(
+                dependee_task=dependee_task,
+                dependent_task=dependent_task,
+                connecting_subgraph=connecting_subgraph,
+            )
+
+        if self._hierarchy_graph.has_path(dependee_task, dependent_task):
+            connecting_subgraph = self._hierarchy_graph.connecting_subgraph(
+                dependee_task, dependent_task
+            )
+            raise HierarchyPathAlreadyExistsFromDependeeTaskToDependentTaskError(
+                dependee_task=dependee_task,
+                dependent_task=dependent_task,
+                connecting_subgraph=connecting_subgraph,
+            )
+
+        if self._hierarchy_graph.has_path(dependent_task, dependee_task):
+            connecting_subgraph = self._hierarchy_graph.connecting_subgraph(
+                dependent_task, dependee_task
+            )
+            raise HierarchyPathAlreadyExistsFromDependentTaskToDependeeTaskError(
+                dependee_task=dependee_task,
+                dependent_task=dependent_task,
+                connecting_subgraph=connecting_subgraph,
+            )
+
+        if self._has_stream_path(dependent_task, dependee_task):
+            # TODO: Get relevant subgraph and return as part of exception
+            raise DependencyIntroducesStreamCycleError(dependee_task, dependent_task)
+
+        if self._has_stream_path_from_inferior_task_of_source_to_target(
+            dependent_task, dependee_task
+        ):
+            # TODO: Get relevant subgraph and return as part of exception
+            raise StreamPathFromInferiorTaskOfDependentTaskToDependeeTaskExistsError(
+                dependee_task, dependent_task
+            )
+
+        if self._has_stream_path_from_source_to_inferior_task_of_target(
+            dependent_task, dependee_task
+        ):
+            # TODO: Get relevant subgraph and return as part of exception
+            raise StreamPathFromDependentTaskToInferiorTaskOfDependeeTaskExistsError(
+                dependee_task, dependent_task
+            )
+
+        if has_hierarchy_clash(
+            self, dependee_task=dependee_task, dependent_task=dependent_task
+        ):
+            # TODO: Get relevant subgraph and return as part of exception
+            raise DependencyIntroducesHierarchyClashError(dependee_task, dependent_task)
+
+        self._dependency_graph.add_dependency(dependee_task, dependent_task)
+
+    def remove_dependency(self, dependee_task: UID, dependent_task: UID) -> None:
+        """Remove the specified dependency."""
+        self._dependency_graph.remove_dependency(dependee_task, dependent_task)
 
 
 class SystemView:
