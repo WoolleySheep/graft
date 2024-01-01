@@ -12,7 +12,13 @@ from graft.domain.tasks.uid import UID, UIDsView
 class HasDependeeTasksError(Exception):
     """Raised when a task has dependee-tasks."""
 
-    def __init__(self, task: UID, dependee_tasks: Iterable[UID]) -> None:
+    def __init__(
+        self,
+        task: UID,
+        dependee_tasks: Iterable[UID],
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
         """Initialise HasDependeeTasksError."""
         self.task = task
         self.dependee_tasks = set(dependee_tasks)
@@ -20,14 +26,22 @@ class HasDependeeTasksError(Exception):
             str(dependee_task) for dependee_task in dependee_tasks
         )
         super().__init__(
-            f"Task [{task}] has dependee-tasks [{", ".join(formatted_dependee_tasks)}]"
+            f"Task [{task}] has dependee-tasks [{", ".join(formatted_dependee_tasks)}]",
+            *args,
+            **kwargs,
         )
 
 
 class HasDependentTasksError(Exception):
     """Raised when a task has dependent-tasks."""
 
-    def __init__(self, task: UID, dependent_tasks: Iterable[UID]) -> None:
+    def __init__(
+        self,
+        task: UID,
+        dependent_tasks: Iterable[UID],
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
         """Initialise HasDependentTasksError."""
         self.task = task
         self.dependent_tasks = set(dependent_tasks)
@@ -35,7 +49,69 @@ class HasDependentTasksError(Exception):
             str(dependent_task) for dependent_task in dependent_tasks
         )
         super().__init__(
-            f"Task [{task}] has sub-tasks [{", ".join(formatted_dependent_tasks)}]"
+            f"Task [{task}] has sub-tasks [{", ".join(formatted_dependent_tasks)}]",
+            *args,
+            **kwargs,
+        )
+
+
+class DependencyAlreadyExistsError(Exception):
+    """Raised when a dependency between specified tasks already exists."""
+
+    def __init__(
+        self,
+        dependee_task: UID,
+        dependent_task: UID,
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
+        """Initialise DependencyAlreadyExistsError."""
+        self.dependee_task = dependee_task
+        self.dependent_task = dependent_task
+        super().__init__(
+            f"Dependency between dependee-task [{dependee_task}] and dependent-task [{dependent_task}] already exists",
+            *args,
+            **kwargs,
+        )
+
+
+class DependencyDoesNotExistError(Exception):
+    """Raised when a dependency between specified tasks does not exist."""
+
+    def __init__(
+        self,
+        dependee_task: UID,
+        dependent_task: UID,
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
+        """Initialise DependencyDoesNotExistError."""
+        self.dependee_task = dependee_task
+        self.dependent_task = dependent_task
+        super().__init__(
+            f"Dependency between dependee-task [{dependee_task}] and dependent-task [{dependent_task}] does not exist",
+            *args,
+            **kwargs,
+        )
+
+
+class InverseDependencyAlreadyExistsError(Exception):
+    """Raised when an inverse dependency between specified tasks already exists."""
+
+    def __init__(
+        self,
+        dependee_task: UID,
+        dependent_task: UID,
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
+        """Initialise InverseDependencyAlreadyExistsError."""
+        self.dependee_task = dependee_task
+        self.dependent_task = dependent_task
+        super().__init__(
+            f"Inverse dependency between dependee-task [{dependee_task}] and dependent-task [{dependent_task}] already exists",
+            *args,
+            **kwargs,
         )
 
 
@@ -54,7 +130,7 @@ class DependencyLoopError(Exception):
     ) -> None:
         """Initialize LoopError."""
         self.task = task
-        super().__init__(f"loop [{task}]", *args, **kwargs)
+        super().__init__(f"Dependency loop [{task}]", *args, **kwargs)
 
 
 class NoConnectingDependencySubgraphError(Exception):
@@ -75,6 +151,27 @@ class NoConnectingDependencySubgraphError(Exception):
         formatted_targets = ", ".join(str(target) for target in targets)
         super().__init__(
             f"no connecting subgraph from tasks [{formatted_sources}] to tasks [{formatted_targets}] exists",
+            *args,
+            **kwargs,
+        )
+
+
+class DependencyIntroducesCycleError(Exception):
+    """Adding the hierarchy introduces a cycle to the graph."""
+
+    def __init__(
+        self,
+        dependee_task: UID,
+        dependent_task: UID,
+        connecting_subgraph: "DependencyGraph",
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
+        """Initialize DependencyIntroducesCycleError."""
+        self.dependee_task = dependee_task
+        self.dependent_task = dependent_task
+        super().__init__(
+            f"Dependency from [{dependee_task}] to [{dependent_task}] introduces cycle",
             *args,
             **kwargs,
         )
@@ -169,6 +266,29 @@ class DependencyGraph:
             raise HasDependeeTasksError(task=task, dependee_tasks=e.predecessors) from e
         except graphs.HasSuccessorsError as e:
             raise HasDependentTasksError(task=task, dependent_tasks=e.successors) from e
+
+    def add_dependency(self, dependee_task: UID, dependent_task: UID) -> None:
+        """Add a dependency between two tasks."""
+        try:
+            self._dag.add_edge(source=dependee_task, target=dependent_task)
+        except graphs.LoopError as e:
+            raise DependencyLoopError(e.node) from e
+        except graphs.NodeDoesNotExistError as e:
+            raise TaskDoesNotExistError(e.node) from e
+        except graphs.EdgeAlreadyExistsError as e:
+            raise DependencyAlreadyExistsError(dependee_task, dependent_task) from e
+        except graphs.InverseEdgeAlreadyExistsError as e:
+            raise InverseDependencyAlreadyExistsError(
+                dependee_task, dependent_task
+            ) from e
+
+        except graphs.IntroducesCycleError as e:
+            connecting_subgraph = DependencyGraph(e.connecting_subgraph)
+            raise DependencyIntroducesCycleError(
+                dependee_task=dependee_task,
+                dependent_task=dependent_task,
+                connecting_subgraph=connecting_subgraph,
+            ) from e
 
     def tasks(self) -> UIDsView:
         """Return a view of the tasks."""

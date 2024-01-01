@@ -16,31 +16,47 @@ from graft.domain.tasks.uid import (
 class HasSuperTasksError(Exception):
     """Raised when a task has super-tasks."""
 
-    def __init__(self, task: UID, supertasks: Iterable[UID]) -> None:
+    def __init__(
+        self,
+        task: UID,
+        supertasks: Iterable[UID],
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
         """Initialise HasSuperTasksError."""
         self.task = task
         self.supertasks = set(supertasks)
         formatted_supertasks = (str(supertask) for supertask in supertasks)
         super().__init__(
-            f"Task [{task}] has super-tasks [{", ".join(formatted_supertasks)}]"
+            f"Task [{task}] has super-tasks [{", ".join(formatted_supertasks)}]",
+            *args,
+            **kwargs,
         )
 
 
 class HasSubTasksError(Exception):
     """Raised when a task has sub-tasks."""
 
-    def __init__(self, task: UID, subtasks: Iterable[UID]) -> None:
+    def __init__(
+        self,
+        task: UID,
+        subtasks: Iterable[UID],
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
         """Initialise HasSubTasksError."""
         self.task = task
         self.subtasks = set(subtasks)
         formatted_subtasks = (str(task) for task in subtasks)
         super().__init__(
-            f"Task [{task}] has sub-tasks [{", ".join(formatted_subtasks)}]"
+            f"Task [{task}] has sub-tasks [{", ".join(formatted_subtasks)}]",
+            *args,
+            **kwargs,
         )
 
 
 class HierarchyAlreadyExistsError(Exception):
-    """Raised when a hierarchy between tasks already exists."""
+    """Raised when a hierarchy between specified tasks already exists."""
 
     def __init__(
         self,
@@ -62,17 +78,25 @@ class HierarchyAlreadyExistsError(Exception):
 class HierarchyDoesNotExistError(Exception):
     """Raised when a hierarchy between tasks does not exists."""
 
-    def __init__(self, supertask: UID, subtask: UID) -> None:
+    def __init__(
+        self,
+        supertask: UID,
+        subtask: UID,
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
         """Initialise HierarchyDoesNotExistError."""
         self.supertask = supertask
         self.subtask = subtask
         super().__init__(
             f"Hierarchy between supertask [{supertask}] and subtask [{subtask}] does not exist",
+            *args,
+            **kwargs,
         )
 
 
 class InverseHierarchyAlreadyExistsError(Exception):
-    """Inverse hierarchy already exists."""
+    """Raised when an inverse hierarchy between specified tasks already exists."""
 
     def __init__(
         self,
@@ -106,7 +130,7 @@ class HierarchyLoopError(Exception):
     ) -> None:
         """Initialize LoopError."""
         self.task = task
-        super().__init__(f"loop [{task}]", *args, **kwargs)
+        super().__init__(f"Hierarchy loop [{task}]", *args, **kwargs)
 
 
 class NoConnectingHierarchySubgraphError(Exception):

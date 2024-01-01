@@ -62,3 +62,11 @@ class StandardLogicLayer(architecture.LogicLayer):
         system = self._data_layer.load_system()
         system.remove_hierarchy(supertask=supertask, subtask=subtask)
         self._data_layer.save_system(system=system)
+
+    @override
+    def create_dependency(self, dependee_task: UID, dependent_task: UID) -> None:
+        system = self._data_layer.load_system()
+        system.add_dependency(
+            dependee_task=dependee_task, dependent_task=dependent_task
+        )
+        self._data_layer.save_system(system=system)

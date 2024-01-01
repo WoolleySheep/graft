@@ -21,17 +21,21 @@ TODO
 
 ### Format
 ```
-ruff format graft
+ruff format graft tests
+```
+
+### Type-check
+```
+pyright graft tests
+pydocstringformatter graft tests
 ```
 
 ### Lint
 ```
-pyright graft
-ruff --fix graft
-pylint graft
-vulture graft
-autoflake -r graft
-pydocstringformatter graft
+ruff --fix graft tests
+pylint graft tests
+vulture graft tests
+autoflake -r graft tests
 ```
 
 ### Run tests

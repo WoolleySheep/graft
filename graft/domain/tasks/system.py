@@ -3,7 +3,7 @@
 import collections
 import itertools
 from collections.abc import Generator, Iterator
-from typing import Self
+from typing import Any, Self
 
 from graft.domain.tasks.attributes_register import (
     AttributesRegister,
@@ -34,44 +34,80 @@ from graft.domain.tasks.uid import UID
 class StreamPathFromSuperTaskToSubTaskExistsError(Exception):
     """Raised when a stream path from a super-task to a sub-task exists."""
 
-    def __init__(self, supertask: UID, subtask: UID) -> None:
+    def __init__(
+        self,
+        supertask: UID,
+        subtask: UID,
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
         """Initialise StreamPathFromSuperTaskToSubTask."""
         self.supertask = supertask
         self.subtask = subtask
-        super().__init__(f"Stream path from [{supertask}] to [{subtask}] exists.")
+        super().__init__(
+            f"Stream path from [{supertask}] to [{subtask}] exists.",
+            *args,
+            **kwargs,
+        )
 
 
 class StreamPathFromSubTaskToSuperTaskExistsError(Exception):
     """Raised when a stream path from a sub-task to a super-task exists."""
 
-    def __init__(self, supertask: UID, subtask: UID) -> None:
+    def __init__(
+        self,
+        supertask: UID,
+        subtask: UID,
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
         """Initialise StreamPathFromSubTaskToSuperTaskExistsError."""
         self.supertask = supertask
         self.subtask = subtask
-        super().__init__(f"Stream path from [{subtask}] to [{supertask}] exists.")
+        super().__init__(
+            f"Stream path from [{subtask}] to [{supertask}] exists.",
+            *args,
+            **kwargs,
+        )
 
 
 class StreamPathFromSuperTaskToInferiorTaskOfSubTaskExistsError(Exception):
     """Raised when a stream path from a super-task to an inferior task of a sub-task exists."""
 
-    def __init__(self, supertask: UID, subtask: UID) -> None:
+    def __init__(
+        self,
+        supertask: UID,
+        subtask: UID,
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
         """Initialise StreamPathFromSuperTaskToInferiorTaskOfSubTaskExistsError."""
         self.supertask = supertask
         self.subtask = subtask
         super().__init__(
-            f"Stream path from [{supertask}] to inferior task of [{subtask}] exists."
+            f"Stream path from [{supertask}] to inferior task of [{subtask}] exists.",
+            *args,
+            **kwargs,
         )
 
 
 class StreamPathFromInferiorTaskOfSubTaskToSuperTaskExistsError(Exception):
     """Raised when a stream path from an inferior task of a sub-task to a super-task exists."""
 
-    def __init__(self, supertask: UID, subtask: UID) -> None:
+    def __init__(
+        self,
+        supertask: UID,
+        subtask: UID,
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
         """Initialise StreamPathFromInferiorTaskOfSubTaskToSuperTaskExistsError."""
         self.supertask = supertask
         self.subtask = subtask
         super().__init__(
-            f"Stream path from inferior task of [{subtask}] to [{supertask}] exists."
+            f"Stream path from inferior task of [{subtask}] to [{supertask}] exists.",
+            *args,
+            **kwargs,
         )
 
 
@@ -82,12 +118,20 @@ class HierarchyIntroducesDependencyClashError(Exception):
     Improve it when you can.
     """
 
-    def __init__(self, supertask: UID, subtask: UID) -> None:
+    def __init__(
+        self,
+        supertask: UID,
+        subtask: UID,
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
         """Initialise HierarchyIntroducessubtaskClashError."""
         self.supertask = supertask
         self.subtask = subtask
         super().__init__(
-            f"Hierarchy introduces dependency clash between [{supertask}] and [{subtask}]."
+            f"Hierarchy introduces dependency clash between [{supertask}] and [{subtask}].",
+            *args,
+            **kwargs,
         )
 
 
@@ -285,13 +329,13 @@ class System:
         """
         return target_task in self._downstream_tasks(source_task)
 
-    def add_task(self, /, task: UID) -> None:
+    def add_task(self, task: UID, /) -> None:
         """Add a task."""
         self._attributes_register.add(task)
         self._hierarchy_graph.add_task(task)
         self._dependency_graph.add_task(task)
 
-    def remove_task(self, /, task: UID) -> None:
+    def remove_task(self, task: UID, /) -> None:
         """Remove a task."""
         if task not in self:
             raise TaskDoesNotExistError(task=task)
@@ -312,7 +356,7 @@ class System:
         self._hierarchy_graph.remove_task(task)
         self._dependency_graph.remove_task(task)
 
-    def add_hierarchy(self, /, supertask: UID, subtask: UID) -> None:
+    def add_hierarchy(self, supertask: UID, subtask: UID) -> None:
         """Create a new hierarchy between the specified tasks."""
 
         def has_stream_path_from_supertask_to_inferior_task_of_subtask(
@@ -477,9 +521,13 @@ class System:
 
         self._hierarchy_graph.add_hierarchy(supertask, subtask)
 
-    def remove_hierarchy(self, /, supertask: UID, subtask: UID) -> None:
+    def remove_hierarchy(self, supertask: UID, subtask: UID) -> None:
         """Remove the specified hierarchy."""
         self._hierarchy_graph.remove_hierarchy(supertask, subtask)
+
+    def add_dependency(self, dependee_task: UID, dependent_task: UID) -> None:
+        """Add a dependency between the specified tasks."""
+        raise NotImplementedError
 
 
 class SystemView:
@@ -497,15 +545,6 @@ class SystemView:
         """Check if system views are equal."""
         if not isinstance(other, SystemView):
             return False
-
-        print(
-            "attributes",
-            self.attributes_register_view() == other.attributes_register_view(),
-        )
-        print("hierarchy", self.hierarchy_graph_view() == other.hierarchy_graph_view())
-        print(
-            "dependency", self.dependency_graph_view() == other.dependency_graph_view()
-        )
 
         return (
             self.attributes_register_view() == other.attributes_register_view()

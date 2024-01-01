@@ -45,3 +45,9 @@ class LogicLayer(abc.ABC):
     @abc.abstractmethod
     def delete_hierarchy(self, supertask: tasks.UID, subtask: tasks.UID) -> None:
         """Delete the specified hierarchy."""
+
+    @abc.abstractmethod
+    def create_dependency(
+        self, dependee_task: tasks.UID, dependent_task: tasks.UID
+    ) -> None:
+        """Create a new dependency between the specified tasks."""
