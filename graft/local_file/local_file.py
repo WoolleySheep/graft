@@ -1,5 +1,6 @@
 """Local file data-layer implementation and associated exceptions."""
 
+import enum
 import json
 import pathlib
 from typing import Final, TypedDict, override
@@ -27,6 +28,10 @@ _TASK_ATTRIBUTES_REGISTER_FILEPATH: Final = (
     _DATA_DIRECTORY_PATH / _TASK_ATTRIBUTES_REGISTER_FILENAME
 )
 _TASK_NEXT_UID_FILEPATH: Final = _DATA_DIRECTORY_PATH / _TASK_NEXT_UID_FILENAME
+
+
+class PartiallyInitialisedError(Exception):
+    """Exception raised when a data-layer is partially initialised."""
 
 
 class TaskAttributesJSONDict(TypedDict):
@@ -162,6 +167,14 @@ def _decode_task_dependency_graph(d: dict[str, list[str]]) -> tasks.DependencyGr
     )
 
 
+class InitialisationStatus(enum.Enum):
+    """Initialisation status of the local filesystem."""
+
+    NOT_INITIALISED = "not initialised"
+    PARTIALLY_INITIALISED = "partially initialised"
+    FULLY_INITIALISED = "fully initialised"
+
+
 class LocalFileDataLayer(architecture.DataLayer):
     """Local File data layer.
 
@@ -170,22 +183,43 @@ class LocalFileDataLayer(architecture.DataLayer):
     """
 
     def __init__(self) -> None:
-        """Initialise LocalFileDataLayer."""
+        """Initialise LocalFileDataLayer.
 
-    @override
-    def initialise(self) -> None:
-        """Initialise the local file data-layer.
-
-        Creates the necessary directory and files for storing graft data.
+        If the filesystem has not been initialised, will do so automatically.
         """
-        _DATA_DIRECTORY_PATH.mkdir(exist_ok=True)
-        with _TASK_HIERARCHY_GRAPH_FILEPATH.open("w") as fp:
-            json.dump({}, fp)
-        with _TASK_DEPENDENCY_GRAPH_FILEPATH.open("w") as fp:
-            json.dump({}, fp)
-        with _TASK_ATTRIBUTES_REGISTER_FILEPATH.open("w") as fp:
-            json.dump({}, fp)
-        _TASK_NEXT_UID_FILEPATH.write_text("0")
+
+        def get_initialisation_status() -> InitialisationStatus:
+            """Get the initialisation status of the local filesystem."""
+            if not _DATA_DIRECTORY_PATH.exists():
+                return InitialisationStatus.NOT_INITIALISED
+
+            return (
+                InitialisationStatus.FULLY_INITIALISED
+                if (
+                    _TASK_HIERARCHY_GRAPH_FILEPATH.exists()
+                    and _TASK_DEPENDENCY_GRAPH_FILEPATH.exists()
+                    and _TASK_ATTRIBUTES_REGISTER_FILEPATH.exists()
+                    and _TASK_NEXT_UID_FILEPATH.exists()
+                )
+                else InitialisationStatus.PARTIALLY_INITIALISED
+            )
+
+        def initialise() -> None:
+            """Initialise the local file data-layer."""
+            _DATA_DIRECTORY_PATH.mkdir()
+            with _TASK_HIERARCHY_GRAPH_FILEPATH.open("w") as fp:
+                json.dump({}, fp)
+            with _TASK_DEPENDENCY_GRAPH_FILEPATH.open("w") as fp:
+                json.dump({}, fp)
+            with _TASK_ATTRIBUTES_REGISTER_FILEPATH.open("w") as fp:
+                json.dump({}, fp)
+            _TASK_NEXT_UID_FILEPATH.write_text("0")
+
+        match get_initialisation_status():
+            case InitialisationStatus.NOT_INITIALISED:
+                initialise()
+            case InitialisationStatus.PARTIALLY_INITIALISED:
+                raise PartiallyInitialisedError
 
     @override
     def get_next_task_uid(self) -> tasks.UID:
@@ -208,21 +242,6 @@ class LocalFileDataLayer(architecture.DataLayer):
     def load_system(self) -> domain.System:
         task_system = _load_task_system()
         return domain.System(task_system=task_system)
-
-    @override
-    def load_task_attributes_register(self) -> tasks.AttributesRegister:
-        """Return the task attributes register."""
-        return _load_task_attributes_register()
-
-    @override
-    def load_task_hierarchy_graph(self) -> tasks.HierarchyGraph:
-        """Return the task hierarchy graph."""
-        return _load_task_hierarchy_graph()
-    
-    @override
-    def load_task_dependency_graph(self) -> tasks.DependencyGraph:
-        """Return the task dependency graph."""
-        return _load_task_dependency_graph()
 
 
 def _save_task_attributes_register(register: tasks.AttributesRegisterView) -> None:

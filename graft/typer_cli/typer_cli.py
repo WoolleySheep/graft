@@ -13,17 +13,3 @@ def run_app(logic_layer: architecture.LogicLayer) -> None:
     """Run Typer CLI app."""
     global_logic_layer.set_logic_layer(layer=logic_layer)
     _app()
-
-
-@_app.command()
-def init() -> None:
-    """Initialise graft."""
-    typer.echo("Initialising graft")
-    try:
-        logic_layer = global_logic_layer.get_logic_layer()
-        logic_layer.initialise()
-    except Exception as e:
-        typer.echo(f"Failed to initialise graft: exception [{e}] raised")
-        raise
-
-    typer.echo("Initialised graft")

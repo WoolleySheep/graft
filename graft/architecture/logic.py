@@ -14,15 +14,6 @@ class LogicLayer(abc.ABC):
         self._data_layer = data_layer
 
     @abc.abstractmethod
-    def initialise(self) -> None:
-        """Initialise both the logic-layer and data-layer.
-
-        This differs from instance initialisation - it refers to getting the
-        logic layer ready when graft is used for the first time. Like `docker
-        init` or `git init`.
-        """
-
-    @abc.abstractmethod
     def create_task(self) -> tasks.UID:
         """Create a new task and return its UID."""
 

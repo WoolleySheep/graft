@@ -8,6 +8,7 @@ from graft.typer_cli import global_logic_layer
 
 app = typer.Typer()
 
+
 @app.command()
 def ls() -> None:
     """List all dependencies."""
@@ -21,6 +22,7 @@ def ls() -> None:
 
     for dependee_task, dependent_task in sorted(graph.dependencies()):
         typer.echo(f"[{dependee_task}] -> [{dependent_task}]")
+
 
 @app.command()
 def create(dependee_task: int, dependent_task: int) -> None:
