@@ -163,7 +163,6 @@ class DependencyIntroducesCycleError(Exception):
         self,
         dependee_task: UID,
         dependent_task: UID,
-        connecting_subgraph: "DependencyGraph",
         *args: tuple[Any, ...],
         **kwargs: dict[str, Any],
     ) -> None:

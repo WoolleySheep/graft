@@ -15,6 +15,11 @@ class StandardLogicLayer(architecture.LogicLayer):
         self._system = self._data_layer.load_system()
 
     @override
+    def erase(self) -> None:
+        self._data_layer.erase()
+        self._system = self._data_layer.load_system()
+
+    @override
     def create_task(self) -> tasks.UID:
         """Create a new task."""
         uid = self._data_layer.get_next_task_uid()

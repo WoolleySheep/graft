@@ -22,12 +22,12 @@ TODO
 ### Format
 ```
 ruff format graft tests
+pydocstringformatter graft tests
 ```
 
 ### Type-check
 ```
 pyright graft tests
-pydocstringformatter graft tests
 ```
 
 ### Lint

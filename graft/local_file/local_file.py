@@ -3,11 +3,11 @@
 import enum
 import json
 import pathlib
+import shutil
 from typing import Final, TypedDict, override
 
 from graft import architecture, domain, graphs
 from graft.domain import tasks
-from graft.domain.tasks.hierarchy_graph import HierarchyGraph
 
 _DATA_DIRECTORY_NAME: Final = "data"
 
@@ -178,8 +178,9 @@ class InitialisationStatus(enum.Enum):
 class LocalFileDataLayer(architecture.DataLayer):
     """Local File data layer.
 
-    Implementation of the data-layer interface that stores and retrieves data
-    from files on the local filesystem.
+        Implementation of the data-layer interface that stores and retrieves data
+        from files on the local filesystem.
+    import shutil
     """
 
     def __init__(self) -> None:
@@ -204,22 +205,17 @@ class LocalFileDataLayer(architecture.DataLayer):
                 else InitialisationStatus.PARTIALLY_INITIALISED
             )
 
-        def initialise() -> None:
-            """Initialise the local file data-layer."""
-            _DATA_DIRECTORY_PATH.mkdir()
-            with _TASK_HIERARCHY_GRAPH_FILEPATH.open("w") as fp:
-                json.dump({}, fp)
-            with _TASK_DEPENDENCY_GRAPH_FILEPATH.open("w") as fp:
-                json.dump({}, fp)
-            with _TASK_ATTRIBUTES_REGISTER_FILEPATH.open("w") as fp:
-                json.dump({}, fp)
-            _TASK_NEXT_UID_FILEPATH.write_text("0")
-
         match get_initialisation_status():
             case InitialisationStatus.NOT_INITIALISED:
-                initialise()
+                self._initialise()
             case InitialisationStatus.PARTIALLY_INITIALISED:
                 raise PartiallyInitialisedError
+
+    @override
+    def erase(self) -> None:
+        """Erase all data."""
+        shutil.rmtree(_DATA_DIRECTORY_PATH)
+        self._initialise()
 
     @override
     def get_next_task_uid(self) -> tasks.UID:
@@ -242,6 +238,17 @@ class LocalFileDataLayer(architecture.DataLayer):
     def load_system(self) -> domain.System:
         task_system = _load_task_system()
         return domain.System(task_system=task_system)
+
+    def _initialise(self) -> None:
+        """Initialise the local file data-layer."""
+        _DATA_DIRECTORY_PATH.mkdir()
+        with _TASK_HIERARCHY_GRAPH_FILEPATH.open("w") as fp:
+            json.dump({}, fp)
+        with _TASK_DEPENDENCY_GRAPH_FILEPATH.open("w") as fp:
+            json.dump({}, fp)
+        with _TASK_ATTRIBUTES_REGISTER_FILEPATH.open("w") as fp:
+            json.dump({}, fp)
+        _TASK_NEXT_UID_FILEPATH.write_text("0")
 
 
 def _save_task_attributes_register(register: tasks.AttributesRegisterView) -> None:

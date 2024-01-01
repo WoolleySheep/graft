@@ -3,12 +3,12 @@ from unittest import mock
 
 import pytest
 
-from graft import domain, graphs
+from graft import domain
 from graft.domain import tasks
 from graft.standard import standard
 
 
-@pytest.fixture
+@pytest.fixture()
 def empty_system() -> domain.System:
     """Create an empty system."""
     return domain.System(
@@ -19,17 +19,6 @@ def empty_system() -> domain.System:
         )
     )
 
-
-@mock.patch("graft.architecture.data.DataLayer", autospec=True)
-def test_initialise(data_layer_mock: mock.MagicMock) -> None:
-    """Test the initialise method works as expected."""
-    data_layer_mock.initialise.return_value = None
-
-    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
-
-    logic_layer.initialise()
-
-    data_layer_mock.initialise.assert_called_once()
 
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
@@ -52,9 +41,11 @@ def test_create_task(
     data_layer_mock.load_system.assert_called_once()
     data_layer_mock.save_system.assert_called_once_with(system_with_one_task)
 
+
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_delete_task_success(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System) -> None:
+    data_layer_mock: mock.MagicMock, empty_system: domain.System
+) -> None:
     """Test the delete_task method works as expected."""
     task = tasks.UID(0)
 
@@ -70,9 +61,11 @@ def test_delete_task_success(
     data_layer_mock.load_system.assert_called_once()
     data_layer_mock.save_system.assert_called_once_with(empty_system)
 
+
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_delete_task_failure_has_supertask(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System) -> None:
+    data_layer_mock: mock.MagicMock, empty_system: domain.System
+) -> None:
     """Test the delete_task method fails when task has a super-task."""
     supertask = tasks.UID(0)
     subtask = tasks.UID(1)
@@ -94,9 +87,11 @@ def test_delete_task_failure_has_supertask(
     data_layer_mock.load_system.assert_called_once()
     assert data_layer_mock.save_system.called is False
 
+
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_delete_task_failure_has_subtask(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System) -> None:
+    data_layer_mock: mock.MagicMock, empty_system: domain.System
+) -> None:
     """Test the delete_task method fails when task has a sub-task."""
     supertask = tasks.UID(0)
     subtask = tasks.UID(1)
@@ -118,9 +113,11 @@ def test_delete_task_failure_has_subtask(
     data_layer_mock.load_system.assert_called_once()
     assert data_layer_mock.save_system.called is False
 
+
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_delete_task_failure_has_dependee_task(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System) -> None:
+    data_layer_mock: mock.MagicMock, empty_system: domain.System
+) -> None:
     """Test the delete_task method fails when task has a dependee-task."""
     dependee_task = tasks.UID(0)
     dependent_task = tasks.UID(1)
@@ -128,7 +125,9 @@ def test_delete_task_failure_has_dependee_task(
     system_with_dependency = empty_system
     system_with_dependency.add_task(dependee_task)
     system_with_dependency.add_task(dependent_task)
-    system_with_dependency.add_dependency(dependee_task=dependee_task, dependent_task=dependent_task)
+    system_with_dependency.add_dependency(
+        dependee_task=dependee_task, dependent_task=dependent_task
+    )
 
     data_layer_mock.load_system.return_value = system_with_dependency
 

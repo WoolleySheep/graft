@@ -1,7 +1,7 @@
 """AttributesRegister and associated classes/exceptions."""
 
 import copy
-from collections.abc import Iterator, Mapping, MutableMapping
+from collections.abc import Iterator, Mapping
 
 from graft.domain.tasks.attributes import Attributes, AttributesView
 from graft.domain.tasks.description import Description

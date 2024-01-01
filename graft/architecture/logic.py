@@ -14,6 +14,10 @@ class LogicLayer(abc.ABC):
         self._data_layer = data_layer
 
     @abc.abstractmethod
+    def erase(self) -> None:
+        """Erase all data."""
+
+    @abc.abstractmethod
     def create_task(self) -> tasks.UID:
         """Create a new task and return its UID."""
 

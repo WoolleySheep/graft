@@ -10,6 +10,10 @@ class DataLayer(abc.ABC):
     """Data-layer interface."""
 
     @abc.abstractmethod
+    def erase(self) -> None:
+        """Erase all data."""
+
+    @abc.abstractmethod
     def get_next_task_uid(self) -> tasks.UID:
         """Get the next task UID."""
 
