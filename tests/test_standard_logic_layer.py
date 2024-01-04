@@ -20,7 +20,6 @@ def empty_system() -> domain.System:
     )
 
 
-
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_task(
     data_layer_mock: mock.MagicMock, empty_system: domain.System

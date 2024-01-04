@@ -10,6 +10,12 @@ Graft seeks to solve the two problems I run into when deciding what to work on:
 TODO
 
 ## How to run app
+### Run as CLI
+Activate CLI by uncommenting `graft.run_cli()`
+```python main.py --help```
+
+### Run as GUI
+activate GUI by uncommenting `graft.run_gui()`
 ```python main.py```
 
 ## For developers
