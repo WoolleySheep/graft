@@ -34,6 +34,16 @@ class LogicLayer(abc.ABC):
         """Delete the specified task."""
 
     @abc.abstractmethod
+    def update_task_name(self, task: tasks.UID, name: tasks.Name | None = None) -> None:
+        """Update the specified task's name."""
+
+    @abc.abstractmethod
+    def update_task_description(
+        self, task: tasks.UID, description: tasks.Description | None = None
+    ) -> None:
+        """Update the specified task's description."""
+
+    @abc.abstractmethod
     def get_task_attributes_register_view(self) -> tasks.AttributesRegisterView:
         """Return the task attributes register."""
 

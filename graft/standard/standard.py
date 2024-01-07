@@ -4,6 +4,7 @@ from typing import override
 
 from graft import architecture
 from graft.domain import tasks
+from graft.domain.tasks.description import Description
 from graft.domain.tasks.uid import UID
 
 
@@ -43,6 +44,19 @@ class StandardLogicLayer(architecture.LogicLayer):
     def delete_task(self, task: tasks.UID) -> None:
         """Delete a task."""
         self._system.remove_task(task)
+        self._data_layer.save_system(system=self._system)
+
+    @override
+    def update_task_name(self, task: tasks.UID, name: tasks.Name | None = None) -> None:
+        """Update the specified task's name."""
+        self._system.set_task_name(task, name)
+        self._data_layer.save_system(system=self._system)
+
+    @override
+    def update_task_description(
+        self, task: UID, description: Description | None = None
+    ) -> None:
+        self._system.set_task_description(task, description)
         self._data_layer.save_system(system=self._system)
 
     @override

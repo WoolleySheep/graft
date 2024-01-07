@@ -157,18 +157,20 @@ class NoConnectingDependencySubgraphError(Exception):
 
 
 class DependencyIntroducesCycleError(Exception):
-    """Adding the hierarchy introduces a cycle to the graph."""
+    """Adding the dependency introduces a cycle to the graph."""
 
     def __init__(
         self,
         dependee_task: UID,
         dependent_task: UID,
+        connecting_subgraph: "DependencyGraph",
         *args: tuple[Any, ...],
         **kwargs: dict[str, Any],
     ) -> None:
         """Initialize DependencyIntroducesCycleError."""
         self.dependee_task = dependee_task
         self.dependent_task = dependent_task
+        self.connecting_subgraph = connecting_subgraph
         super().__init__(
             f"Dependency from [{dependee_task}] to [{dependent_task}] introduces cycle",
             *args,
