@@ -35,6 +35,16 @@ class System:
         """Remove a task."""
         self._task_system.remove_task(task)
 
+    def set_task_name(self, task: tasks.UID, name: tasks.Name | None = None) -> None:
+        """Set the name of the specified task."""
+        self._task_system.set_name(task, name)
+
+    def set_task_description(
+        self, task: tasks.UID, description: tasks.Description | None = None
+    ) -> None:
+        """Set the description of the specified task."""
+        self._task_system.set_description(task, description)
+
     def add_hierarchy(self, supertask: tasks.UID, subtask: tasks.UID) -> None:
         """Add a hierarchy between the specified tasks."""
         self._task_system.add_hierarchy(supertask, subtask)

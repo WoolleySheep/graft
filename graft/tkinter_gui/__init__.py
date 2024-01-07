@@ -1,1 +1,1 @@
-from graft.tkinter_gui.demo import run_app
+from graft.tkinter_gui.gui import run

@@ -18,8 +18,16 @@ class LogicLayer(abc.ABC):
         """Erase all data."""
 
     @abc.abstractmethod
-    def create_task(self) -> tasks.UID:
+    def create_task(
+        self,
+        name: tasks.Name | None = None,
+        description: tasks.Description | None = None,
+    ) -> tasks.UID:
         """Create a new task and return its UID."""
+
+    @abc.abstractmethod
+    def get_next_task_id(self) -> tasks.UID:
+        """Return the next task ID."""
 
     @abc.abstractmethod
     def delete_task(self, task: tasks.UID) -> None:

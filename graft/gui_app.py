@@ -7,4 +7,4 @@ def run() -> None:
     """Run the application."""
     data_layer = local_file.LocalFileDataLayer()
     logic_layer = standard.StandardLogicLayer(data_layer=data_layer)
-    tkinter_gui.run_app(logic_layer=logic_layer)
+    tkinter_gui.run(logic_layer=logic_layer)

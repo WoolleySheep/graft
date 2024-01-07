@@ -72,15 +72,17 @@ class AttributesRegister(Mapping[UID, AttributesView]):
 
         del self._task_to_attributes_map[task]
 
-    def update_name(self, task: UID, name: Name | None) -> None:
-        """Update name of an existing task."""
+    def set_name(self, task: UID, name: Name | None = None) -> None:
+        """Set name of an existing task."""
         if task not in self:
             raise TaskDoesNotExistError(task=task)
 
         self._task_to_attributes_map[task].name = name
 
-    def update_description(self, task: UID, description: Description | None) -> None:
-        """Update description of an existing task."""
+    def set_description(
+        self, task: UID, description: Description | None = None
+    ) -> None:
+        """Set description of an existing task."""
         if task not in self:
             raise TaskDoesNotExistError(task=task)
 

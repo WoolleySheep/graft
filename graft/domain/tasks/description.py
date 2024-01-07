@@ -8,6 +8,10 @@ class Description:
         """Initialise Description."""
         self._text = text
 
+    def __bool__(self) -> bool:
+        """Return True if description is not empty."""
+        return bool(self._text)
+
     def __eq__(self, other: object) -> bool:
         """Return True if equal."""
         return isinstance(other, Description) and self._text == str(other)

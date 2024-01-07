@@ -4,6 +4,7 @@ from typing import override
 
 from graft import architecture
 from graft.domain import tasks
+from graft.domain.tasks.uid import UID
 
 
 class StandardLogicLayer(architecture.LogicLayer):
@@ -20,13 +21,23 @@ class StandardLogicLayer(architecture.LogicLayer):
         self._system = self._data_layer.load_system()
 
     @override
-    def create_task(self) -> tasks.UID:
+    def create_task(
+        self,
+        name: tasks.Name | None = None,
+        description: tasks.Description | None = None,
+    ) -> tasks.UID:
         """Create a new task."""
         uid = self._data_layer.get_next_task_uid()
         self._system.add_task(uid)
+        self._system.set_task_name(uid, name)
+        self._system.set_task_description(uid, description)
         self._data_layer.save_system(system=self._system)
         self._data_layer.increment_next_task_uid_counter()
         return uid
+
+    @override
+    def get_next_task_id(self) -> UID:
+        return self._data_layer.get_next_task_uid()
 
     @override
     def delete_task(self, task: tasks.UID) -> None:

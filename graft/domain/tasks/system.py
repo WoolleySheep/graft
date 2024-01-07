@@ -19,6 +19,7 @@ from graft.domain.tasks.dependency_graph import (
     HasDependentTasksError,
     InverseDependencyAlreadyExistsError,
 )
+from graft.domain.tasks.description import Description
 from graft.domain.tasks.helpers import TaskDoesNotExistError
 from graft.domain.tasks.hierarchy_graph import (
     HasSubTasksError,
@@ -32,6 +33,7 @@ from graft.domain.tasks.hierarchy_graph import (
     InverseHierarchyAlreadyExistsError,
     SubTaskIsAlreadySubTaskOfSuperiorTaskOfSuperTaskError,
 )
+from graft.domain.tasks.name import Name
 from graft.domain.tasks.uid import UID
 
 
@@ -507,6 +509,16 @@ class System:
         self._attributes_register.remove(task)
         self._hierarchy_graph.remove_task(task)
         self._dependency_graph.remove_task(task)
+
+    def set_name(self, task: UID, name: Name | None = None) -> None:
+        """Set the name of the specified task."""
+        self._attributes_register.set_name(task, name)
+
+    def set_description(
+        self, task: UID, description: Description | None = None
+    ) -> None:
+        """Set the description of the specified task."""
+        self._attributes_register.set_description(task, description)
 
     def add_hierarchy(self, supertask: UID, subtask: UID) -> None:
         """Create a new hierarchy between the specified tasks."""
