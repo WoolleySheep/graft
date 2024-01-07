@@ -19,4 +19,3 @@ class GUI(tk.Tk):
 def run(logic_layer: architecture.LogicLayer) -> None:
     gui = GUI(logic_layer)
     gui.run()
-

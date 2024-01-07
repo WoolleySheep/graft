@@ -17,4 +17,3 @@ class TaskPanel(ttk.Frame):
 
         self.create_task_button.grid(row=0)
         self.task_tree_view.grid(row=1)
-
