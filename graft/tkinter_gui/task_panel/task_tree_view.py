@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 
 from graft import architecture
-from graft.tkinter_gui import custom_events
+from graft.tkinter_gui import system_update_dispatcher
 
 
 class TaskTreeView(ttk.Treeview):
@@ -17,10 +17,11 @@ class TaskTreeView(ttk.Treeview):
         self.heading("description", text="Description")
 
         self.update_tree()
-        self.bind(custom_events.SYSTEM_UPDATE, lambda _: self.update_tree())
+
+        dispatcher = system_update_dispatcher.get_singleton()
+        dispatcher.add(self.update_tree)
 
     def update_tree(self) -> None:
-        print("Updating tree")
         self.delete(*self.get_children())
 
         for uid, attributes in self._logic_layer.get_task_attributes_register_view().items():

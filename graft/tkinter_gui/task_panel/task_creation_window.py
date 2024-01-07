@@ -1,9 +1,9 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import scrolledtext, ttk
 
 from graft import architecture
 from graft.domain import tasks
-from graft.tkinter_gui import custom_events
+from graft.tkinter_gui import system_update_dispatcher
 
 
 class TaskIdLabel(tk.Frame):
@@ -18,35 +18,37 @@ class NameEntry(tk.Frame):
     def __init__(self, master: tk.Misc) -> None:
         super().__init__(master=master)
 
-        self.name_label = ttk.Label(self, text="Name:")
-        self.name_label.grid(column=0)
+        self.label = ttk.Label(self, text="Name:")
+        self.label.grid(row=0, column=0)
 
-        self.name_input = ttk.Entry(self)
-        self.name_input.grid(column=1)
+        self.entry = ttk.Entry(self)
+        self.entry.grid(row=0, column=1)
 
     def get(self) -> tasks.Name | None:
-        return tasks.Name(self.name_input.get()) or None
+        return tasks.Name(self.entry.get()) or None
 
 class DescriptionEntry(tk.Frame):
     def __init__(self, master: tk.Misc) -> None:
         super().__init__(master=master)
 
-        self.description_label = ttk.Label(self, text="Description:")
-        self.description_label.grid(column=0)
+        self.label = ttk.Label(self, text="Description:")
 
-        self.description_input = ttk.Entry(self)
-        self.description_input.grid(column=1)
+        self.text_area = scrolledtext.ScrolledText(self)
+        self.text_area.focus()
+
+        self.label.grid(row=0, column=0)
+        self.text_area.grid(row=0, column=1)
 
     def get(self) -> tasks.Description | None:
-        return tasks.Description(self.description_input.get()) or None
+        return tasks.Description(self.text_area.get("1.0",'end-1c')) or None
 
 
 class TaskCreationWindow(tk.Toplevel):
     def __init__(self, master: tk.Misc, logic_layer: architecture.LogicLayer) -> None:
         def create_task_using_entry_fields_then_destroy() -> None:
             logic_layer.create_task(name=self.name_entry.get(), description=self.description_entry.get())
-            print("Generating event", custom_events.SYSTEM_UPDATE)
-            self.event_generate(custom_events.SYSTEM_UPDATE)
+            dispatcher = system_update_dispatcher.get_singleton()
+            dispatcher.trigger()
             self.destroy()
 
 
@@ -60,10 +62,10 @@ class TaskCreationWindow(tk.Toplevel):
 
         self.confirm_button = ttk.Button(self, text="Confirm", command=create_task_using_entry_fields_then_destroy)
 
-        self.task_id_label.grid(row=0)
-        self.name_entry.grid(row=1)
-        self.description_entry.grid(row=2)
-        self.confirm_button.grid(row=3)
+        self.task_id_label.grid(row=0, column=0)
+        self.name_entry.grid(row=1, column=0)
+        self.description_entry.grid(row=2, column=0)
+        self.confirm_button.grid(row=3, column=0)
 
 
 

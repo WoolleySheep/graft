@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 
 from graft import architecture
-from graft.tkinter_gui.task_table import TaskTable
+from graft.tkinter_gui.task_panel import TaskPanel
 
 
 class Tabs(ttk.Notebook):
@@ -10,5 +10,5 @@ class Tabs(ttk.Notebook):
         super().__init__(master=master)
         self.logic_layer = logic_layer
 
-        self.task_table = TaskTable(self, logic_layer)
-        self.add(self.task_table, text="Task Table")
+        self.task_panel = TaskPanel(self, logic_layer)
+        self.add(self.task_panel, text="Task Table")

@@ -3,7 +3,7 @@ import tkinter as tk
 from tkinter import ttk
 
 from graft import architecture
-from graft.tkinter_gui.task_table.task_creation_window import (
+from graft.tkinter_gui.task_panel.task_creation_window import (
     create_task_creation_window,
 )
 
