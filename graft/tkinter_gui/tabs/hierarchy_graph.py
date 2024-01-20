@@ -1,4 +1,6 @@
+import copy
 import functools
+import itertools
 import tkinter as tk
 from typing import Self
 
@@ -13,26 +15,9 @@ from matplotlib.backends import backend_tkagg
 from graft import architecture, graphs
 from graft.domain import tasks
 from graft.tkinter_gui import event_broker
-
-
-def get_topological_layered_positions(
-    graph: nx.DiGraph,
-) -> dict[tasks.UID, tuple[float, float]]:
-    # return nx.drawing.nx_pydot.graphviz_layout(graph, prog="dot", args="-Grankdir=LR")
-    g = graphs.DirectedAcyclicGraph[tasks.UID]()
-    for n in graph.nodes:
-        g.add_node(n)
-    for u, v in graph.edges:
-        g.add_edge(u, v)
-
-    positions = dict[tasks.UID, tuple[float, float]]()
-    for layer_count, layer in enumerate(g.topological_sort_with_grouping()):
-        nodes_in_layer = list(layer)
-        seperation = 100 / len(nodes_in_layer)
-        for node_count, node in enumerate(nodes_in_layer):
-            positions[node] = (seperation * node_count, -layer_count * 25)
-
-    return positions
+from graft.tkinter_gui.layered_graph_drawing.template import (
+    calculate_vertical_node_positions_brute_force_method,
+)
 
 
 class HierarchyGraph(tk.Frame):
@@ -49,6 +34,16 @@ class HierarchyGraph(tk.Frame):
                     networkx_graph.add_edge(parent, child)
 
                 return networkx_graph
+
+            def covert_hierarchy_to_digraph(
+                hierarchy_graph: tasks.HierarchyGraphView,
+            ) -> graphs.DirectedAcyclicGraph[tasks.UID]:
+                graph = graphs.DirectedAcyclicGraph[tasks.UID]()
+                for task in hierarchy_graph:
+                    graph.add_node(task)
+                for supertask, subtask in hierarchy_graph.hierarchies():
+                    graph.add_edge(supertask, subtask)
+                return graph
 
             def draw_graph(
                 self: Self, graph: nx.DiGraph, pos: dict[tasks.UID, tuple[float, float]]
@@ -116,12 +111,16 @@ class HierarchyGraph(tk.Frame):
 
             hierarchy_graph = self.logic_layer.get_hierarchy_graph_view()
             networkx_graph = convert_hierarchy_to_networkx_graph(hierarchy_graph)
-
-            pos = get_topological_layered_positions(networkx_graph)
+            digraph = covert_hierarchy_to_digraph(hierarchy_graph)
 
             # TODO: Change to Sugiyama hierarchical layout. Networkx can't draw
             # hierarchical graphs without graphvis. Using hacked together
             # topological layering for now
+
+            # TODO: Run the position calculation in a different thread, as it
+            # takes quite a while. Show a blank figure until it's ready
+            pos = calculate_vertical_node_positions_brute_force_method(graph=digraph)
+
             task_path_collection = draw_graph(self=self, graph=networkx_graph, pos=pos)
 
             self.fig.canvas.mpl_connect(
@@ -146,5 +145,4 @@ class HierarchyGraph(tk.Frame):
         update_figure(self)
 
         broker = event_broker.get_singleton()
-        broker.subscribe(
-            event_broker.SystemModified, lambda _: update_figure(self))
+        broker.subscribe(event_broker.SystemModified, lambda _: update_figure(self))

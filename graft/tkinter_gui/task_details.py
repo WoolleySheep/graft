@@ -29,7 +29,7 @@ class TaskDetails(tk.Frame):
             self.task_description.insert(1.0, str(attributes.description) or "")
 
             hierarchy_graph = self.logic_layer.get_hierarchy_graph_view()
-            
+
             subtasks = []
             for subtask in hierarchy_graph.subtasks(self.task):
                 attributes = register[subtask]
@@ -76,7 +76,6 @@ class TaskDetails(tk.Frame):
         self.supertasks_label = ttk.Label(self, text="Supertasks")
         self.supertasks_list = ttk.Label(self, text="")
 
-    
         self.task_id.grid(row=0, column=0)
         self.task_name.grid(row=0, column=1)
         self.save_button.grid(row=1, column=0, rowspan=2, columnspan=2)

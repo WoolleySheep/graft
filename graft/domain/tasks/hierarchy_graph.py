@@ -590,11 +590,11 @@ class HierarchyGraphView:
     def hierarchies(self) -> HierarchiesView:
         """Return hierarchies in view."""
         return self._hierarchy_graph.hierarchies()
-    
+
     def subtasks(self, task: UID) -> UIDsView:
         """Return view of subtasks of task."""
         return self._hierarchy_graph.subtasks(task)
-    
+
     def supertasks(self, task: UID) -> UIDsView:
         """Return view of supertasks of task."""
         return self._hierarchy_graph.supertasks(task)
