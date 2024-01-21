@@ -2,6 +2,10 @@ import itertools
 from collections.abc import Collection, Container, Hashable, Mapping, Sequence
 
 from graft import graphs
+from graft.tkinter_gui.layered_graph_drawing.layer_ordering.utils import (
+    calculate_nintersecting_edges_between_layers,
+    get_edges_between_layers,
+)
 
 
 class HashableCollection[T](Hashable, Collection[T]):
@@ -10,58 +14,6 @@ class HashableCollection[T](Hashable, Collection[T]):
 
 class HashableSequence[T](Hashable, Sequence[T]):
     ...
-
-
-def _get_edges[T](
-    graph: graphs.DirectedAcyclicGraph[T],
-    source_group: Container[T],
-    target_group: Container[T],
-) -> list[tuple[T, T]]:
-    """Get the edges from the source group to the target group."""
-    return [
-        (source, target)
-        for source, target in graph.edges()
-        if source in source_group and target in target_group
-    ]
-
-
-def _do_edges_intersect(
-    edge1_idxs: tuple[int, int],
-    edge2_idxs: tuple[int, int],
-) -> bool:
-    edge1_source_idx = edge1_idxs[0]
-    edge1_target_idx = edge1_idxs[1]
-    edge2_source_idx = edge2_idxs[0]
-    edge2_target_idx = edge2_idxs[1]
-
-    return (
-        edge1_source_idx < edge2_source_idx and edge1_target_idx > edge2_target_idx
-    ) or (edge1_source_idx > edge2_source_idx and edge1_target_idx < edge2_target_idx)
-
-
-def _calculate_nintersecting_edges[T](
-    source_layer: Sequence[T],
-    target_layer: Sequence[T],
-    edges: Collection[tuple[T, T]],
-) -> int:
-    """Calculate the number of edges that intersect between the two groups.
-
-    The order of each node in its group corresponds to its index.
-    """
-    source_uid_idx_map = {uid: idx for idx, uid in enumerate(source_layer)}
-    target_uid_idx_map = {uid: idx for idx, uid in enumerate(target_layer)}
-
-    edges_as_idxs = (
-        (source_uid_idx_map[source], target_uid_idx_map[target])
-        for source, target in edges
-    )
-
-    nintersecting_edges = 0
-    for edge1, edge2 in itertools.combinations(edges_as_idxs, 2):
-        if _do_edges_intersect(edge1, edge2):
-            nintersecting_edges += 1
-
-    return nintersecting_edges
 
 
 class Result[T: Sequence[Sequence]]:
@@ -99,12 +51,15 @@ def _calculate_group_orders_recursive[T](
         ) >= result.min_nintersecting_edges:
             continue
 
-        topologically_sorted_ordered_groups = list(topologically_sorted_ordered_groups)
-        topologically_sorted_ordered_groups.append(ordered_target_group)
+        tmp_topologically_sorted_ordered_groups = list(
+            topologically_sorted_ordered_groups
+        )
+        tmp_topologically_sorted_ordered_groups.append(ordered_target_group)
+
         _calculate_group_orders_recursive(
             result,
             target_nintersecting_edges,
-            topologically_sorted_ordered_groups,
+            tmp_topologically_sorted_ordered_groups,
             ordered_source_to_sorted_ordered_targets_map,
         )
 
@@ -128,14 +83,14 @@ def get_layer_orders_brute_force_method[T: Hashable](
     ]()
 
     for source_layer, target_layer in itertools.pairwise(layers):
-        edges = _get_edges(graph, source_layer, target_layer)
+        edges = get_edges_between_layers(graph, source_layer, target_layer)
         for source_layer_order in itertools.permutations(
             source_layer, len(source_layer)
         ):
             target_layer_orders = (
                 (
                     target_layer_order,
-                    _calculate_nintersecting_edges(
+                    calculate_nintersecting_edges_between_layers(
                         source_layer_order,
                         target_layer_order,
                         edges,

@@ -15,8 +15,8 @@ from matplotlib.backends import backend_tkagg
 from graft import architecture, graphs
 from graft.domain import tasks
 from graft.tkinter_gui import event_broker
-from graft.tkinter_gui.layered_graph_drawing.template import (
-    calculate_vertical_node_positions_brute_force_method,
+from graft.tkinter_gui.layered_graph_drawing import (
+    calculate_vertical_node_positions_sugiyama_method,
 )
 
 
@@ -55,7 +55,7 @@ class HierarchyGraph(tk.Frame):
                         ax=self.ax,
                     )
                 )
-                nx.draw_networkx_edges(networkx_graph, pos=pos, ax=self.ax)
+                nx.draw_networkx_edges(networkx_graph, pos=pos, ax=self.ax, connectionstyle="arc3,rad=0.1")
                 nx.draw_networkx_labels(networkx_graph, pos=pos, ax=self.ax)
 
                 self.canvas.draw()
@@ -119,7 +119,7 @@ class HierarchyGraph(tk.Frame):
 
             # TODO: Run the position calculation in a different thread, as it
             # takes quite a while. Show a blank figure until it's ready
-            pos = calculate_vertical_node_positions_brute_force_method(graph=digraph)
+            pos = calculate_vertical_node_positions_sugiyama_method(graph=digraph)
 
             task_path_collection = draw_graph(self=self, graph=networkx_graph, pos=pos)
 

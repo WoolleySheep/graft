@@ -9,7 +9,13 @@ class DummyNode:
         self.n = n
 
     def __hash__(self) -> int:
-        return hash(self.n)
+        return hash(f"dummy{self.n}")
+
+    def __str__(self) -> str:
+        return f"DummyNode({self.n})"
+
+    def __repr__(self) -> str:
+        return str(self)
 
 
 def _create_dummy_node_factory() -> Callable[[], DummyNode]:
