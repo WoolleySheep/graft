@@ -115,12 +115,6 @@ class HierarchyGraph(tk.Frame):
             networkx_graph = convert_hierarchy_to_networkx_graph(hierarchy_graph)
             digraph = covert_hierarchy_to_digraph(hierarchy_graph)
 
-            # TODO: Change to Sugiyama hierarchical layout. Networkx can't draw
-            # hierarchical graphs without graphvis. Using hacked together
-            # topological layering for now
-
-            # TODO: Run the position calculation in a different thread, as it
-            # takes quite a while. Show a blank figure until it's ready
             pos = calculate_vertical_node_positions_sugiyama_method(graph=digraph)
 
             task_path_collection = draw_graph(self=self, graph=networkx_graph, pos=pos)

@@ -5,7 +5,6 @@ from tkinter import ttk
 from graft import architecture
 from graft.domain import tasks
 from graft.tkinter_gui import event_broker
-from graft.typer_cli import task
 
 
 def _get_task_uids_names(
@@ -43,7 +42,7 @@ def _parse_task_uid_from_menu_option(menu_option: str) -> tasks.UID:
 
 class TaskDeletionWindow(tk.Toplevel):
     def __init__(self, master: tk.Misc, logic_layer: architecture.LogicLayer) -> None:
-        def delete_task_using_entry_fields_then_destroy() -> None:
+        def delete_selected_task_then_destroy_window() -> None:
             uid = _parse_task_uid_from_menu_option(self.selected_task.get())
             logic_layer.delete_task(uid)
             broker = event_broker.get_singleton()
@@ -62,7 +61,7 @@ class TaskDeletionWindow(tk.Toplevel):
         )
 
         self.confirm_button = ttk.Button(
-            self, text="Confirm", command=delete_task_using_entry_fields_then_destroy
+            self, text="Confirm", command=delete_selected_task_then_destroy_window
         )
 
         self.task_selection.grid(row=0)

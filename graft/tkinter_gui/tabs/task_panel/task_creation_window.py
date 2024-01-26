@@ -46,7 +46,7 @@ class DescriptionEntry(tk.Frame):
 
 class TaskCreationWindow(tk.Toplevel):
     def __init__(self, master: tk.Misc, logic_layer: architecture.LogicLayer) -> None:
-        def create_task_using_entry_fields_then_destroy() -> None:
+        def create_task_using_entry_fields_then_destroy_window() -> None:
             logic_layer.create_task(
                 name=self.name_entry.get(), description=self.description_entry.get()
             )
@@ -64,7 +64,9 @@ class TaskCreationWindow(tk.Toplevel):
         self.description_entry = DescriptionEntry(self)
 
         self.confirm_button = ttk.Button(
-            self, text="Confirm", command=create_task_using_entry_fields_then_destroy
+            self,
+            text="Confirm",
+            command=create_task_using_entry_fields_then_destroy_window,
         )
 
         self.task_id_label.grid(row=0, column=0)
