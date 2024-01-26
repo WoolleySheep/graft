@@ -86,10 +86,8 @@ def _transpose[T](
         for layer_idx in range(len(layers)):
             layer = layers[layer_idx]
 
-            nintersecting_edges = (
-                _get_nintersecting_edges_with_adjacent_layers(
-                    layer_idx=layer_idx, layers=layers, graph=graph
-                )
+            nintersecting_edges = _get_nintersecting_edges_with_adjacent_layers(
+                layer_idx=layer_idx, layers=layers, graph=graph
             )
 
             for idx1, idx2 in itertools.pairwise(range(len(layer))):
@@ -104,10 +102,7 @@ def _transpose[T](
                     )
                 )
 
-                if (
-                    nintersecting_edges_when_nodes_transposed
-                    >= nintersecting_edges
-                ):
+                if nintersecting_edges_when_nodes_transposed >= nintersecting_edges:
                     continue
 
                 layer[idx1], layer[idx2] = layer[idx2], layer[idx1]

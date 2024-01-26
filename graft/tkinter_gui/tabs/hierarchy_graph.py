@@ -55,7 +55,9 @@ class HierarchyGraph(tk.Frame):
                         ax=self.ax,
                     )
                 )
-                nx.draw_networkx_edges(networkx_graph, pos=pos, ax=self.ax, connectionstyle="arc3,rad=0.1")
+                nx.draw_networkx_edges(
+                    networkx_graph, pos=pos, ax=self.ax, connectionstyle="arc3,rad=0.1"
+                )
                 nx.draw_networkx_labels(networkx_graph, pos=pos, ax=self.ax)
 
                 self.canvas.draw()
