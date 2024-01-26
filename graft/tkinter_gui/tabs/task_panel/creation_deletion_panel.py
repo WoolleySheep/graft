@@ -18,5 +18,5 @@ class CreationDeletionPanel(ttk.Frame):
             self, logic_layer=self.logic_layer
         )
 
-        self.task_creation_button.grid(column=0)
-        self.task_deletion_button.grid(column=1)
+        self.task_creation_button.grid(row=0, column=0)
+        self.task_deletion_button.grid(row=0, column=1)

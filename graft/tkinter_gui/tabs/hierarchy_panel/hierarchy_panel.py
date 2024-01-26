@@ -18,5 +18,5 @@ class HierarchyPanel(ttk.Frame):
         )
         self.hierarchy_graph = HierarchyGraph(self, logic_layer=self.logic_layer)
 
-        self.creation_deletion_panel.grid(row=0)
-        self.hierarchy_graph.grid(row=1)
+        self.creation_deletion_panel.grid(row=0, column=0)
+        self.hierarchy_graph.grid(row=1, column=0)

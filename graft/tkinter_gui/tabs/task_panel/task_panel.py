@@ -18,5 +18,5 @@ class TaskPanel(ttk.Frame):
         )
         self.task_tree_view = TaskTable(self, logic_layer=self.logic_layer)
 
-        self.creation_deletion_panel.grid(row=0)
-        self.task_tree_view.grid(row=1)
+        self.creation_deletion_panel.grid(row=0, column=0)
+        self.task_tree_view.grid(row=1, column=0)

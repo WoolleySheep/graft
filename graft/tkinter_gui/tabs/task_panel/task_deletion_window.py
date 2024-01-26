@@ -64,8 +64,8 @@ class TaskDeletionWindow(tk.Toplevel):
             self, text="Confirm", command=delete_selected_task_then_destroy_window
         )
 
-        self.task_selection.grid(row=0)
-        self.confirm_button.grid(row=1)
+        self.task_selection.grid(row=0, column=0)
+        self.confirm_button.grid(row=1, column=0)
 
 
 def create_task_deletion_window(

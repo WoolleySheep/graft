@@ -5,7 +5,6 @@ from typing import Self
 
 from graft.architecture.logic import LogicLayer
 from graft.domain import tasks
-from graft.domain.tasks import description
 from graft.tkinter_gui import event_broker
 
 
