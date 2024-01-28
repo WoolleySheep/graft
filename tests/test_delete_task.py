@@ -29,6 +29,25 @@ def test_delete_task_success(
 
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
+def test_delete_task_failure_task_not_exist(
+    data_layer_mock: mock.MagicMock, empty_system: domain.System
+) -> None:
+    """Test the delete_task method fails when a task does not exist."""
+    task = tasks.UID(0)
+
+    data_layer_mock.load_system.return_value = empty_system
+
+    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+
+    with pytest.raises(tasks.TaskDoesNotExistError) as exc_info:
+        logic_layer.delete_task(task)
+    assert exc_info.value.task == task
+
+    data_layer_mock.load_system.assert_called_once()
+    assert data_layer_mock.save_system.called is False
+
+
+@mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_delete_task_failure_has_supertask(
     data_layer_mock: mock.MagicMock, empty_system: domain.System
 ) -> None:

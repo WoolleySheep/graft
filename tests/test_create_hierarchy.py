@@ -34,10 +34,10 @@ def test_create_hierarchy_success(
 
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
-def test_create_hierarchy_failure_supertask_not_present(
+def test_create_hierarchy_failure_supertask_not_exist(
     data_layer_mock: mock.MagicMock, empty_system: domain.System
 ) -> None:
-    """Test the create_hierarchy method fails when the supertask is not present."""
+    """Test the create_hierarchy method fails when the supertask does not exist."""
     supertask = tasks.UID(0)
     subtask = tasks.UID(1)
     absent_supertask = tasks.UID(2)
@@ -59,10 +59,10 @@ def test_create_hierarchy_failure_supertask_not_present(
 
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
-def test_create_hierarchy_failure_subtask_not_present(
+def test_create_hierarchy_failure_subtask_not_exist(
     data_layer_mock: mock.MagicMock, empty_system: domain.System
 ) -> None:
-    """Test the create_hierarchy method fails when the subtask is not present."""
+    """Test the create_hierarchy method fails when the subtask does not exist."""
     supertask = tasks.UID(0)
     subtask = tasks.UID(1)
     absent_subtask = tasks.UID(2)

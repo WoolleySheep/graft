@@ -53,4 +53,3 @@ def calculate_nintersecting_edges_between_layers[T](
             nintersecting_edges += 1
 
     return nintersecting_edges
-
