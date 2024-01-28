@@ -584,7 +584,7 @@ class System:
             raise HierarchyAlreadyExistsError(supertask, subtask)
 
         if (subtask, supertask) in self._hierarchy_graph.hierarchies():
-            raise InverseHierarchyAlreadyExistsError(subtask, supertask)
+            raise InverseHierarchyAlreadyExistsError(supertask, subtask)
 
         if self._hierarchy_graph.has_path(subtask, supertask):
             connecting_subgraph = self._hierarchy_graph.connecting_subgraph(

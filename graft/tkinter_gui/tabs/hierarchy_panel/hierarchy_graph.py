@@ -1,6 +1,4 @@
-import copy
 import functools
-import itertools
 import tkinter as tk
 from typing import Self
 

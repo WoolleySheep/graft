@@ -45,8 +45,8 @@ autoflake -r graft tests
 ```
 
 ### Run tests
-```pytest```
+```pytest tests```
 ### Generate & view code coverage report
-```pytest --cov-report html --cov=graft```
+```pytest tests --cov-report html --cov=graft```
 
 Open htmlcov/index.html in a browser to view the report

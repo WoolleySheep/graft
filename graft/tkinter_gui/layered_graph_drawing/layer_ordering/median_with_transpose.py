@@ -5,7 +5,6 @@ from collections.abc import Callable, Collection, Iterable, MutableSequence, Seq
 
 from graft import graphs
 from graft.tkinter_gui.layered_graph_drawing.layer_ordering.utils import (
-    calculate_nintersecting_edges,
     calculate_nintersecting_edges_between_layers,
     get_edges_between_layers,
 )

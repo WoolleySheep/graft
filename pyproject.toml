@@ -40,6 +40,10 @@ ignore = [
 ignore-init-module-imports = true
 show-fixes = true
 
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+"tests/*" = ["S101"]
+
 [tool.autoflake]
 expand-star-imports = true
 remove-all-unused-imports = true

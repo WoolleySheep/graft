@@ -1,15 +1,11 @@
 import itertools
-from collections.abc import Collection, Container, Hashable, Mapping, Sequence
+from collections.abc import Collection, Hashable, Mapping, Sequence
 
 from graft import graphs
 from graft.tkinter_gui.layered_graph_drawing.layer_ordering.utils import (
     calculate_nintersecting_edges_between_layers,
     get_edges_between_layers,
 )
-
-
-class HashableCollection[T](Hashable, Collection[T]):
-    ...
 
 
 class HashableSequence[T](Hashable, Sequence[T]):

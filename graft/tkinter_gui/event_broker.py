@@ -1,8 +1,7 @@
 import abc
 import contextlib
-import enum
 from collections.abc import Callable
-from typing import Any, Self, Type
+from typing import Self, Type
 
 from graft.domain import tasks
 

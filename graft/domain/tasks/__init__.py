@@ -23,8 +23,13 @@ from graft.domain.tasks.hierarchy_graph import (
     HasSubTasksError,
     HasSuperTasksError,
     HierarchiesView,
+    HierarchyAlreadyExistsError,
     HierarchyGraph,
     HierarchyGraphView,
+    HierarchyIntroducesCycleError,
+    HierarchyLoopError,
+    HierarchyPathAlreadyExistsError,
+    InverseHierarchyAlreadyExistsError,
 )
 from graft.domain.tasks.name import Name
 from graft.domain.tasks.system import System, SystemView

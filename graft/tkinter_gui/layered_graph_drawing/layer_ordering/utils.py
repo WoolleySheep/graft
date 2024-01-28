@@ -1,5 +1,5 @@
 import itertools
-from collections.abc import Collection, Container, Generator, Sequence
+from collections.abc import Container, Generator, Sequence
 from typing import Iterable
 
 from graft import graphs
@@ -54,17 +54,3 @@ def calculate_nintersecting_edges_between_layers[T](
 
     return nintersecting_edges
 
-
-def calculate_nintersecting_edges[T](
-    graph: graphs.DirectedAcyclicGraph[T], layers: Sequence[Sequence[T]]
-) -> int:
-    return sum(
-        calculate_nintersecting_edges_between_layers(
-            source_layer=source_layer,
-            target_layer=target_layer,
-            edges=get_edges_between_layers(
-                graph=graph, source_layer=source_layer, target_layer=target_layer
-            ),
-        )
-        for source_layer, target_layer in itertools.pairwise(layers)
-    )
