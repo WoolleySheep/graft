@@ -1,6 +1,4 @@
-import copy
 import functools
-import itertools
 import tkinter as tk
 from typing import Self
 
@@ -16,34 +14,40 @@ from graft import architecture, graphs
 from graft.domain import tasks
 from graft.tkinter_gui import event_broker, layered_graph_drawing
 
-GRAPH_ORIENTATION = layered_graph_drawing.GraphOrientation.VERTICAL
+GRAPH_ORIENTATION = layered_graph_drawing.GraphOrientation.HORIZONTAL
 
 
-class HierarchyGraph(tk.Frame):
+def _convert_dependency_to_networkx_graph(
+    dependency_graph: tasks.DependencyGraphView,
+) -> nx.DiGraph:
+    networkx_graph = nx.DiGraph()
+
+    for task in dependency_graph:
+        networkx_graph.add_node(task)
+
+    for parent, child in dependency_graph.dependencies():
+        networkx_graph.add_edge(parent, child)
+
+    return networkx_graph
+
+
+def _covert_dependency_to_digraph(
+    dependency_graph: tasks.DependencyGraphView,
+) -> graphs.DirectedAcyclicGraph[tasks.UID]:
+    graph = graphs.DirectedAcyclicGraph[tasks.UID]()
+
+    for task in dependency_graph:
+        graph.add_node(task)
+
+    for supertask, subtask in dependency_graph.dependencies():
+        graph.add_edge(supertask, subtask)
+
+    return graph
+
+
+class DependencyGraph(tk.Frame):
     def __init__(self, master: tk.Misc, logic_layer: architecture.LogicLayer) -> None:
         def update_figure(self: Self) -> None:
-            def convert_hierarchy_to_networkx_graph(
-                hierarchy_graph: tasks.HierarchyGraphView,
-            ) -> nx.DiGraph:
-                networkx_graph = nx.DiGraph()
-                for task in hierarchy_graph:
-                    networkx_graph.add_node(task)
-
-                for parent, child in hierarchy_graph.hierarchies():
-                    networkx_graph.add_edge(parent, child)
-
-                return networkx_graph
-
-            def covert_hierarchy_to_digraph(
-                hierarchy_graph: tasks.HierarchyGraphView,
-            ) -> graphs.DirectedAcyclicGraph[tasks.UID]:
-                graph = graphs.DirectedAcyclicGraph[tasks.UID]()
-                for task in hierarchy_graph:
-                    graph.add_node(task)
-                for supertask, subtask in hierarchy_graph.hierarchies():
-                    graph.add_edge(supertask, subtask)
-                return graph
-
             def draw_graph(
                 self: Self, graph: nx.DiGraph, pos: dict[tasks.UID, tuple[float, float]]
             ) -> mpl_collections.PathCollection:
@@ -110,9 +114,9 @@ class HierarchyGraph(tk.Frame):
             )
             annotation.set_visible(False)
 
-            hierarchy_graph = self.logic_layer.get_hierarchy_graph_view()
-            networkx_graph = convert_hierarchy_to_networkx_graph(hierarchy_graph)
-            digraph = covert_hierarchy_to_digraph(hierarchy_graph)
+            dependency_graph = self.logic_layer.get_dependency_graph_view()
+            networkx_graph = _convert_dependency_to_networkx_graph(dependency_graph)
+            digraph = _covert_dependency_to_digraph(dependency_graph)
 
             pos = layered_graph_drawing.calculate_node_positions_sugiyama_method(
                 graph=digraph, orientation=GRAPH_ORIENTATION

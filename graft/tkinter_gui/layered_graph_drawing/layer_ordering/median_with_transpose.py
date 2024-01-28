@@ -115,10 +115,10 @@ def get_layer_orders_median_with_transpose_method[T](
     graph: graphs.DirectedAcyclicGraph[T],
     layers: Sequence[Collection[T]],
 ) -> list[list[T]]:
+    if len(layers) == 0:
+        return []
+
     best_layer_orders = _get_initial_layer_orders(layers=layers)
-    min_nintersecting_edges = calculate_nintersecting_edges(
-        graph=graph, layers=best_layer_orders
-    )
 
     for _ in range(NITERATIONS):
         layer_orders = [list(best_layer_orders[0])]

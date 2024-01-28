@@ -7,7 +7,7 @@ from graft.domain import tasks
 from graft.tkinter_gui import event_broker
 
 
-def _get_hierarchies_with_names(
+def _get_dependencies_with_names(
     logic_layer: architecture.LogicLayer,
 ) -> Generator[
     tuple[tuple[tasks.UID, tasks.Name | None], tuple[tasks.UID, tasks.Name | None]],
@@ -15,10 +15,13 @@ def _get_hierarchies_with_names(
     None,
 ]:
     attributes_register = logic_layer.get_task_attributes_register_view()
-    for supertask, subtask in logic_layer.get_hierarchy_graph_view().hierarchies():
+    for (
+        dependee_task,
+        dependent_task,
+    ) in logic_layer.get_dependency_graph_view().dependencies():
         yield (
-            (supertask, attributes_register[supertask].name),
-            (subtask, attributes_register[subtask].name),
+            (dependee_task, attributes_register[dependee_task].name),
+            (dependent_task, attributes_register[dependent_task].name),
         )
 
 
@@ -32,15 +35,22 @@ def _format_task_uid_name(task_uid: tasks.UID, task_name: tasks.Name | None) -> 
 def _get_menu_options(
     logic_layer: architecture.LogicLayer,
 ) -> Generator[str, None, None]:
-    hierarchies_with_names = sorted(
-        _get_hierarchies_with_names(logic_layer=logic_layer),
+    dependencies_with_names = sorted(
+        _get_dependencies_with_names(logic_layer=logic_layer),
         key=lambda x: (x[0][0], x[1][0]),
     )
 
-    for (supertask, supertask_name), (subtask, subtask_name) in hierarchies_with_names:
-        formatted_supertask = _format_task_uid_name(supertask, supertask_name)
-        formatted_subtask = _format_task_uid_name(subtask, subtask_name)
-        yield f"{formatted_supertask} -> {formatted_subtask}"
+    for (dependee_task, dependee_task_name), (
+        dependent_task,
+        dependent_task_name,
+    ) in dependencies_with_names:
+        formatted_dependee_task = _format_task_uid_name(
+            dependee_task, dependee_task_name
+        )
+        formatted_dependent_task = _format_task_uid_name(
+            dependent_task, dependent_task_name
+        )
+        yield f"{formatted_dependee_task} -> {formatted_dependent_task}"
 
 
 def _parse_task_uid_from_formatted_task_uid_name(
@@ -56,10 +66,14 @@ def _parse_task_uids_from_menu_option(menu_option: str) -> tuple[tasks.UID, task
     if len(formatted_tasks) != 2:
         raise ValueError
 
-    formatted_supertask, formatted_subtask = formatted_tasks
-    supertask = _parse_task_uid_from_formatted_task_uid_name(formatted_supertask)
-    subtask = _parse_task_uid_from_formatted_task_uid_name(formatted_subtask)
-    return supertask, subtask
+    formatted_dependee_task, formatted_dependent_task = formatted_tasks
+    dependee_task = _parse_task_uid_from_formatted_task_uid_name(
+        formatted_dependee_task
+    )
+    dependent_task = _parse_task_uid_from_formatted_task_uid_name(
+        formatted_dependent_task
+    )
+    return dependee_task, dependent_task
 
 
 class LabelledOptionMenu(tk.Frame):
@@ -79,39 +93,39 @@ class LabelledOptionMenu(tk.Frame):
         self.option_menu.grid(row=0, column=1)
 
 
-class HierarchyDeletionWindow(tk.Toplevel):
+class DependencyDeletionWindow(tk.Toplevel):
     def __init__(self, master: tk.Misc, logic_layer: architecture.LogicLayer) -> None:
-        def delete_hierarchy_between_selected_tasks_then_destroy_window() -> None:
-            supertask, subtask = _parse_task_uids_from_menu_option(
-                self.selected_hierarchy.get()
+        def delete_dependency_between_selected_tasks_then_destroy_window() -> None:
+            dependee_task, dependent_task = _parse_task_uids_from_menu_option(
+                self.selected_dependency.get()
             )
-            logic_layer.delete_hierarchy(supertask, subtask)
+            logic_layer.delete_dependency(dependee_task, dependent_task)
             broker = event_broker.get_singleton()
             broker.publish(event_broker.SystemModified())
             self.destroy()
 
         super().__init__(master=master)
 
-        self.title("Delete hierarchy")
+        self.title("Delete dependency")
 
         menu_options = list(_get_menu_options(logic_layer=logic_layer))
 
-        self.selected_hierarchy = tk.StringVar(self)
-        self.hierarchy_option_menu = ttk.OptionMenu(
-            self, self.selected_hierarchy, *menu_options
+        self.selected_dependency = tk.StringVar(self)
+        self.dependency_option_menu = ttk.OptionMenu(
+            self, self.selected_dependency, *menu_options
         )
 
         self.confirm_button = ttk.Button(
             self,
             text="Confirm",
-            command=delete_hierarchy_between_selected_tasks_then_destroy_window,
+            command=delete_dependency_between_selected_tasks_then_destroy_window,
         )
 
-        self.hierarchy_option_menu.grid(row=0, column=0)
+        self.dependency_option_menu.grid(row=0, column=0)
         self.confirm_button.grid(row=1, column=0)
 
 
-def create_hierarchy_deletion_window(
+def create_dependency_deletion_window(
     master: tk.Misc, logic_layer: architecture.LogicLayer
 ) -> None:
-    HierarchyDeletionWindow(master=master, logic_layer=logic_layer)
+    DependencyDeletionWindow(master=master, logic_layer=logic_layer)

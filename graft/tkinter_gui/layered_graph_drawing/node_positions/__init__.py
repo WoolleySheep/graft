@@ -1,8 +1,5 @@
-from graft.tkinter_gui.layered_graph_drawing.node_positions.even_spacing import (
-    get_node_positions_vertical_even_spacing_method,
-)
-from graft.tkinter_gui.layered_graph_drawing.node_positions.priority import (
-    get_node_positions_vertical_priority_method,
+from graft.tkinter_gui.layered_graph_drawing.node_positions.implementation import (
+    get_node_positions_best_method,
 )
 from graft.tkinter_gui.layered_graph_drawing.node_positions.protocol import (
     GetNodePositionsFn,
