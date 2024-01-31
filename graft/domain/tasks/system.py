@@ -607,12 +607,15 @@ class System:
             )
 
         subtask_supertasks = self._hierarchy_graph.supertasks(subtask)
-        if any(
+        if subtask_supertasks and any(
             supertask_superior_task in subtask_supertasks
             for supertask_superior_task in self._hierarchy_graph.superior_tasks_bfs(
                 supertask
             )
         ):
+            # TODO: Could make more efficient by returning immediately when all
+            # of the supertasks of the subtask have been found - no need to keep
+            # searching once this has been done
             supertask_superior_tasks_subgraph = (
                 self._hierarchy_graph.superior_tasks_subgraph(
                     supertask, stop_condition=lambda task: task in subtask_supertasks

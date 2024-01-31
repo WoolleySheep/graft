@@ -30,6 +30,7 @@ from graft.domain.tasks.hierarchy_graph import (
     HierarchyLoopError,
     HierarchyPathAlreadyExistsError,
     InverseHierarchyAlreadyExistsError,
+    SubTaskIsAlreadySubTaskOfSuperiorTaskOfSuperTaskError,
 )
 from graft.domain.tasks.name import Name
 from graft.domain.tasks.system import System, SystemView
