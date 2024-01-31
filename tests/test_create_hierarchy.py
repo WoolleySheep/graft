@@ -279,7 +279,7 @@ def test_create_hierarchy_failure_path_already_exists__from_supertask_to_subtask
 ) -> None:
     """Test the create_hierarchy method fails when a path already exists from
     the supertask to the subtask and prunes the connecting subgraph of
-    irrelevant nodes."""
+    irrelevant tasks."""
     task0 = tasks.UID(0)
     task1 = tasks.UID(1)
     task2 = tasks.UID(2)
@@ -330,6 +330,45 @@ def test_create_hierarchy_failure_subtask_is_already_subtask_of_superior_task_of
     system.add_task(task2)
     system.add_hierarchy(supertask=task0, subtask=task1)
     system.add_hierarchy(supertask=task0, subtask=task2)
+
+    expected_subgraph = tasks.HierarchyGraph()
+    expected_subgraph.add_task(task0)
+    expected_subgraph.add_task(task1)
+    expected_subgraph.add_hierarchy(task0, task1)
+
+    data_layer_mock.load_system.return_value = system
+
+    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+
+    with pytest.raises(tasks.SubTaskIsAlreadySubTaskOfSuperiorTaskOfSuperTaskError) as exc_info:
+        logic_layer.create_hierarchy(supertask=task1, subtask=task2)
+    assert exc_info.value.supertask == task1
+    assert exc_info.value.subtask == task2
+    assert exc_info.value.subgraph == expected_subgraph
+
+    data_layer_mock.load_system.assert_called_once()
+    assert data_layer_mock.save_system.called is False
+
+@mock.patch("graft.architecture.data.DataLayer", autospec=True)
+def test_create_hierarchy_failure_subtask_is_already_subtask_of_superior_task_of_supertask_and_prunes_subgraph_correctly(
+            data_layer_mock: mock.MagicMock, empty_system: domain.System
+) -> None:
+    """Test the create_hierarchy method fails when the subtask is already a
+    subtask of a superior-task of the supertask and prunes the connecting
+    subgraph of irrelevant tasks."""
+    task0 = tasks.UID(0)
+    task1 = tasks.UID(1)
+    task2 = tasks.UID(2)
+    task3 = tasks.UID(3)
+
+    system = empty_system
+    system.add_task(task0)
+    system.add_task(task1)
+    system.add_task(task2)
+    system.add_task(task3)
+    system.add_hierarchy(supertask=task0, subtask=task1)
+    system.add_hierarchy(supertask=task0, subtask=task2)
+    system.add_hierarchy(supertask=task3, subtask=task1)
 
     expected_subgraph = tasks.HierarchyGraph()
     expected_subgraph.add_task(task0)
