@@ -97,7 +97,7 @@ class ReducedDAG[T: Hashable](directed_acyclic_graph.DirectedAcyclicGraph[T]):
             for source_ancestor in self.ancestors_bfs(source)
         ):
             source_ancestors_subgraph = self.ancestors_subgraph(
-                source, stop_condition=lambda task: task in target_predecessors
+                source, stop_condition=lambda node: node in target_predecessors
             )
             target_predecessors_in_subgraph = (
                 predecessor

@@ -337,28 +337,28 @@ class HierarchyGraph:
     def inferior_tasks_bfs(self, task: UID, /) -> Generator[UID, None, None]:
         """Return breadth-first search of inferior tasks of task."""
         try:
-            yield from self._reduced_dag.descendants_bfs(task)
+            return self._reduced_dag.descendants_bfs(task)
         except graphs.NodeDoesNotExistError as e:
             raise TaskDoesNotExistError(task=task) from e
 
     def inferior_tasks_dfs(self, task: UID, /) -> Generator[UID, None, None]:
         """Return depth-first search of inferior tasks of task."""
         try:
-            yield from self._reduced_dag.descendants_dfs(task)
+            return self._reduced_dag.descendants_dfs(task)
         except graphs.NodeDoesNotExistError as e:
             raise TaskDoesNotExistError(task=task) from e
 
     def superior_tasks_bfs(self, task: UID, /) -> Generator[UID, None, None]:
         """Return breadth-first search of superior tasks of task."""
         try:
-            yield from self._reduced_dag.ancestors_bfs(task)
+            return self._reduced_dag.ancestors_bfs(task)
         except graphs.NodeDoesNotExistError as e:
             raise TaskDoesNotExistError(task=task) from e
 
     def superior_tasks_dfs(self, task: UID, /) -> Generator[UID, None, None]:
         """Return depth-first search of superior tasks of task."""
         try:
-            yield from self._reduced_dag.ancestors_dfs(task)
+            return self._reduced_dag.ancestors_dfs(task)
         except graphs.NodeDoesNotExistError as e:
             raise TaskDoesNotExistError(task=task) from e
 
@@ -540,7 +540,7 @@ class HierarchyGraph:
 
     def concrete_tasks(self) -> Generator[UID, None, None]:
         """Return generator over concrete tasks."""
-        yield from self._reduced_dag.leaves()
+        return self._reduced_dag.leaves()
 
     def is_top_level(self, task: UID, /) -> bool:
         """Check if task is top-level.
@@ -554,7 +554,18 @@ class HierarchyGraph:
 
     def top_level_tasks(self) -> Generator[UID, None, None]:
         """Return generator over top-level tasks."""
-        yield from self._reduced_dag.roots()
+        return self._reduced_dag.roots()
+
+    def is_isolated(self, task: UID, /) -> bool:
+        """Check if task has no super-tasks nor sub-tasks."""
+        try:
+            return self._reduced_dag.is_isolated(task)
+        except graphs.NodeDoesNotExistError as e:
+            raise TaskDoesNotExistError(task) from e
+
+    def isolated_tasks(self) -> Generator[UID, None, None]:
+        """Return generator over isolated tasks."""
+        return self._reduced_dag.isolated_nodes()
 
     def task_subtasks_pairs(self) -> Generator[tuple[UID, UIDsView], None, None]:
         """Return generator over task-subtasks pairs."""

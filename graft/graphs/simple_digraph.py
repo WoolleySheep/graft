@@ -397,8 +397,7 @@ class SimpleDiGraph[T: Hashable]:
 
         The original node is part of the subgraph.
 
-        Stop searching beyond a specific node if the stop condition is met. If
-        the starting node meets the stop condition, this will be ignored.
+        Stop searching beyond a specific node if the stop condition is met.
         """
         if node not in self:
             raise NodeDoesNotExistError(node=node)
@@ -432,8 +431,7 @@ class SimpleDiGraph[T: Hashable]:
 
         The original nodes are part of the subgraph.
 
-        Stop searching beyond a specific node if the stop condition is met. If
-        a starting node meets the stop condition, this will be ignored.
+        Stop searching beyond a specific node if the stop condition is met.
         """
         subgraph = type(self)()
         for node in nodes:
@@ -576,7 +574,9 @@ class SimpleDiGraph[T: Hashable]:
             if node not in self:
                 raise NodeDoesNotExistError(node=node)
 
-        source_descendants_subgraph = self.descendants_subgraph(source)
+        source_descendants_subgraph = self.descendants_subgraph(
+            source, lambda node: node == target
+        )
         try:
             return source_descendants_subgraph.ancestors_subgraph(target)
         except NodeDoesNotExistError as e:
@@ -626,7 +626,7 @@ class SimpleDiGraph[T: Hashable]:
 
     def is_isolated(self, node: T, /) -> bool:
         """Check if node is isolated."""
-        return not (self.successors(node) or self.predecessors(node))
+        return self.is_leaf(node) and self.is_root(node)
 
     def isolated_nodes(self) -> Generator[T, None, None]:
         """Yield all isolated nodes."""
