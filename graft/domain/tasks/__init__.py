@@ -36,6 +36,7 @@ from graft.domain.tasks.hierarchy_graph import (
 )
 from graft.domain.tasks.name import Name
 from graft.domain.tasks.system import (
+    DependencyIntroducesStreamCycleError,
     DependencyPathAlreadyExistsFromSubTaskToSuperTaskError,
     DependencyPathAlreadyExistsFromSuperTaskToSubTaskError,
     HierarchyIntroducesDependencyClashError,

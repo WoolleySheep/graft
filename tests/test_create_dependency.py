@@ -354,3 +354,33 @@ def test_create_dependency_failure_hierarchy_path_from_dependent_task_to_depende
 
     data_layer_mock.load_system.assert_called_once()
     assert data_layer_mock.save_system.called is False
+
+
+@mock.patch("graft.architecture.data.DataLayer", autospec=True)
+def test_create_dependency_failure_introduces_stream_cycle(
+    data_layer_mock: mock.MagicMock, empty_system: domain.System
+) -> None:
+    """Test the create_dependency method fails when a stream cycle is introduced."""
+    task0 = tasks.UID(0)
+    task1 = tasks.UID(1)
+    task2 = tasks.UID(2)
+
+    system = empty_system
+    system.add_task(task0)
+    system.add_task(task1)
+    system.add_task(task2)
+
+    system.add_dependency(task0, task1)
+    system.add_hierarchy(task1, task2)
+
+    data_layer_mock.load_system.return_value = system
+
+    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+
+    with pytest.raises(tasks.DependencyIntroducesStreamCycleError) as exc_info:
+        logic_layer.create_dependency(task2, task0)
+    assert exc_info.value.dependee_task == task2
+    assert exc_info.value.dependent_task == task0
+
+    data_layer_mock.load_system.assert_called_once()
+    assert data_layer_mock.save_system.called is False

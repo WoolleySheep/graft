@@ -467,7 +467,9 @@ class System:
     def _has_stream_path(self, source_task: UID, target_task: UID) -> bool:
         """Check if there is a stream path from source to target tasks.
 
-        Same as checking if target task is downstream of source task.
+        Same as checking if target task is downstream of source task. If the
+        source task and the target task are the same, this function will return
+        True.
         """
         for task in [source_task, target_task]:
             if task not in self:
