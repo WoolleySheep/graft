@@ -5,8 +5,6 @@ import itertools
 from collections.abc import Generator, Iterator
 from typing import Any, Self
 
-from networkx import is_isolate
-
 from graft.domain.tasks.attributes_register import (
     AttributesRegister,
     AttributesRegisterView,
@@ -37,6 +35,50 @@ from graft.domain.tasks.hierarchy_graph import (
 )
 from graft.domain.tasks.name import Name
 from graft.domain.tasks.uid import UID
+
+
+class DependencyPathAlreadyExistsFromSuperTaskToSubTaskError(Exception):
+    """Raised when there is already a dependency path from supertask to subtask."""
+
+    def __init__(
+        self,
+        supertask: UID,
+        subtask: UID,
+        connecting_subgraph: DependencyGraph,
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
+        """Initialise DependencyPathAlreadyExistsFromSuperTaskToSubTaskError."""
+        self.supertask = supertask
+        self.subtask = subtask
+        self.connecting_subgraph = connecting_subgraph
+        super().__init__(
+            f"Dependency path already exists from supertask [{supertask}] to subtask [{subtask}].",
+            *args,
+            **kwargs,
+        )
+
+
+class DependencyPathAlreadyExistsFromSubTaskToSuperTaskError(Exception):
+    """Raised when there is already a dependency path from supertask to subtask."""
+
+    def __init__(
+        self,
+        supertask: UID,
+        subtask: UID,
+        connecting_subgraph: DependencyGraph,
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
+        """Initialise DependencyPathAlreadyExistsFromSubTaskToSuperTaskError."""
+        self.supertask = supertask
+        self.subtask = subtask
+        self.connecting_subgraph = connecting_subgraph
+        super().__init__(
+            f"Dependency path already exists from subtask [{subtask}] to supertask [{supertask}].",
+            *args,
+            **kwargs,
+        )
 
 
 class StreamPathFromSuperTaskToSubTaskExistsError(Exception):
@@ -346,62 +388,40 @@ class System:
         The order of task yielding is neither breadth-first or depth-first - it
         just is what it is.
         """
-        dependent_tasks_to_check = collections.deque[UID]()
-        subtasks_to_check = collections.deque[UID]()
+        downstream_tasks_to_check = collections.deque[UID]()
         supertasks_to_check = collections.deque[UID]()
 
-        visited_dependent_tasks = set[UID]()
-        visited_subtasks = set[UID]()
+        visited_downstream_tasks = set[UID]()
         visited_supertasks = set[UID]()
 
-        yielded_tasks = set[UID]()
+        downstream_tasks_to_check.extend(self._dependency_graph.dependent_tasks(task))
+        supertasks_to_check.extend(self._hierarchy_graph.supertasks(task))
 
-        for supertask in self._hierarchy_graph.supertasks(task):
-            dependent_tasks_to_check.append(supertask)
-            supertasks_to_check.append(supertask)
-
-        for dependent_task in self._dependency_graph.dependent_tasks(task):
-            dependent_tasks_to_check.append(dependent_task)
-            subtasks_to_check.append(dependent_task)
-            supertasks_to_check.append(dependent_task)
-
-        while dependent_tasks_to_check or subtasks_to_check or supertasks_to_check:
-            while dependent_tasks_to_check:
-                task2 = dependent_tasks_to_check.popleft()
-                if task2 in visited_dependent_tasks:
+        while downstream_tasks_to_check:
+            while downstream_tasks_to_check:
+                task2 = downstream_tasks_to_check.popleft()
+                if task2 in visited_downstream_tasks:
                     continue
-                visited_dependent_tasks.add(task2)
-                for dependent_task in self._dependency_graph.dependent_tasks(task2):
-                    dependent_tasks_to_check.append(dependent_task)
-                    subtasks_to_check.append(dependent_task)
-                    supertasks_to_check.append(dependent_task)
-                if task2 in yielded_tasks:
-                    continue
-                yielded_tasks.add(task2)
                 yield task2
 
-            while subtasks_to_check:
-                task2 = subtasks_to_check.popleft()
-                if task2 in visited_subtasks:
-                    continue
-                visited_subtasks.add(task2)
-                for subtask in self._hierarchy_graph.subtasks(task2):
-                    dependent_tasks_to_check.append(subtask)
-                    subtasks_to_check.append(subtask)
-                    supertasks_to_check.append(subtask)
-                if task2 in yielded_tasks:
-                    continue
-                yielded_tasks.add(task2)
-                yield task2
+                visited_downstream_tasks.add(task2)
+                downstream_tasks_to_check.extend(
+                    itertools.chain(
+                        self._dependency_graph.dependent_tasks(task2),
+                        self._hierarchy_graph.subtasks(task2),
+                    )
+                )
+                supertasks_to_check.extend(self._hierarchy_graph.supertasks(task2))
 
             while supertasks_to_check:
-                task2 = supertasks_to_check.popleft()
-                if task2 in visited_supertasks:
+                supertask = supertasks_to_check.popleft()
+                if supertask in visited_supertasks:
                     continue
-                visited_supertasks.add(task2)
-                for supertask in self._hierarchy_graph.supertasks(task2):
-                    dependent_tasks_to_check.append(supertask)
-                    supertasks_to_check.append(supertask)
+                visited_supertasks.add(supertask)
+                supertasks_to_check.extend(self._hierarchy_graph.supertasks(supertask))
+                downstream_tasks_to_check.extend(
+                    self._dependency_graph.dependent_tasks(supertask)
+                )
 
     def _upstream_tasks(self, task: UID, /) -> Generator[UID, None, None]:
         """Return tasks upstream of task.
@@ -409,62 +429,40 @@ class System:
         The order of task yielding is neither breadth-first or depth-first - it
         just is what it is.
         """
-        dependee_tasks_to_check = collections.deque[UID]()
-        subtasks_to_check = collections.deque[UID]()
+        upstream_tasks_to_check = collections.deque[UID]()
         supertasks_to_check = collections.deque[UID]()
 
-        visited_dependee_tasks = set[UID]()
-        visited_subtasks = set[UID]()
+        visited_upstream_tasks = set[UID]()
         visited_supertasks = set[UID]()
 
-        yielded_tasks = set[UID]()
+        upstream_tasks_to_check.extend(self._dependency_graph.dependee_tasks(task))
+        supertasks_to_check.extend(self._hierarchy_graph.supertasks(task))
 
-        for supertask in self._hierarchy_graph.supertasks(task):
-            dependee_tasks_to_check.append(supertask)
-            supertasks_to_check.append(supertask)
-
-        for dependee_task in self._dependency_graph.dependee_tasks(task):
-            dependee_tasks_to_check.append(dependee_task)
-            subtasks_to_check.append(dependee_task)
-            supertasks_to_check.append(dependee_task)
-
-        while dependee_tasks_to_check or subtasks_to_check or supertasks_to_check:
-            while dependee_tasks_to_check:
-                task2 = dependee_tasks_to_check.popleft()
-                if task2 in visited_dependee_tasks:
+        while upstream_tasks_to_check:
+            while upstream_tasks_to_check:
+                task2 = upstream_tasks_to_check.popleft()
+                if task2 in visited_upstream_tasks:
                     continue
-                visited_dependee_tasks.add(task2)
-                for dependee_task in self._dependency_graph.dependee_tasks(task2):
-                    dependee_tasks_to_check.append(dependee_task)
-                    subtasks_to_check.append(dependee_task)
-                    supertasks_to_check.append(dependee_task)
-                if task2 in yielded_tasks:
-                    continue
-                yielded_tasks.add(task2)
                 yield task2
 
-            while subtasks_to_check:
-                task2 = subtasks_to_check.popleft()
-                if task2 in visited_subtasks:
-                    continue
-                visited_subtasks.add(task2)
-                for subtask in self._hierarchy_graph.subtasks(task2):
-                    dependee_tasks_to_check.append(subtask)
-                    subtasks_to_check.append(subtask)
-                    supertasks_to_check.append(subtask)
-                if task2 in yielded_tasks:
-                    continue
-                yielded_tasks.add(task2)
-                yield task2
+                visited_upstream_tasks.add(task2)
+                upstream_tasks_to_check.extend(
+                    itertools.chain(
+                        self._dependency_graph.dependee_tasks(task2),
+                        self._hierarchy_graph.subtasks(task2),
+                    )
+                )
+                supertasks_to_check.extend(self._hierarchy_graph.supertasks(task2))
 
             while supertasks_to_check:
-                task2 = supertasks_to_check.popleft()
-                if task2 in visited_supertasks:
+                supertask = supertasks_to_check.popleft()
+                if supertask in visited_supertasks:
                     continue
-                visited_supertasks.add(task2)
-                for supertask in self._hierarchy_graph.supertasks(task2):
-                    dependee_tasks_to_check.append(supertask)
-                    supertasks_to_check.append(supertask)
+                visited_supertasks.add(supertask)
+                supertasks_to_check.extend(self._hierarchy_graph.supertasks(supertask))
+                upstream_tasks_to_check.extend(
+                    self._dependency_graph.dependee_tasks(supertask)
+                )
 
     def _has_stream_path(self, source_task: UID, target_task: UID) -> bool:
         """Check if there is a stream path from source to target tasks.
@@ -487,6 +485,8 @@ class System:
         of the task, but are required to connect all downstream tasks
         correctly. I'm calling these non-downstream tasks.
         """
+        raise NotImplementedError
+
         hierarchy_graph = HierarchyGraph()
         dependency_graph = DependencyGraph()
 
@@ -608,6 +608,8 @@ class System:
         of the task, but are required to connect all upstream tasks
         correctly. I'm calling these non-upstream tasks.
         """
+        raise NotImplementedError
+
         hierarchy_graph = HierarchyGraph()
         dependency_graph = DependencyGraph()
 
@@ -922,6 +924,25 @@ class System:
                 supertask=supertask, subtask=subtask, subgraph=subgraph
             )
 
+        if self._dependency_graph.has_path(supertask, subtask):
+            connecting_subgraph = self._dependency_graph.connecting_subgraph(
+                supertask, subtask
+            )
+            raise DependencyPathAlreadyExistsFromSuperTaskToSubTaskError(
+                supertask=supertask,
+                subtask=subtask,
+                connecting_subgraph=connecting_subgraph,
+            )
+        if self._dependency_graph.has_path(subtask, supertask):
+            connecting_subgraph = self._dependency_graph.connecting_subgraph(
+                subtask, supertask
+            )
+            raise DependencyPathAlreadyExistsFromSubTaskToSuperTaskError(
+                supertask=supertask,
+                subtask=subtask,
+                connecting_subgraph=connecting_subgraph,
+            )
+
         if self._has_stream_path(supertask, subtask):
             # TODO: Get relevant subgraph and return as part of exception
             raise StreamPathFromSuperTaskToSubTaskExistsError(supertask, subtask)
@@ -1009,9 +1030,9 @@ class System:
         if (dependent_task, dependee_task) in self._dependency_graph.dependencies():
             raise InverseDependencyAlreadyExistsError(dependent_task, dependee_task)
 
-        if self._dependency_graph.has_path(dependee_task, dependent_task):
+        if self._dependency_graph.has_path(dependent_task, dependee_task):
             connecting_subgraph = self._dependency_graph.connecting_subgraph(
-                dependee_task, dependent_task
+                dependent_task, dependee_task
             )
             raise DependencyIntroducesCycleError(
                 dependee_task=dependee_task,
