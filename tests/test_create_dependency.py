@@ -252,7 +252,8 @@ def test_create_dependency_success_multiple_paths_allowed(
 ) -> None:
     """Test the create_dependency method succeeds even when there are multiple paths.
 
-    This is different from the hierarchy graph, which does not allow multiple path.
+    This is different from the hierarchy graph, which does not allow multiple
+    paths.
     """
     task0 = tasks.UID(0)
     task1 = tasks.UID(1)
@@ -282,10 +283,7 @@ def test_create_dependency_success_multiple_paths_allowed(
 def test_create_dependency_failure_hierarchy_path_from_dependee_task_to_dependent_task(
     data_layer_mock: mock.MagicMock, empty_system: domain.System
 ) -> None:
-    """Test the create_dependency method fails when a hierarchy path already.
-
-    exists from the dependee-task to the dependent-task.
-    """
+    """Test the create_dependency method fails when a hierarchy path already exists from the dependee-task to the dependent-task."""
     dependee_task = tasks.UID(0)
     dependent_task = tasks.UID(1)
 
@@ -321,10 +319,7 @@ def test_create_dependency_failure_hierarchy_path_from_dependee_task_to_dependen
 def test_create_dependency_failure_hierarchy_path_from_dependent_task_to_dependee_task(
     data_layer_mock: mock.MagicMock, empty_system: domain.System
 ) -> None:
-    """Test the create_dependency method fails when a hierarchy path already.
-
-    exists from the dependent-task to the dependee-task.
-    """
+    """Test the create_dependency method fails when a hierarchy path already exists from the dependent-task to the dependee-task."""
     dependee_task = tasks.UID(0)
     dependent_task = tasks.UID(1)
 
@@ -381,6 +376,115 @@ def test_create_dependency_failure_introduces_stream_cycle(
         logic_layer.create_dependency(task2, task0)
     assert exc_info.value.dependee_task == task2
     assert exc_info.value.dependent_task == task0
+
+    data_layer_mock.load_system.assert_called_once()
+    assert data_layer_mock.save_system.called is False
+
+
+@mock.patch("graft.architecture.data.DataLayer", autospec=True)
+def test_create_dependency_failure_path_from_inferior_task_of_dependent_task_to_dependee_task(
+    data_layer_mock: mock.MagicMock, empty_system: domain.System
+) -> None:
+    """Test the create_dependency method fails when a stream path already exists from an inferior task of the dependent-task to the dependee-task."""
+    task0 = tasks.UID(0)
+    task1 = tasks.UID(1)
+    task2 = tasks.UID(2)
+    task3 = tasks.UID(3)
+    task4 = tasks.UID(4)
+
+    system = empty_system
+    system.add_task(task0)
+    system.add_task(task1)
+    system.add_task(task2)
+    system.add_task(task3)
+    system.add_task(task4)
+
+    system.add_hierarchy(task0, task1)
+    system.add_dependency(task1, task2)
+    system.add_dependency(task2, task3)
+    system.add_hierarchy(task3, task4)
+
+    data_layer_mock.load_system.return_value = system
+
+    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+
+    with pytest.raises(
+        tasks.StreamPathFromInferiorTaskOfDependentTaskToDependeeTaskExistsError
+    ) as exc_info:
+        logic_layer.create_dependency(task4, task0)
+    assert exc_info.value.dependee_task == task4
+    assert exc_info.value.dependent_task == task0
+
+    data_layer_mock.load_system.assert_called_once()
+    assert data_layer_mock.save_system.called is False
+
+
+@mock.patch("graft.architecture.data.DataLayer", autospec=True)
+def test_create_dependency_failure_path_from_dependent_task_to_inferior_task_of_dependee_task(
+    data_layer_mock: mock.MagicMock, empty_system: domain.System
+) -> None:
+    """Test the create_dependency method fails when a stream path already exists from the dependent-task to an inferior task of the dependee-task."""
+    task0 = tasks.UID(0)
+    task1 = tasks.UID(1)
+    task2 = tasks.UID(2)
+    task3 = tasks.UID(3)
+    task4 = tasks.UID(4)
+
+    system = empty_system
+    system.add_task(task0)
+    system.add_task(task1)
+    system.add_task(task2)
+    system.add_task(task3)
+    system.add_task(task4)
+
+    system.add_dependency(task0, task1)
+    system.add_hierarchy(task1, task2)
+    system.add_dependency(task2, task3)
+    system.add_hierarchy(task4, task3)
+
+    data_layer_mock.load_system.return_value = system
+
+    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+
+    with pytest.raises(
+        tasks.StreamPathFromDependentTaskToInferiorTaskOfDependeeTaskExistsError
+    ) as exc_info:
+        logic_layer.create_dependency(task4, task0)
+    assert exc_info.value.dependee_task == task4
+    assert exc_info.value.dependent_task == task0
+
+    data_layer_mock.load_system.assert_called_once()
+    assert data_layer_mock.save_system.called is False
+
+
+@mock.patch("graft.architecture.data.DataLayer", autospec=True)
+def test_create_dependency_failure_introduces_hierarchy_clash(
+    data_layer_mock: mock.MagicMock, empty_system: domain.System
+) -> None:
+    """Test the create_dependency method fails when a hierarchy clash is introduced."""
+    task0 = tasks.UID(0)
+    task1 = tasks.UID(1)
+    task2 = tasks.UID(2)
+    task3 = tasks.UID(3)
+
+    system = empty_system
+    system.add_task(task0)
+    system.add_task(task1)
+    system.add_task(task2)
+    system.add_task(task3)
+
+    system.add_hierarchy(task0, task1)
+    system.add_hierarchy(task2, task3)
+    system.add_dependency(task1, task3)
+
+    data_layer_mock.load_system.return_value = system
+
+    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+
+    with pytest.raises(tasks.DependencyIntroducesHierarchyClashError) as exc_info:
+        logic_layer.create_dependency(task0, task2)
+    assert exc_info.value.dependee_task == task0
+    assert exc_info.value.dependent_task == task2
 
     data_layer_mock.load_system.assert_called_once()
     assert data_layer_mock.save_system.called is False

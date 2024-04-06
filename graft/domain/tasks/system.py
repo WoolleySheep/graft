@@ -397,7 +397,7 @@ class System:
         downstream_tasks_to_check.extend(self._dependency_graph.dependent_tasks(task))
         supertasks_to_check.extend(self._hierarchy_graph.supertasks(task))
 
-        while downstream_tasks_to_check:
+        while downstream_tasks_to_check or supertasks_to_check:
             while downstream_tasks_to_check:
                 task2 = downstream_tasks_to_check.popleft()
                 if task2 in visited_downstream_tasks:
@@ -438,7 +438,7 @@ class System:
         upstream_tasks_to_check.extend(self._dependency_graph.dependee_tasks(task))
         supertasks_to_check.extend(self._hierarchy_graph.supertasks(task))
 
-        while upstream_tasks_to_check:
+        while upstream_tasks_to_check or supertasks_to_check:
             while upstream_tasks_to_check:
                 task2 = upstream_tasks_to_check.popleft()
                 if task2 in visited_upstream_tasks:
