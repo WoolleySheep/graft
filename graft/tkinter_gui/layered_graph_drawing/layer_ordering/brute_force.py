@@ -8,22 +8,18 @@ from graft.tkinter_gui.layered_graph_drawing.layer_ordering.utils import (
 )
 
 
-class HashableSequence[T](Hashable, Sequence[T]):
-    ...
-
-
-class Result[T: Sequence[Sequence]]:
+class Result[T]:
     def __init__(self) -> None:
-        self.topologically_sorted_ordered_groups: T | None = None
+        self.topologically_sorted_ordered_groups: list[tuple[T, ...]] | None = None
         self.min_nintersecting_edges = float("inf")
 
 
-def _calculate_group_orders_recursive[T](
-    result: Result[Sequence[Sequence[T]]],
+def _calculate_group_orders_recursive[T: Hashable](
+    result: Result[T],
     nintersecting_edges: int,
-    topologically_sorted_ordered_groups: Sequence[HashableSequence[T]],
+    topologically_sorted_ordered_groups: list[tuple[T, ...]],
     ordered_source_to_sorted_ordered_targets_map: Mapping[
-        HashableSequence[T], tuple[HashableSequence[T], int]
+        tuple[T, ...], Sequence[tuple[tuple[T, ...], int]]
     ],
 ) -> None:
     ordered_source_group = topologically_sorted_ordered_groups[-1]
@@ -114,7 +110,7 @@ def get_layer_orders_brute_force_method[T: Hashable](
         ][0][1],
     )
 
-    result = Result[list[tuple[T, ...]]]()
+    result = Result[T]()
     for first_layer_order in sorted_first_layer_orders:
         _calculate_group_orders_recursive(
             result,
@@ -123,4 +119,5 @@ def get_layer_orders_brute_force_method[T: Hashable](
             source_layer_order_to_sorted_target_layer_orders_map,
         )
 
+    assert result.topologically_sorted_ordered_groups is not None
     return result.topologically_sorted_ordered_groups
