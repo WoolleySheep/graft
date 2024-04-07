@@ -1,6 +1,6 @@
 import functools
 import tkinter as tk
-from typing import Self
+from typing import Self, Sequence
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -50,7 +50,7 @@ class DependencyGraph(tk.Frame):
         def update_figure(self: Self) -> None:
             def draw_graph(
                 self: Self, graph: nx.DiGraph, pos: dict[tasks.UID, tuple[float, float]]
-            ) -> mpl_collections.PathCollection:
+            ) -> tuple[mpl_collections.PathCollection, list[tasks.UID]]:
                 node_path_collection: mpl_collections.PathCollection = (
                     nx.draw_networkx_nodes(
                         graph,
@@ -58,6 +58,8 @@ class DependencyGraph(tk.Frame):
                         ax=self.ax,
                     )
                 )
+                nodes_in_path_order = list(graph)
+
                 nx.draw_networkx_edges(
                     networkx_graph, pos=pos, ax=self.ax, connectionstyle="arc3,rad=0.1"
                 )
@@ -65,12 +67,13 @@ class DependencyGraph(tk.Frame):
 
                 self.canvas.draw()
 
-                return node_path_collection
+                return node_path_collection, nodes_in_path_order
 
             def display_annotation(
                 event: mpl_backend_bases.Event,
                 self: Self,
                 task_path_collection: mpl_collections.PathCollection,
+                tasks_in_path_order: Sequence[tasks.UID],
                 annotation: mpl_text.Annotation,
             ) -> None:
                 if not isinstance(event, mpl_backend_bases.MouseEvent):
@@ -78,7 +81,7 @@ class DependencyGraph(tk.Frame):
 
                 if event.inaxes != self.ax:
                     return
-
+                
                 contains, details = task_path_collection.contains(event)
 
                 if not contains:
@@ -87,7 +90,7 @@ class DependencyGraph(tk.Frame):
                         self.fig.canvas.draw_idle()
                     return
 
-                task = tasks.UID(int(details["ind"][0]))
+                task = tasks_in_path_order[details["ind"][0]]
 
                 register = self.logic_layer.get_task_attributes_register_view()
                 attributes = register[task]
@@ -122,7 +125,7 @@ class DependencyGraph(tk.Frame):
                 graph=digraph, orientation=GRAPH_ORIENTATION
             )
 
-            task_path_collection = draw_graph(self=self, graph=networkx_graph, pos=pos)
+            task_path_collection, tasks_in_path_order = draw_graph(self=self, graph=networkx_graph, pos=pos)
 
             self.fig.canvas.mpl_connect(
                 "motion_notify_event",
@@ -130,6 +133,7 @@ class DependencyGraph(tk.Frame):
                     display_annotation,
                     self=self,
                     task_path_collection=task_path_collection,
+                    tasks_in_path_order=tasks_in_path_order,
                     annotation=annotation,
                 ),
             )
