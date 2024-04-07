@@ -9,13 +9,7 @@ Graft seeks to solve the two problems I run into when deciding what to work on:
 ## Installation instructions
 TODO
 
-## How to run app
-### Run as CLI
-Activate CLI by uncommenting `graft.run_cli()`
-```python main.py --help```
-
-### Run as GUI
-activate GUI by uncommenting `graft.run_gui()`
+## How to run GUI app
 ```python main.py```
 
 ## For developers
