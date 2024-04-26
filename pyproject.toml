@@ -8,11 +8,8 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.12"
-typer = "^0.9.0"
-pillow = "^10.2.0"
 networkx = "^3.2.1"
-matplotlib = "^3.8.2"
-pyright = "^1.1.357"
+matplotlib = "^3.8.4"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.1.6"
@@ -23,6 +20,7 @@ vulture = "^2.10"
 pytest = "^7.4.3"
 pytest-mock = "^3.12.0"
 pytest-cov = "^4.1.0"
+pyright = "^1.1.357"
 
 [tool.ruff]
 line-length = 88

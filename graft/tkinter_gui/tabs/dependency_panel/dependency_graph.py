@@ -81,7 +81,14 @@ class DependencyGraph(tk.Frame):
 
                 if event.inaxes != self.ax:
                     return
-                
+
+                # If there are no paths in the path collection, the `contains`
+                # method will throw a TypeError rather than returning a nice,
+                # sensible 'false'. This check stops it, as when there are zero
+                # tasks there will be zero paths.
+                if not tasks_in_path_order:
+                    return
+
                 contains, details = task_path_collection.contains(event)
 
                 if not contains:
@@ -125,9 +132,13 @@ class DependencyGraph(tk.Frame):
                 graph=digraph, orientation=GRAPH_ORIENTATION
             )
 
-            task_path_collection, tasks_in_path_order = draw_graph(self=self, graph=networkx_graph, pos=pos)
+            task_path_collection, tasks_in_path_order = draw_graph(
+                self=self, graph=networkx_graph, pos=pos
+            )
 
-            self.fig.canvas.mpl_connect(
+            if self._annotation_callback_id is not None:
+                self.fig.canvas.mpl_disconnect(self._annotation_callback_id)
+            self._annotation_callback_id = self.fig.canvas.mpl_connect(
                 "motion_notify_event",
                 functools.partial(
                     display_annotation,
@@ -144,6 +155,7 @@ class DependencyGraph(tk.Frame):
         self.logic_layer = logic_layer
         self.fig = plt.figure()
         self.ax = self.fig.add_subplot()
+        self._annotation_callback_id: int | None = None
         self.canvas = backend_tkagg.FigureCanvasTkAgg(self.fig, self)
         self.canvas.get_tk_widget().grid()
 

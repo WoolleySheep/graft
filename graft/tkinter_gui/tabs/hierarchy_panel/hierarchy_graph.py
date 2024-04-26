@@ -44,7 +44,9 @@ class HierarchyGraph(tk.Frame):
                 return graph
 
             def draw_graph(
-                self: Self, graph: nx.DiGraph, pos: Mapping[tasks.UID, tuple[float, float]]
+                self: Self,
+                graph: nx.DiGraph,
+                pos: Mapping[tasks.UID, tuple[float, float]],
             ) -> tuple[mpl_collections.PathCollection, list[tasks.UID]]:
                 node_path_collection: mpl_collections.PathCollection = (
                     nx.draw_networkx_nodes(
@@ -74,6 +76,13 @@ class HierarchyGraph(tk.Frame):
                     raise TypeError
 
                 if event.inaxes != self.ax:
+                    return
+
+                # If there are no paths in the path collection, the `contains`
+                # method will throw a TypeError rather than returning a nice,
+                # sensible 'false'. This check stops it, as when there are zero
+                # tasks there will be zero paths.
+                if not tasks_in_path_order:
                     return
 
                 contains, details = task_path_collection.contains(event)
@@ -119,9 +128,13 @@ class HierarchyGraph(tk.Frame):
                 graph=digraph, orientation=GRAPH_ORIENTATION
             )
 
-            task_path_collection, tasks_in_path_order = draw_graph(self=self, graph=networkx_graph, pos=pos)
+            task_path_collection, tasks_in_path_order = draw_graph(
+                self=self, graph=networkx_graph, pos=pos
+            )
 
-            self.fig.canvas.mpl_connect(
+            if self._annotation_callback_id is not None:
+                self.fig.canvas.mpl_disconnect(self._annotation_callback_id)
+            self._annotation_callback_id = self.fig.canvas.mpl_connect(
                 "motion_notify_event",
                 functools.partial(
                     display_annotation,
@@ -139,6 +152,7 @@ class HierarchyGraph(tk.Frame):
         self.fig = plt.figure()
         self.ax = self.fig.add_subplot()
         self.canvas = backend_tkagg.FigureCanvasTkAgg(self.fig, self)
+        self._annotation_callback_id: int | None = None
         self.canvas.get_tk_widget().grid()
 
         update_figure(self)
