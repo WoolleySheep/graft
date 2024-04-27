@@ -4,7 +4,7 @@ from tkinter import ttk
 
 from graft import architecture
 from graft.domain import tasks
-from graft.tkinter_gui import event_broker
+from graft.tkinter_gui import event_broker, failed_operation_window
 
 
 def _get_dependencies_with_names(
@@ -99,7 +99,13 @@ class DependencyDeletionWindow(tk.Toplevel):
             dependee_task, dependent_task = _parse_task_uids_from_menu_option(
                 self.selected_dependency.get()
             )
-            logic_layer.delete_dependency(dependee_task, dependent_task)
+            try:
+                logic_layer.delete_dependency(dependee_task, dependent_task)
+            except Exception as e:
+                failed_operation_window.create_operation_failed_window(
+                    master=self, exception=e
+                )
+                return
             broker = event_broker.get_singleton()
             broker.publish(event_broker.SystemModified())
             self.destroy()
