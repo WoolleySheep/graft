@@ -4,7 +4,7 @@ from tkinter import ttk
 
 from graft import architecture
 from graft.domain import tasks
-from graft.tkinter_gui import event_broker, failed_operation_window
+from graft.tkinter_gui import event_broker, helpers
 
 
 def _get_hierarchies_with_names(
@@ -23,10 +23,7 @@ def _get_hierarchies_with_names(
 
 
 def _format_task_uid_name(task_uid: tasks.UID, task_name: tasks.Name | None) -> str:
-    if task_name is None:
-        return f"[{task_uid}]"
-
-    return f"[{task_uid}] {task_name}"
+    return f"[{task_uid}]" if task_name is None else f"[{task_uid}] {task_name}"
 
 
 def _get_menu_options(
@@ -88,9 +85,7 @@ class HierarchyDeletionWindow(tk.Toplevel):
             try:
                 logic_layer.delete_hierarchy(supertask, subtask)
             except Exception as e:
-                failed_operation_window.create_operation_failed_window(
-                    master=self, exception=e
-                )
+                helpers.UnknownExceptionOperationFailedWindow(master=self, exception=e)
                 return
             broker = event_broker.get_singleton()
             broker.publish(event_broker.SystemModified())

@@ -20,4 +20,5 @@ from graft.graphs.simple_digraph import (
     NoConnectingSubgraphError,
     NodeAlreadyExistsError,
     NodeDoesNotExistError,
+    SimpleDiGraph,
 )

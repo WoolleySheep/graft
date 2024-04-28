@@ -5,6 +5,7 @@ import itertools
 from collections.abc import Generator, Iterator
 from typing import Any, Self
 
+from graft.domain.tasks import hierarchy_graph
 from graft.domain.tasks.attributes_register import (
     AttributesRegister,
     AttributesRegisterView,
@@ -331,6 +332,14 @@ class NoConnectingSubsystemError(Exception):
 
 class System:
     """System of task information."""
+
+    @classmethod
+    def empty(cls) -> Self:
+        return cls(
+            attributes_register=AttributesRegister(),
+            hierarchy_graph=HierarchyGraph(),
+            dependency_graph=DependencyGraph(),
+        )
 
     def __init__(
         self,
