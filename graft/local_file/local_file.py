@@ -4,10 +4,12 @@ import enum
 import json
 import pathlib
 import shutil
-from typing import Final, TypedDict, override
+from typing import Any, Final, TypedDict, override
 
 from graft import architecture, domain, graphs
 from graft.domain import tasks
+
+_STARTING_TASK_ID_NUMBER = 0
 
 _DATA_DIRECTORY_NAME: Final = "data"
 
@@ -39,6 +41,7 @@ class TaskAttributesJSONDict(TypedDict):
 
     name: str | None
     description: str | None
+    progress: str | None
 
 
 def _encode_task_uid(uid: tasks.UID) -> str:
@@ -51,18 +54,8 @@ def _decode_task_uid(number: str) -> tasks.UID:
     return tasks.UID(int(number))
 
 
-def _encode_task_uids(uids: tasks.UIDsView) -> list[str]:
-    """Encode a collection of task UIDs."""
-    return [_encode_task_uid(uid) for uid in uids]
-
-
-def _decode_task_uids(numbers: list[str]) -> set[tasks.UID]:
-    """Decode a collection of task UIDs."""
-    return {_decode_task_uid(number) for number in numbers}
-
-
 def _encode_task_attributes_register(
-    o: tasks.AttributesRegisterView,
+    o: Any,
 ) -> dict[str, TaskAttributesJSONDict]:
     """Encode task attributes register."""
 
@@ -71,6 +64,9 @@ def _encode_task_attributes_register(
             "name": str(attributes.name) if attributes.name is not None else None,
             "description": str(attributes.description)
             if attributes.description is not None
+            else None,
+            "progress": attributes.progress.value
+            if attributes.progress is not None
             else None,
         }
 
@@ -94,7 +90,7 @@ def _decode_task_attributes_register(
 
     def decode_attributes(d: TaskAttributesJSONDict) -> tasks.Attributes:
         """Decode task attributes."""
-        if "name" not in d or "description" not in d:
+        if "name" not in d or "description" not in d or "progress" not in d:
             raise ValueError  # TODO (mjw): Use better named error
 
         return tasks.Attributes(
@@ -103,6 +99,9 @@ def _decode_task_attributes_register(
                 tasks.Description(d["description"])
                 if d["description"] is not None
                 else None
+            ),
+            progress=(
+                tasks.Progress(d["progress"]) if d["progress"] is not None else None
             ),
         )
 
@@ -118,12 +117,14 @@ def _decode_task_attributes_register(
 
 
 def _encode_task_hierarchy_graph(
-    hierarchy_graph_view: tasks.HierarchyGraphView,
+    hierarchy_graph_view: Any,
 ) -> dict[str, list[str]]:
     """Encode task hierarchy graph."""
     if isinstance(hierarchy_graph_view, tasks.HierarchyGraphView):
         return {
-            _encode_task_uid(uid): _encode_task_uids(subtask_uids)
+            _encode_task_uid(uid): [
+                _encode_task_uid(subtask_uid) for subtask_uid in subtask_uids
+            ]
             for uid, subtask_uids in hierarchy_graph_view.task_subtasks_pairs()
         }
 
@@ -133,7 +134,8 @@ def _encode_task_hierarchy_graph(
 def _decode_task_hierarchy_graph(d: dict[str, list[str]]) -> tasks.HierarchyGraph:
     """Decode task hierarchy graph."""
     task_subtasks_map = {
-        _decode_task_uid(number): _decode_task_uids(uids) for number, uids in d.items()
+        _decode_task_uid(number): {_decode_task_uid(uid) for uid in uids}
+        for number, uids in d.items()
     }
     return tasks.HierarchyGraph(
         reduced_dag=graphs.ReducedDAG(
@@ -143,12 +145,14 @@ def _decode_task_hierarchy_graph(d: dict[str, list[str]]) -> tasks.HierarchyGrap
 
 
 def _encode_task_dependency_graph(
-    dependency_graph_view: tasks.DependencyGraphView,
+    dependency_graph_view: Any,
 ) -> dict[str, list[str]]:
     """Encode task dependency graph."""
     if isinstance(dependency_graph_view, tasks.DependencyGraphView):
         return {
-            _encode_task_uid(uid): _encode_task_uids(dependent_uids)
+            _encode_task_uid(uid): [
+                _encode_task_uid(dependent_uid) for dependent_uid in dependent_uids
+            ]
             for uid, dependent_uids in dependency_graph_view.task_dependents_pairs()
         }
 
@@ -158,7 +162,8 @@ def _encode_task_dependency_graph(
 def _decode_task_dependency_graph(d: dict[str, list[str]]) -> tasks.DependencyGraph:
     """Decode task dependency graph."""
     task_dependents_map = {
-        _decode_task_uid(number): _decode_task_uids(uids) for number, uids in d.items()
+        _decode_task_uid(number): {_decode_task_uid(uid) for uid in uids}
+        for number, uids in d.items()
     }
     return tasks.DependencyGraph(
         dag=graphs.DirectedAcyclicGraph(
@@ -248,7 +253,7 @@ class LocalFileDataLayer(architecture.DataLayer):
             json.dump({}, fp)
         with _TASK_ATTRIBUTES_REGISTER_FILEPATH.open("w") as fp:
             json.dump({}, fp)
-        _TASK_NEXT_UID_FILEPATH.write_text("0")
+        _TASK_NEXT_UID_FILEPATH.write_text(str(_STARTING_TASK_ID_NUMBER))
 
 
 def _save_task_attributes_register(register: tasks.AttributesRegisterView) -> None:

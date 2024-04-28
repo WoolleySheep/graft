@@ -74,6 +74,10 @@ class StandardLogicLayer(architecture.LogicLayer):
         return self._system.task_system_view().dependency_graph_view()
 
     @override
+    def get_task_system_view(self) -> tasks.SystemView:
+        return self._system.task_system_view()
+
+    @override
     def create_hierarchy(self, supertask: tasks.UID, subtask: tasks.UID) -> None:
         """Create a new hierarchy between the specified tasks."""
         self._system.add_hierarchy(supertask=supertask, subtask=subtask)

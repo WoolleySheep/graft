@@ -455,9 +455,9 @@ class HierarchyGraph:
             connecting_subgraph = self._reduced_dag.connecting_subgraph(
                 source=source_task, target=target_task
             )
-        except graphs.NodeDoesNotExistError as e:
+        except graphs.NodeDoesNotExistError[UID] as e:
             raise TaskDoesNotExistError(task=e.node) from e
-        except graphs.NoConnectingSubgraphError as e:
+        except graphs.NoConnectingSubgraphError[UID] as e:
             raise NoConnectingHierarchySubgraphError(
                 sources=[source_task], targets=[target_task]
             ) from e
@@ -622,3 +622,7 @@ class HierarchyGraphView:
     def task_subtasks_pairs(self) -> Generator[tuple[UID, UIDsView], None, None]:
         """Return generator over task-subtasks pairs."""
         return self._hierarchy_graph.task_subtasks_pairs()
+
+    def is_concrete(self, task: UID) -> bool:
+        """Check if task is concrete."""
+        return self._hierarchy_graph.is_concrete(task)

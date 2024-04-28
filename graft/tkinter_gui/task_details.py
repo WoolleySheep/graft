@@ -24,6 +24,10 @@ class TaskDetails(tk.Frame):
             self.task_name.delete(0, tk.END)
             self.task_name.insert(0, str(attributes.name) or "")
 
+            system = self.logic_layer.get_task_system_view()
+            progress = system.get_progress(self.task)
+            self.task_progress.config(text=progress.value)
+
             self.task_description.delete(1.0, tk.END)
             self.task_description.insert(1.0, str(attributes.description) or "")
 
@@ -63,6 +67,8 @@ class TaskDetails(tk.Frame):
         self.task_id = ttk.Label(self, text="")
         self.task_name = ttk.Entry(self)
 
+        self.task_progress = ttk.Label(self, text="")
+
         self.save_button = ttk.Button(
             self, text="Save", command=functools.partial(save, self=self)
         )
@@ -77,12 +83,13 @@ class TaskDetails(tk.Frame):
 
         self.task_id.grid(row=0, column=0)
         self.task_name.grid(row=0, column=1)
-        self.save_button.grid(row=1, column=0, rowspan=2, columnspan=2)
-        self.task_description.grid(row=3, column=0, rowspan=2)
-        self.subtasks_label.grid(row=4, column=0)
-        self.subtasks_list.grid(row=4, column=1)
-        self.supertasks_label.grid(row=5, column=0)
-        self.supertasks_list.grid(row=5, column=1)
+        self.task_progress.grid(row=1, column=0)
+        self.save_button.grid(row=2, column=0, rowspan=2, columnspan=2)
+        self.task_description.grid(row=4, column=0, rowspan=2)
+        self.subtasks_label.grid(row=5, column=0)
+        self.subtasks_list.grid(row=5, column=1)
+        self.supertasks_label.grid(row=6, column=0)
+        self.supertasks_list.grid(row=6, column=1)
 
         broker = event_broker.get_singleton()
         broker.subscribe(

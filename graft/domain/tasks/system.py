@@ -5,7 +5,7 @@ import itertools
 from collections.abc import Generator, Iterator
 from typing import Any, Self
 
-from graft.domain.tasks import hierarchy_graph
+from graft.domain.tasks import progress
 from graft.domain.tasks.attributes_register import (
     AttributesRegister,
     AttributesRegisterView,
@@ -35,6 +35,7 @@ from graft.domain.tasks.hierarchy_graph import (
     SubTaskIsAlreadySubTaskOfSuperiorTaskOfSuperTaskError,
 )
 from graft.domain.tasks.name import Name
+from graft.domain.tasks.progress import Progress
 from graft.domain.tasks.uid import UID
 
 
@@ -328,6 +329,17 @@ class NoConnectingSubsystemError(Exception):
             *args,
             **kwargs,
         )
+
+
+class ConcreteTaskError(Exception):
+    """Raised when a task is concrete, and therefore has no inferred progress."""
+
+    def __init__(
+        self, task: UID, *args: tuple[Any, ...], **kwargs: dict[str, Any]
+    ) -> None:
+        """Initialise ConcreteTaskError."""
+        self.task = task
+        super().__init__(f"Task [{task}] is concrete.", *args, **kwargs)
 
 
 class System:
@@ -832,7 +844,7 @@ class System:
             (the sub-task or inferior-tasks of the sub-task) are (superior to or
             inferior to or the same) as one another.
             """
-            dependency_linked_tasks_of_superior_tasks_of_supertask = set()
+            dependency_linked_tasks_of_superior_tasks_of_supertask = set[UID]()
             for superior_task in itertools.chain(
                 [supertask], self._hierarchy_graph.superior_tasks_bfs(supertask)
             ):
@@ -855,7 +867,7 @@ class System:
                 )
             )
 
-            dependency_linked_tasks_of_inferior_tasks_of_subtask = set()
+            dependency_linked_tasks_of_inferior_tasks_of_subtask = set[UID]()
             for inferior_task in itertools.chain(
                 [subtask], self._hierarchy_graph.inferior_tasks_bfs(subtask)
             ):
@@ -1103,6 +1115,49 @@ class System:
         """Remove the specified dependency."""
         self._dependency_graph.remove_dependency(dependee_task, dependent_task)
 
+    def get_progress(self, task: UID, /) -> Progress:
+        """Return the progress of the specified task.
+
+        If it is a concrete tasks, returns its progress. If it is a non-concrete
+        task, returns its inferred progress.
+        """
+        if self._hierarchy_graph.is_concrete(task):
+            progress = self._attributes_register[task].progress
+            assert progress is not None
+            return progress
+
+        return self._get_inferred_progress(task)
+
+    def _get_inferred_progress(self, task: UID) -> Progress:
+        """Return the inferred progress of the specified non-concrete task."""
+        if self._hierarchy_graph.is_concrete(task):
+            raise ConcreteTaskError(task=task)
+
+        progress: Progress | None = None
+        for inferior_task in self._hierarchy_graph.inferior_tasks_bfs(task):
+            if not self._hierarchy_graph.is_concrete(inferior_task):
+                continue
+
+            concrete_task_progress = self._attributes_register[inferior_task].progress
+            assert concrete_task_progress is not None
+
+            match concrete_task_progress:
+                case Progress.NOT_STARTED:
+                    if progress is Progress.COMPLETED:
+                        return Progress.IN_PROGRESS
+                    progress = Progress.NOT_STARTED
+                case Progress.IN_PROGRESS:
+                    return Progress.IN_PROGRESS
+                case Progress.COMPLETED:
+                    if progress is Progress.NOT_STARTED:
+                        return Progress.IN_PROGRESS
+                    progress = Progress.COMPLETED
+                case _:
+                    raise ValueError(f"Unknown progress [{concrete_task_progress}]")
+
+        assert progress is not None
+        return progress
+
 
 class SystemView:
     """View of System."""
@@ -1137,3 +1192,11 @@ class SystemView:
     def dependency_graph_view(self) -> DependencyGraphView:
         """Return a view of the dependency graph."""
         return self._system.dependency_graph_view()
+
+    def get_progress(self, task: UID, /) -> Progress:
+        """Return the progress of the specified task.
+
+        If it is a concrete tasks, returns its progress. If it is a non-concrete
+        task, returns its inferred progress.
+        """
+        return self._system.get_progress(task)

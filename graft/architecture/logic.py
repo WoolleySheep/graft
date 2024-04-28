@@ -56,6 +56,10 @@ class LogicLayer(abc.ABC):
         """Return the dependency graph."""
 
     @abc.abstractmethod
+    def get_task_system_view(self) -> tasks.SystemView:
+        """Return the task system."""
+
+    @abc.abstractmethod
     def create_hierarchy(self, supertask: tasks.UID, subtask: tasks.UID) -> None:
         """Create a new hierarchy between the specified tasks."""
 

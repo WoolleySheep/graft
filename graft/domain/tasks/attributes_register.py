@@ -7,6 +7,7 @@ from graft.domain.tasks.attributes import Attributes, AttributesView
 from graft.domain.tasks.description import Description
 from graft.domain.tasks.helpers import TaskAlreadyExistsError, TaskDoesNotExistError
 from graft.domain.tasks.name import Name
+from graft.domain.tasks.progress import Progress
 from graft.domain.tasks.uid import UID
 
 
@@ -44,10 +45,9 @@ class AttributesRegister(Mapping[UID, AttributesView]):
 
     def __eq__(self, other: object) -> bool:
         """Check if two registers are equal."""
-        if not isinstance(other, AttributesRegister):
-            return False
-
-        return dict(self.items()) == dict(other.items())
+        return isinstance(other, AttributesRegister) and dict(self.items()) == dict(
+            other.items()
+        )
 
     def __getitem__(self, key: UID) -> AttributesView:
         """Get view of attributes for UID."""
@@ -88,6 +88,13 @@ class AttributesRegister(Mapping[UID, AttributesView]):
 
         self._task_to_attributes_map[task].description = description
 
+    def set_progress(self, task: UID, progress: Progress | None = None) -> None:
+        """Set progress of an existing task."""
+        if task not in self:
+            raise TaskDoesNotExistError(task=task)
+
+        self._task_to_attributes_map[task].progress = progress
+
 
 class AttributesRegisterView(Mapping[UID, AttributesView]):
     """View-only task attributes register."""
@@ -110,10 +117,9 @@ class AttributesRegisterView(Mapping[UID, AttributesView]):
 
     def __eq__(self, other: object) -> bool:
         """Check if two register views are equal."""
-        if not isinstance(other, AttributesRegisterView):
-            return False
-
-        return dict(self.items()) == dict(other.items())
+        return isinstance(other, AttributesRegisterView) and dict(self.items()) == dict(
+            other.items()
+        )
 
     def __getitem__(self, key: UID) -> AttributesView:
         """Return view of attributes associated with key."""
