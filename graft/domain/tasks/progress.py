@@ -1,3 +1,5 @@
+"""Progress and associated classes/exceptions."""
+
 import enum
 
 

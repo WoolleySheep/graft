@@ -33,9 +33,9 @@ class HierarchyGraph(tk.Frame):
                 raise TypeError
 
             if event.inaxes != ax:
-                # TODO: Check that, if you move quickly, the annotation doesn't
-                # get removed when you move off the node and axes entirely.
-                # Would have to add another set-invisible here if so
+                if annotation.get_visible():
+                    annotation.set_visible(False)
+                    canvas.draw_idle()
                 return
 
             # If there are no paths in the path collection, the `contains`

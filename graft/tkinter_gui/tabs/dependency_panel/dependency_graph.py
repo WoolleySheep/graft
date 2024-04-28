@@ -80,6 +80,9 @@ class DependencyGraph(tk.Frame):
                     raise TypeError
 
                 if event.inaxes != self.ax:
+                    if annotation.get_visible():
+                        annotation.set_visible(False)
+                        self.canvas.draw_idle()
                     return
 
                 # If there are no paths in the path collection, the `contains`
@@ -103,8 +106,9 @@ class DependencyGraph(tk.Frame):
                 attributes = register[task]
 
                 if attributes.name is None:
-                    annotation.set_visible(False)
-                    self.fig.canvas.draw_idle()
+                    if annotation.get_visible():
+                        annotation.set_visible(False)
+                        self.canvas.draw_idle()
                     return
 
                 annotation.set_text(str(attributes.name) or "")

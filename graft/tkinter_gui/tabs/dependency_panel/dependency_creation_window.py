@@ -106,9 +106,3 @@ class DependencyCreationWindow(tk.Toplevel):
         self.dependee_task_option_menu.grid(row=0, column=0)
         self.dependent_task_option_menu.grid(row=1, column=0)
         self.confirm_button.grid(row=2, column=0)
-
-
-def create_dependency_creation_window(
-    master: tk.Misc, logic_layer: architecture.LogicLayer
-) -> None:
-    DependencyCreationWindow(master=master, logic_layer=logic_layer)

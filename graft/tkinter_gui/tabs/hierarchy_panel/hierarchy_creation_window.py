@@ -110,9 +110,3 @@ class HierarchyCreationWindow(tk.Toplevel):
         self.supertask_option_menu.grid(row=0, column=0)
         self.subtask_option_menu.grid(row=1, column=0)
         self.confirm_button.grid(row=2, column=0)
-
-
-def create_hierarchy_creation_window(
-    master: tk.Misc, logic_layer: architecture.LogicLayer
-) -> None:
-    HierarchyCreationWindow(master=master, logic_layer=logic_layer)

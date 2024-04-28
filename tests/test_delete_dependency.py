@@ -1,3 +1,5 @@
+"""Unit tests for `System.delete_dependency`."""
+
 import copy
 from unittest import mock
 

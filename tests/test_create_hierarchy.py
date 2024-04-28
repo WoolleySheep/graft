@@ -1,3 +1,5 @@
+"""Unit tests for `System.create_hierarchy`."""
+
 import copy
 from unittest import mock
 

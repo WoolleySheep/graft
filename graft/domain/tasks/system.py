@@ -5,7 +5,6 @@ import itertools
 from collections.abc import Generator, Iterator
 from typing import Any, Self
 
-from graft.domain.tasks import progress
 from graft.domain.tasks.attributes_register import (
     AttributesRegister,
     AttributesRegisterView,
@@ -347,6 +346,7 @@ class System:
 
     @classmethod
     def empty(cls) -> Self:
+        """Create an empty System."""
         return cls(
             attributes_register=AttributesRegister(),
             hierarchy_graph=HierarchyGraph(),

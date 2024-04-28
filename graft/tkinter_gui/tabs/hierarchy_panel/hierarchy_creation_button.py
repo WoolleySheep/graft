@@ -4,7 +4,7 @@ from tkinter import ttk
 
 from graft import architecture
 from graft.tkinter_gui.tabs.hierarchy_panel.hierarchy_creation_window import (
-    create_hierarchy_creation_window,
+    HierarchyCreationWindow,
 )
 
 
@@ -15,7 +15,7 @@ class HierarchyCreationButton(ttk.Button):
             master,
             text="Create Hierarchy",
             command=functools.partial(
-                create_hierarchy_creation_window,
+                HierarchyCreationWindow,
                 master=self,
                 logic_layer=self.logic_layer,
             ),
