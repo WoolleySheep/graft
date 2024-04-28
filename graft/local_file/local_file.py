@@ -230,10 +230,7 @@ class LocalFileDataLayer(architecture.DataLayer):
 
     @override
     def increment_next_task_uid_counter(self) -> None:
-        formatted_number = _TASK_NEXT_UID_FILEPATH.read_text()
-        if not formatted_number.isdecimal():
-            raise ValueError
-        number = int(formatted_number)
+        number = int(_TASK_NEXT_UID_FILEPATH.read_text())
         number += 1
         _TASK_NEXT_UID_FILEPATH.write_text(str(number))
 

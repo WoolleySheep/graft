@@ -87,7 +87,9 @@ class LabelledOptionMenu(tk.Frame):
         super().__init__(master=master)
 
         self.label = ttk.Label(self, text=label_text)
-        self.option_menu = ttk.OptionMenu(self, variable, *menu_options)
+        self.option_menu = ttk.OptionMenu(
+            self, variable, menu_options[0] if menu_options else None, *menu_options
+        )
 
         self.label.grid(row=0, column=0)
         self.option_menu.grid(row=0, column=1)
@@ -116,7 +118,10 @@ class DependencyDeletionWindow(tk.Toplevel):
 
         self.selected_dependency = tk.StringVar(self)
         self.dependency_option_menu = ttk.OptionMenu(
-            self, self.selected_dependency, *menu_options
+            self,
+            self.selected_dependency,
+            menu_options[0] if menu_options else None,
+            *menu_options,
         )
 
         self.confirm_button = ttk.Button(

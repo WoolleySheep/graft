@@ -19,3 +19,7 @@ class Name:
     def __str__(self) -> str:
         """Return name as a string."""
         return self._text
+
+    def __repr__(self) -> str:
+        """Return name as a string for developers."""
+        return f"Name({self._text})"

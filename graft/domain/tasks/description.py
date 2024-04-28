@@ -19,3 +19,7 @@ class Description:
     def __str__(self) -> str:
         """Return description as a string."""
         return self._text
+
+    def __repr__(self) -> str:
+        """Return description as a string for developers."""
+        return f"Description({self._text})"
