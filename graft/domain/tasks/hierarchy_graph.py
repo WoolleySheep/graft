@@ -311,7 +311,7 @@ class IHierarchyGraphView(Protocol):
         """Return generator over task-subtasks pairs."""
         ...
 
-    def is_concrete(self, task: UID) -> bool:
+    def is_concrete(self, task: UID, /) -> bool:
         """Check if task is concrete."""
         ...
 
@@ -329,6 +329,10 @@ class HierarchyGraph:
         self._reduced_dag = (
             copy.deepcopy(reduced_dag) if reduced_dag else graphs.ReducedDAG[UID]()
         )
+
+    def __bool__(self) -> bool:
+        """Check if graph has any tasks."""
+        return bool(self._reduced_dag)
 
     def __iter__(self) -> Iterator[UID]:
         """Return generator over tasks in graph."""

@@ -61,6 +61,8 @@ class GraphType(enum.Enum):
 def get_edge_colour_fn(
     highlighted_edges: Container[Edge], additional_edges: Container[Edge]
 ) -> Callable[[Edge], str]:
+    """Return a function that returns the colour of an edge."""
+
     def wrapper(edge: Edge) -> str:
         if edge in highlighted_edges:
             return "red"
@@ -176,7 +178,7 @@ class SystemGraph(tk.Frame, abc.ABC):
         task_path_collection: mpl_collections.PathCollection = nx.draw_networkx_nodes(
             nx_graph,
             pos=pos,
-            node_color=task_colours,
+            node_color=task_colours,  # type: ignore (edge colour also accepts array[str])
             ax=ax,
         )
 
@@ -190,7 +192,7 @@ class SystemGraph(tk.Frame, abc.ABC):
             nx_graph,
             pos=pos,
             ax=ax,
-            edge_color=task_colours,
+            edge_color=task_colours,  # type: ignore (edge colour also accepts array[str])
             connectionstyle="arc3,rad=0.1",
         )
         nx.draw_networkx_labels(nx_graph, pos=pos, ax=ax)

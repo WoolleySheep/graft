@@ -277,6 +277,10 @@ class DependencyGraph:
         """Initialise DependencyGraph."""
         self._dag = copy.deepcopy(dag) if dag else graphs.DirectedAcyclicGraph[UID]()
 
+    def __bool__(self) -> bool:
+        """Check if graph has any tasks."""
+        return bool(self._dag)
+
     def __iter__(self) -> Iterator[UID]:
         """Return generator over tasks in graph."""
         return iter(self._dag)

@@ -1,4 +1,7 @@
+import math
 from collections.abc import Collection, Mapping, Sequence
+
+_MIN_LAYER_HEIGHT = 3
 
 
 def _get_max_layer_width[T](
@@ -18,16 +21,19 @@ def _get_max_layer_width[T](
     return max_layer_width
 
 
-def _get_layer_positions_max_width_fractions_method(
-    nlayers: int, max_layer_width: float
+def _get_layer_positions_equally_spaced_method(
+    nlayers: int, graph_height: float
 ) -> list[float]:
     if nlayers == 0:
+        raise ValueError
+
+    if math.isclose(graph_height, 0):
         raise ValueError
 
     if nlayers == 1:
         return [0]
 
-    layer_separation = max_layer_width / (nlayers - 1)
+    layer_separation = graph_height / (nlayers - 1)
     return [idx * layer_separation for idx in range(nlayers)]
 
 
@@ -38,9 +44,14 @@ def get_layer_positions_max_width_fractions_method[T](
     if len(ordered_layers) == 0:
         return []
 
-    max_layer_width = _get_max_layer_width(
+    graph_height = _get_max_layer_width(
         layers=ordered_layers, intra_layer_positions=intra_layer_positions
     )
-    return _get_layer_positions_max_width_fractions_method(
-        nlayers=len(ordered_layers), max_layer_width=max_layer_width
+
+    # This happens when all the layers only have 1 node in them
+    if math.isclose(graph_height, 0):
+        graph_height = len(ordered_layers) * _MIN_LAYER_HEIGHT
+
+    return _get_layer_positions_equally_spaced_method(
+        nlayers=len(ordered_layers), graph_height=graph_height
     )
