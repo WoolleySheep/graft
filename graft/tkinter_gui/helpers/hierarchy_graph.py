@@ -13,6 +13,7 @@ class HierarchyGraph(SystemGraph):
         master: tk.Misc,
         system: tasks.System,
         highlighted_tasks: Container[tasks.UID] | None = None,
+        highlighted_hierarchies: Container[tuple[tasks.UID, tasks.UID]] | None = None,
         additional_hierarchies: Collection[tuple[tasks.UID, tasks.UID]] | None = None,
     ) -> None:
         super().__init__(
@@ -20,5 +21,6 @@ class HierarchyGraph(SystemGraph):
             graph_type=GraphType.HIERARCHY,
             system=system,
             highlighted_tasks=highlighted_tasks,
+            highlighted_edges=highlighted_hierarchies,
             additional_edges=additional_hierarchies,
         )

@@ -109,7 +109,7 @@ class InverseHierarchyAlreadyExistsError(Exception):
         self.supertask = supertask
         self.subtask = subtask
         super().__init__(
-            f"Inverse hierarchy between supertask [{subtask}] and subtask [{supertask}] already exists",
+            f"Hierarchy between supertask [{subtask}] and subtask [{supertask}] already exists",
             *args,
             **kwargs,
         )

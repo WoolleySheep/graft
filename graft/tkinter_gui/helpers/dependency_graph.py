@@ -13,6 +13,7 @@ class DependencyGraph(SystemGraph):
         master: tk.Misc,
         system: tasks.System,
         highlighted_tasks: Container[tasks.UID] | None = None,
+        highlighted_dependencies: Container[tuple[tasks.UID, tasks.UID]] | None = None,
         additional_dependencies: Collection[tuple[tasks.UID, tasks.UID]] | None = None,
     ) -> None:
         super().__init__(
@@ -20,5 +21,6 @@ class DependencyGraph(SystemGraph):
             graph_type=GraphType.DEPENDENCY,
             system=system,
             highlighted_tasks=highlighted_tasks,
+            highlighted_edges=highlighted_dependencies,
             additional_edges=additional_dependencies,
         )

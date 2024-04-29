@@ -2,8 +2,7 @@ import abc
 import enum
 import functools
 import tkinter as tk
-from collections.abc import Callable, Collection, Container, Set
-from typing import Iterable, Sequence
+from collections.abc import Callable, Collection, Container, Sequence
 
 import matplotlib as mpl
 import networkx as nx
@@ -18,6 +17,8 @@ from graft import graphs
 from graft.domain import tasks
 from graft.tkinter_gui import layered_graph_drawing
 from graft.tkinter_gui.helpers import graph_conversion
+
+type Edge = tuple[tasks.UID, tasks.UID]
 
 
 def _get_reduced_dag_from_hierarchy(
@@ -57,6 +58,19 @@ class GraphType(enum.Enum):
         self.get_graph = get_graph
 
 
+def get_edge_colour_fn(
+    highlighted_edges: Container[Edge], additional_edges: Container[Edge]
+) -> Callable[[Edge], str]:
+    def wrapper(edge: Edge) -> str:
+        if edge in highlighted_edges:
+            return "red"
+        if edge in additional_edges:
+            return "orange"
+        return "black"
+
+    return wrapper
+
+
 class SystemGraph(tk.Frame, abc.ABC):
     """tkinter frame showing either a Hierarchy or Dependency graph."""
 
@@ -66,7 +80,8 @@ class SystemGraph(tk.Frame, abc.ABC):
         graph_type: GraphType,
         system: tasks.System,
         highlighted_tasks: Container[tasks.UID] | None = None,
-        additional_edges: Collection[tuple[tasks.UID, tasks.UID]] | None = None,
+        highlighted_edges: Container[Edge] | None = None,
+        additional_edges: Collection[Edge] | None = None,
     ) -> None:
         def display_annotation(
             event: mpl_backend_bases.Event,
@@ -120,8 +135,14 @@ class SystemGraph(tk.Frame, abc.ABC):
         if highlighted_tasks is None:
             highlighted_tasks = set[tasks.UID]()
 
+        if highlighted_edges is None:
+            highlighted_edges = set[Edge]()
+
         if additional_edges is None:
-            additional_edges = list[tuple[tasks.UID, tasks.UID]]()
+            additional_edges = set[Edge]()
+
+        if any(edge in highlighted_edges for edge in additional_edges):
+            raise ValueError("highlighted_edges and additional_edges cannot overlap")
 
         super().__init__(master=master)
 
@@ -160,9 +181,10 @@ class SystemGraph(tk.Frame, abc.ABC):
         )
 
         nx_graph.add_edges_from(additional_edges)
-        task_colours = [
-            "red" if edge in additional_edges else "black" for edge in nx_graph.edges
-        ]
+        get_edge_colour = get_edge_colour_fn(
+            highlighted_edges=highlighted_edges, additional_edges=additional_edges
+        )
+        task_colours = [get_edge_colour(edge) for edge in nx_graph.edges]
 
         nx.draw_networkx_edges(
             nx_graph,

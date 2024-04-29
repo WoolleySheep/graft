@@ -14,6 +14,7 @@ class HierarchyGraphOperationFailedWindow(OperationFailedWindow):
         text: str,
         system: tasks.System,
         highlighted_tasks: Container[tasks.UID] | None = None,
+        highlighted_hierarchies: Container[tuple[tasks.UID, tasks.UID]] | None = None,
         additional_hierarchies: Collection[tuple[tasks.UID, tasks.UID]] | None = None,
     ) -> None:
         super().__init__(master=master)
@@ -24,6 +25,7 @@ class HierarchyGraphOperationFailedWindow(OperationFailedWindow):
             master=self,
             system=system,
             highlighted_tasks=highlighted_tasks,
+            highlighted_hierarchies=highlighted_hierarchies,
             additional_hierarchies=additional_hierarchies,
         )
 
