@@ -65,12 +65,20 @@ class HierarchyCreationWindow(tk.Toplevel):
             supertask = _parse_task_uid_from_menu_option(self.selected_supertask.get())
             subtask = _parse_task_uid_from_menu_option(self.selected_subtask.get())
             try:
-                logic_layer.create_hierarchy(supertask, subtask)
+                self.logic_layer.create_hierarchy(supertask, subtask)
             except tasks.HierarchyLoopError as e:
                 system = tasks.System.empty()
                 system.add_task(e.task)
+                system.set_name(
+                    e.task,
+                    self.logic_layer.get_task_attributes_register_view()[e.task].name,
+                )
                 helpers.SingleHierarchyGraphOperationFailedWindow(
-                    master=self, text=str(e), system=system
+                    master=self,
+                    text="Cannot create a hierarchy between a task and itself",
+                    system=system,
+                    highlighted_tasks={e.task},
+                    additional_hierarchies={(e.task, e.task)},
                 )
                 return
             except Exception as e:
@@ -84,6 +92,7 @@ class HierarchyCreationWindow(tk.Toplevel):
         super().__init__(master=master)
 
         self.title("Create hierarchy")
+        self.logic_layer = logic_layer
 
         menu_options = list(_get_menu_options(logic_layer=logic_layer))
 

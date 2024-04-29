@@ -1,6 +1,7 @@
 import functools
 import tkinter as tk
-from typing import Sequence
+from collections.abc import Collection, Container, Set
+from typing import Iterable, Sequence
 
 import matplotlib as mpl
 import networkx as nx
@@ -19,7 +20,15 @@ GRAPH_ORIENTATION = layered_graph_drawing.GraphOrientation.VERTICAL
 
 
 class HierarchyGraph(tk.Frame):
-    def __init__(self, master: tk.Misc, system: tasks.System) -> None:
+    """tkinter frame showing a the hierarchy graph of the system."""
+
+    def __init__(
+        self,
+        master: tk.Misc,
+        system: tasks.System,
+        highlighted_tasks: Container[tasks.UID] | None = None,
+        additional_hierarchies: Collection[tuple[tasks.UID, tasks.UID]] | None = None,
+    ) -> None:
         def display_annotation(
             event: mpl_backend_bases.Event,
             ax: axes.Axes,
@@ -69,6 +78,12 @@ class HierarchyGraph(tk.Frame):
             # TODO: Improve performance by only redrawing when the task or task name changes
             canvas.draw_idle()
 
+        if highlighted_tasks is None:
+            highlighted_tasks = set[tasks.UID]()
+
+        if additional_hierarchies is None:
+            additional_hierarchies = list[tuple[tasks.UID, tasks.UID]]()
+
         super().__init__(master=master)
 
         mpl.use("Agg")
@@ -98,13 +113,31 @@ class HierarchyGraph(tk.Frame):
         )
         annotation.set_visible(False)
 
+        tasks_in_path_order = list[tasks.UID](digraph)
+        task_colours = [
+            "red" if task in highlighted_tasks else "blue"
+            for task in tasks_in_path_order
+        ]
         task_path_collection: mpl_collections.PathCollection = nx.draw_networkx_nodes(
             digraph,
             pos=pos,
+            node_color=task_colours,
             ax=ax,
         )
-        tasks_in_path_order = list(digraph)
-        nx.draw_networkx_edges(digraph, pos=pos, ax=ax, connectionstyle="arc3,rad=0.1")
+
+        digraph.add_edges_from(additional_hierarchies)
+        hierarchy_colours = [
+            "red" if hierarchy in additional_hierarchies else "black"
+            for hierarchy in digraph.edges
+        ]
+
+        nx.draw_networkx_edges(
+            digraph,
+            pos=pos,
+            ax=ax,
+            edge_color=hierarchy_colours,
+            connectionstyle="arc3,rad=0.1",
+        )
         nx.draw_networkx_labels(digraph, pos=pos, ax=ax)
 
         canvas.draw()
