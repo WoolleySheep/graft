@@ -1,3 +1,4 @@
+import itertools
 import tkinter as tk
 from collections.abc import Generator
 from tkinter import ttk
@@ -43,6 +44,97 @@ class TaskDeletionWindow(tk.Toplevel):
             uid = _parse_task_uid_from_menu_option(self.selected_task.get())
             try:
                 logic_layer.delete_task(uid)
+            except tasks.HasSuperTasksError as e:
+                system = tasks.System.empty()
+                system.add_task(e.task)
+                system.set_name(
+                    e.task,
+                    logic_layer.get_task_attributes_register_view()[e.task].name,
+                )
+                for supertask in e.supertasks:
+                    system.add_task(supertask)
+                    system.set_name(
+                        supertask,
+                        logic_layer.get_task_attributes_register_view()[supertask].name,
+                    )
+                    system.add_hierarchy(supertask, e.task)
+
+                helpers.HierarchyGraphOperationFailedWindow(
+                    master=self,
+                    text="Cannot delete task as it has supertask(s)",
+                    system=system,
+                    highlighted_tasks={e.task},
+                )
+                return
+            except tasks.HasSubTasksError as e:
+                system = tasks.System.empty()
+                system.add_task(e.task)
+                system.set_name(
+                    e.task,
+                    logic_layer.get_task_attributes_register_view()[e.task].name,
+                )
+                for subtask in e.subtasks:
+                    system.add_task(subtask)
+                    system.set_name(
+                        subtask,
+                        logic_layer.get_task_attributes_register_view()[subtask].name,
+                    )
+                    system.add_hierarchy(e.task, subtask)
+
+                helpers.HierarchyGraphOperationFailedWindow(
+                    master=self,
+                    text="Cannot delete task as it has subtask(s)",
+                    system=system,
+                    highlighted_tasks={e.task},
+                )
+                return
+            except tasks.HasDependeeTasksError as e:
+                system = tasks.System.empty()
+                system.add_task(e.task)
+                system.set_name(
+                    uid, logic_layer.get_task_attributes_register_view()[e.task].name
+                )
+                for dependee_task in e.dependee_tasks:
+                    system.add_task(dependee_task)
+                    system.set_name(
+                        dependee_task,
+                        logic_layer.get_task_attributes_register_view()[
+                            dependee_task
+                        ].name,
+                    )
+                    system.add_dependency(dependee_task, e.task)
+
+                helpers.DependencyGraphOperationFailedWindow(
+                    master=self,
+                    text="Cannot delete task as it has dependee-tasks",
+                    system=system,
+                    highlighted_tasks={e.task},
+                )
+                return
+            except tasks.HasDependentTasksError as e:
+                system = tasks.System.empty()
+                system.add_task(e.task)
+                system.set_name(
+                    e.task,
+                    logic_layer.get_task_attributes_register_view()[e.task].name,
+                )
+                for dependent_task in e.dependent_tasks:
+                    system.add_task(dependent_task)
+                    system.set_name(
+                        dependent_task,
+                        logic_layer.get_task_attributes_register_view()[
+                            dependent_task
+                        ].name,
+                    )
+                    system.add_dependency(e.task, dependent_task)
+
+                helpers.DependencyGraphOperationFailedWindow(
+                    master=self,
+                    text="Cannot delete task as it has dependent-tasks",
+                    system=system,
+                    highlighted_tasks={e.task},
+                )
+                return
             except Exception as e:
                 helpers.UnknownExceptionOperationFailedWindow(master=self, exception=e)
                 return
@@ -52,7 +144,7 @@ class TaskDeletionWindow(tk.Toplevel):
 
         super().__init__(master=master)
 
-        self.title("Create task")
+        self.title("Delete task")
 
         self.selected_task = tk.StringVar(self)
         menu_options = list(_get_menu_options(logic_layer=logic_layer))

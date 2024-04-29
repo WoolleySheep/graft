@@ -73,7 +73,7 @@ class HierarchyCreationWindow(tk.Toplevel):
                     e.task,
                     self.logic_layer.get_task_attributes_register_view()[e.task].name,
                 )
-                helpers.SingleHierarchyGraphOperationFailedWindow(
+                helpers.HierarchyGraphOperationFailedWindow(
                     master=self,
                     text="Cannot create a hierarchy between a task and itself",
                     system=system,

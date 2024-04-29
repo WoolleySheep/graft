@@ -7,33 +7,33 @@ from graft.domain import tasks
 
 
 def convert_hierarchy_to_reduced_dag(
-    hierarchy_graph: tasks.IHierarchyGraphView,
+    graph: tasks.IHierarchyGraphView,
 ) -> graphs.ReducedDAG[tasks.UID]:
     reduced_dag = graphs.ReducedDAG[tasks.UID]()
-    for task in hierarchy_graph:
+    for task in graph:
         reduced_dag.add_node(task)
-    for parent, child in hierarchy_graph.hierarchies():
+    for parent, child in graph.hierarchies():
         reduced_dag.add_edge(parent, child)
     return reduced_dag
 
 
 def convert_dependency_to_dag(
-    dependency_graph: tasks.IDependencyGraphView,
+    graph: tasks.IDependencyGraphView,
 ) -> graphs.DirectedAcyclicGraph[tasks.UID]:
     dag = graphs.DirectedAcyclicGraph[tasks.UID]()
-    for task in dependency_graph:
+    for task in graph:
         dag.add_node(task)
-    for parent, child in dependency_graph.dependencies():
+    for parent, child in graph.dependencies():
         dag.add_edge(parent, child)
     return dag
 
 
 def convert_simple_digraph_to_nx_digraph[T: Hashable](
-    digraph: graphs.SimpleDiGraph[T],
+    graph: graphs.SimpleDiGraph[T],
 ) -> nx.DiGraph:
     nx_digraph = nx.DiGraph()
-    for node in digraph:
+    for node in graph:
         nx_digraph.add_node(node)
-    for parent, child in digraph.edges():
+    for parent, child in graph.edges():
         nx_digraph.add_edge(parent, child)
     return nx_digraph

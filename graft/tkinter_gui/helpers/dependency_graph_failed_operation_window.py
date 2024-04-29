@@ -1,31 +1,30 @@
 import tkinter as tk
-from collections.abc import Collection, Container, Set
+from collections.abc import Collection, Container
 from tkinter import ttk
 
 from graft.domain import tasks
-from graft.tkinter_gui.helpers import failed_operation_window, hierarchy_graph
+from graft.tkinter_gui.helpers.dependency_graph import DependencyGraph
+from graft.tkinter_gui.helpers.failed_operation_window import OperationFailedWindow
 
 
-class SingleHierarchyGraphOperationFailedWindow(
-    failed_operation_window.OperationFailedWindow
-):
+class DependencyGraphOperationFailedWindow(OperationFailedWindow):
     def __init__(
         self,
         master: tk.Misc,
         text: str,
         system: tasks.System,
         highlighted_tasks: Container[tasks.UID] | None = None,
-        additional_hierarchies: Collection[tuple[tasks.UID, tasks.UID]] | None = None,
+        additional_dependencies: Collection[tuple[tasks.UID, tasks.UID]] | None = None,
     ) -> None:
         super().__init__(master=master)
 
         self.label = ttk.Label(self, text=text)
 
-        self.graph = hierarchy_graph.HierarchyGraph(
+        self.graph = DependencyGraph(
             master=self,
             system=system,
             highlighted_tasks=highlighted_tasks,
-            additional_hierarchies=additional_hierarchies,
+            additional_dependencies=additional_dependencies,
         )
 
         self.label.grid(row=0, column=0)
