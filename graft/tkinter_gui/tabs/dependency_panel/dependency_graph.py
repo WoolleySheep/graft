@@ -18,7 +18,7 @@ GRAPH_ORIENTATION = layered_graph_drawing.GraphOrientation.HORIZONTAL
 
 
 def _convert_dependency_to_networkx_graph(
-    dependency_graph: tasks.DependencyGraphView,
+    dependency_graph: tasks.IDependencyGraphView,
 ) -> nx.DiGraph:
     networkx_graph = nx.DiGraph()
 
@@ -32,7 +32,7 @@ def _convert_dependency_to_networkx_graph(
 
 
 def _covert_dependency_to_digraph(
-    dependency_graph: tasks.DependencyGraphView,
+    dependency_graph: tasks.IDependencyGraphView,
 ) -> graphs.DirectedAcyclicGraph[tasks.UID]:
     graph = graphs.DirectedAcyclicGraph[tasks.UID]()
 

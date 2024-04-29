@@ -2,7 +2,7 @@
 
 import copy
 from collections.abc import Generator, Iterable, Iterator, Set
-from typing import Any, Self
+from typing import Any, Protocol, Self
 
 from graft import graphs
 from graft.domain.tasks.helpers import TaskAlreadyExistsError, TaskDoesNotExistError
@@ -195,13 +195,11 @@ class DependenciesView(Set[tuple[UID, UID]]):
 
     def __eq__(self, other: object) -> bool:
         """Check if two views are equal."""
-        if not isinstance(other, DependenciesView):
-            return False
-
-        return set(self) == set(other)
+        return isinstance(other, DependenciesView) and set(self) == set(other)
 
     def __contains__(self, item: object) -> bool:
         """Check if item in DependenciesView."""
+        # TODO: Doesn't make sense to catch this error for generic self._dependencies
         try:
             return item in self._dependencies
         except graphs.NodeDoesNotExistError as e:
@@ -217,6 +215,54 @@ class DependenciesView(Set[tuple[UID, UID]]):
             f"({dependee}, {dependent})" for dependee, dependent in self
         )
         return f"dependencies_view({', '.join(formatted_dependencies)})"
+
+
+class IDependencyGraphView(Protocol):
+    """Interface for a view of a graph of task dependencies."""
+
+    def __bool__(self) -> bool:
+        """Check if graph has any tasks."""
+        ...
+
+    def __contains__(self, item: object) -> bool:
+        """Check if item in graph."""
+        ...
+
+    def __len__(self) -> int:
+        """Return number of tasks in graph."""
+        ...
+
+    def __eq__(self, other: object) -> bool:
+        """Check if two graphs are equal."""
+        ...
+
+    def __iter__(self) -> Iterator[UID]:
+        """Return generator over tasks in graph."""
+        ...
+
+    def __str__(self) -> str:
+        """Return string representation of graph."""
+        ...
+
+    def tasks(self) -> UIDsView:
+        """Return view of tasks in graph."""
+        ...
+
+    def dependencies(self) -> DependenciesView:
+        """Return view of dependencies in graph."""
+        ...
+
+    def dependee_tasks(self, task: UID, /) -> UIDsView:
+        """Return a view of the dependee-tasks of a task."""
+        ...
+
+    def dependent_tasks(self, task: UID, /) -> UIDsView:
+        """Return a view of the dependent-tasks of a task."""
+        ...
+
+    def task_dependents_pairs(self) -> Generator[tuple[UID, UIDsView], None, None]:
+        """Return generator over task-dependents pairs."""
+        ...
 
 
 class DependencyGraph:
@@ -241,10 +287,11 @@ class DependencyGraph:
 
     def __eq__(self, other: object) -> bool:
         """Check if two graphs are equal."""
-        if not isinstance(other, DependencyGraph):
-            return False
-
-        return self.dependencies() == other.dependencies()
+        return (
+            isinstance(other, DependencyGraph)
+            and self.tasks() == other.tasks()
+            and self.dependencies() == other.dependencies()
+        )
 
     def __contains__(self, item: object) -> bool:
         """Check if item in graph."""
@@ -282,8 +329,7 @@ class DependencyGraph:
             raise InverseDependencyAlreadyExistsError(
                 dependee_task, dependent_task
             ) from e
-
-        except graphs.IntroducesCycleError as e:
+        except graphs.IntroducesCycleError[UID, graphs.DirectedAcyclicGraph[UID]] as e:
             connecting_subgraph = DependencyGraph(e.connecting_subgraph)
             raise DependencyIntroducesCycleError(
                 dependee_task=dependee_task,
@@ -432,41 +478,50 @@ class DependencyGraph:
 class DependencyGraphView:
     """View of the DependencyGraph."""
 
-    def __init__(self, dependency_graph: DependencyGraph) -> None:
+    def __init__(self, dependency_graph: IDependencyGraphView) -> None:
         """Initialise DependencyGraphView."""
-        self._dependency_graph = dependency_graph
+        self._graph = dependency_graph
 
     def __bool__(self) -> bool:
         """Check view has any tasks."""
-        return bool(self._dependency_graph)
+        return bool(self._graph)
 
     def __iter__(self) -> Iterator[UID]:
         """Return generator over tasks in view."""
-        return iter(self._dependency_graph)
+        return iter(self._graph)
 
     def __len__(self) -> int:
         """Return number of tasks in view."""
-        return len(self._dependency_graph)
+        return len(self._graph)
 
     def __eq__(self, other: object) -> bool:
         """Check if two views are equal."""
-        if not isinstance(other, DependencyGraphView):
-            return False
-
-        return self.dependencies() == other.dependencies()
+        return (
+            isinstance(other, DependencyGraphView)
+            and self.tasks() == other.tasks()
+            and self.dependencies() == other.dependencies()
+        )
 
     def __contains__(self, item: object) -> bool:
         """Check if item in graph view."""
-        return item in self._dependency_graph
+        return item in self._graph
 
     def tasks(self) -> UIDsView:
         """Return view of tasks in graph."""
-        return self._dependency_graph.tasks()
+        return self._graph.tasks()
 
     def dependencies(self) -> DependenciesView:
         """Return view of dependencies in graph."""
-        return self._dependency_graph.dependencies()
+        return self._graph.dependencies()
+
+    def dependee_tasks(self, task: UID, /) -> UIDsView:
+        """Return a view of the dependee-tasks of a task."""
+        return self._graph.dependee_tasks(task)
+
+    def dependent_tasks(self, task: UID, /) -> UIDsView:
+        """Return a view of the dependent-tasks of a task."""
+        return self._graph.dependent_tasks(task)
 
     def task_dependents_pairs(self) -> Generator[tuple[UID, UIDsView], None, None]:
         """Return generator over task-dependents pairs."""
-        return self._dependency_graph.task_dependents_pairs()
+        return self._graph.task_dependents_pairs()

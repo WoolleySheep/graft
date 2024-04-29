@@ -268,13 +268,13 @@ def _load_task_attributes_register() -> tasks.AttributesRegister:
         return json.load(fp=fp, object_hook=_decode_task_attributes_register)
 
 
-def _save_task_hierarchy_graph(graph: tasks.HierarchyGraphView) -> None:
+def _save_task_hierarchy_graph(graph: tasks.IHierarchyGraphView) -> None:
     """Save the task hierarchy graph."""
     with _TASK_HIERARCHY_GRAPH_FILEPATH.open("w") as fp:
         json.dump(obj=graph, fp=fp, default=_encode_task_hierarchy_graph)
 
 
-def _save_task_dependency_graph(graph: tasks.DependencyGraphView) -> None:
+def _save_task_dependency_graph(graph: tasks.IDependencyGraphView) -> None:
     """Save the task dependency graph."""
     with _TASK_DEPENDENCY_GRAPH_FILEPATH.open("w") as fp:
         json.dump(obj=graph, fp=fp, default=_encode_task_dependency_graph)

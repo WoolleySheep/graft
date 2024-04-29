@@ -3,7 +3,7 @@
 
 import copy
 from collections.abc import Callable, Generator, Iterable, Iterator, Set
-from typing import Any, Self
+from typing import Any, Protocol, Self
 
 from graft import graphs
 from graft.domain.tasks.helpers import TaskAlreadyExistsError, TaskDoesNotExistError
@@ -228,9 +228,9 @@ class SubTaskIsAlreadySubTaskOfSuperiorTaskOfSuperTaskError(Exception):
 class HierarchiesView(Set[tuple[UID, UID]]):
     """View of the hierarchies in the graph."""
 
-    def __init__(self, hirarchies: Set[tuple[UID, UID]], /) -> None:
+    def __init__(self, heirarchies: Set[tuple[UID, UID]], /) -> None:
         """Initialise HierarchiesView."""
-        self._hierarchies = hirarchies
+        self._hierarchies = heirarchies
 
     def __bool__(self) -> bool:
         """Check view has any hierarchies."""
@@ -242,9 +242,10 @@ class HierarchiesView(Set[tuple[UID, UID]]):
 
     def __contains__(self, item: object) -> bool:
         """Check if item in HierarchiesView."""
+        # TODO: Doesn't make sense to catch this error for generic self._heirarchies
         try:
             return item in self._hierarchies
-        except graphs.NodeDoesNotExistError as e:
+        except graphs.NodeDoesNotExistError[UID] as e:
             raise TaskDoesNotExistError(e.node) from e
 
     def __iter__(self) -> Iterator[tuple[UID, UID]]:
@@ -253,10 +254,7 @@ class HierarchiesView(Set[tuple[UID, UID]]):
 
     def __eq__(self, other: object) -> bool:
         """Check if two views are equal."""
-        if not isinstance(other, HierarchiesView):
-            return False
-
-        return set(self) == set(other)
+        return isinstance(other, HierarchiesView) and set(self) == set(other)
 
     def __str__(self) -> str:
         """Return string representation of view."""
@@ -264,6 +262,58 @@ class HierarchiesView(Set[tuple[UID, UID]]):
             f"({supertask}, {subtask})" for supertask, subtask in self
         )
         return f"hierarchies_view({', '.join(formatted_hierarchies)})"
+
+
+class IHierarchyGraphView(Protocol):
+    """Interface for a view of a graph of task hierarchies."""
+
+    def __bool__(self) -> bool:
+        """Check if graph has any tasks."""
+        ...
+
+    def __contains__(self, item: object) -> bool:
+        """Check if item in graph."""
+        ...
+
+    def __len__(self) -> int:
+        """Return number of tasks in graph."""
+        ...
+
+    def __eq__(self, other: object) -> bool:
+        """Check if two graphs are equal."""
+        ...
+
+    def __iter__(self) -> Iterator[UID]:
+        """Return generator over tasks in graph."""
+        ...
+
+    def __str__(self) -> str:
+        """Return string representation of graph."""
+        ...
+
+    def tasks(self) -> UIDsView:
+        """Return view of tasks in graph."""
+        ...
+
+    def hierarchies(self) -> HierarchiesView:
+        """Return a view of the hierarchies."""
+        ...
+
+    def supertasks(self, task: UID, /) -> UIDsView:
+        """Return view of supertasks of task."""
+        ...
+
+    def subtasks(self, task: UID, /) -> UIDsView:
+        """Return view of subtasks of task."""
+        ...
+
+    def task_subtasks_pairs(self) -> Generator[tuple[UID, UIDsView], None, None]:
+        """Return generator over task-subtasks pairs."""
+        ...
+
+    def is_concrete(self, task: UID) -> bool:
+        """Check if task is concrete."""
+        ...
 
 
 class HierarchyGraph:
@@ -294,10 +344,11 @@ class HierarchyGraph:
 
     def __eq__(self, other: object) -> bool:
         """Check if two graphs are equal."""
-        if not isinstance(other, HierarchyGraph):
-            return False
-
-        return self.hierarchies() == other.hierarchies()
+        return (
+            isinstance(other, HierarchyGraph)
+            and self.tasks() == other.tasks()
+            and self.hierarchies() == other.hierarchies()
+        )
 
     def __str__(self) -> str:
         """Return string representation of graph."""
@@ -455,9 +506,9 @@ class HierarchyGraph:
             connecting_subgraph = self._reduced_dag.connecting_subgraph(
                 source=source_task, target=target_task
             )
-        except graphs.NodeDoesNotExistError[UID] as e:
+        except graphs.NodeDoesNotExistError as e:
             raise TaskDoesNotExistError(task=e.node) from e
-        except graphs.NoConnectingSubgraphError[UID] as e:
+        except graphs.NoConnectingSubgraphError as e:
             raise NoConnectingHierarchySubgraphError(
                 sources=[source_task], targets=[target_task]
             ) from e
@@ -576,53 +627,54 @@ class HierarchyGraph:
 class HierarchyGraphView:
     """View of the HierarchyGraph."""
 
-    def __init__(self, hierarchy_graph: HierarchyGraph) -> None:
+    def __init__(self, hierarchy_graph: IHierarchyGraphView) -> None:
         """Initialise HierarchyGraphView."""
-        self._hierarchy_graph = hierarchy_graph
+        self._graph = hierarchy_graph
 
     def __bool__(self) -> bool:
         """Check view has any tasks."""
-        return bool(self._hierarchy_graph)
+        return bool(self._graph)
 
     def __iter__(self) -> Iterator[UID]:
         """Return generator over tasks in view."""
-        return iter(self._hierarchy_graph)
+        return iter(self._graph)
 
     def __len__(self) -> int:
         """Return number of tasks in view."""
-        return len(self._hierarchy_graph)
+        return len(self._graph)
 
     def __eq__(self, other: object) -> bool:
         """Check if two hierarchy graph views are equal."""
-        if not isinstance(other, HierarchyGraphView):
-            return False
-
-        return self.hierarchies() == other.hierarchies()
+        return (
+            isinstance(other, HierarchyGraphView)
+            and self.tasks() == other.tasks()
+            and self.hierarchies() == other.hierarchies()
+        )
 
     def __contains__(self, item: object) -> bool:
         """Check if item in graph view."""
-        return item in self._hierarchy_graph
+        return item in self._graph
 
     def tasks(self) -> UIDsView:
         """Return tasks in view."""
-        return self.tasks()
+        return self._graph.tasks()
 
     def hierarchies(self) -> HierarchiesView:
         """Return hierarchies in view."""
-        return self._hierarchy_graph.hierarchies()
+        return self._graph.hierarchies()
 
     def subtasks(self, task: UID) -> UIDsView:
         """Return view of subtasks of task."""
-        return self._hierarchy_graph.subtasks(task)
+        return self._graph.subtasks(task)
 
     def supertasks(self, task: UID) -> UIDsView:
         """Return view of supertasks of task."""
-        return self._hierarchy_graph.supertasks(task)
+        return self._graph.supertasks(task)
 
     def task_subtasks_pairs(self) -> Generator[tuple[UID, UIDsView], None, None]:
         """Return generator over task-subtasks pairs."""
-        return self._hierarchy_graph.task_subtasks_pairs()
+        return self._graph.task_subtasks_pairs()
 
     def is_concrete(self, task: UID) -> bool:
         """Check if task is concrete."""
-        return self._hierarchy_graph.is_concrete(task)
+        return self._graph.is_concrete(task)

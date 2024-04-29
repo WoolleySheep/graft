@@ -16,6 +16,7 @@ from graft.domain.tasks.dependency_graph import (
     DependencyLoopError,
     HasDependeeTasksError,
     HasDependentTasksError,
+    IDependencyGraphView,
     InverseDependencyAlreadyExistsError,
 )
 from graft.domain.tasks.description import Description
@@ -31,6 +32,7 @@ from graft.domain.tasks.hierarchy_graph import (
     HierarchyIntroducesCycleError,
     HierarchyLoopError,
     HierarchyPathAlreadyExistsError,
+    IHierarchyGraphView,
     InverseHierarchyAlreadyExistsError,
     SubTaskIsAlreadySubTaskOfSuperiorTaskOfSuperTaskError,
 )

@@ -7,7 +7,7 @@ from graft.domain import tasks
 
 
 def convert_hierarchy_to_reduced_dag(
-    hierarchy_graph: tasks.HierarchyGraphView,
+    hierarchy_graph: tasks.IHierarchyGraphView,
 ) -> graphs.ReducedDAG[tasks.UID]:
     reduced_dag = graphs.ReducedDAG[tasks.UID]()
     for task in hierarchy_graph:
@@ -18,7 +18,7 @@ def convert_hierarchy_to_reduced_dag(
 
 
 def convert_dependency_to_dag(
-    dependency_graph: tasks.DependencyGraphView,
+    dependency_graph: tasks.IDependencyGraphView,
 ) -> graphs.DirectedAcyclicGraph[tasks.UID]:
     dag = graphs.DirectedAcyclicGraph[tasks.UID]()
     for task in dependency_graph:

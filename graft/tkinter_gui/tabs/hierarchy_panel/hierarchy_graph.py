@@ -22,7 +22,7 @@ class HierarchyGraph(tk.Frame):
     def __init__(self, master: tk.Misc, logic_layer: architecture.LogicLayer) -> None:
         def update_figure(self: Self) -> None:
             def convert_hierarchy_to_networkx_graph(
-                hierarchy_graph: tasks.HierarchyGraphView,
+                hierarchy_graph: tasks.IHierarchyGraphView,
             ) -> nx.DiGraph:
                 networkx_graph = nx.DiGraph()
                 for task in hierarchy_graph:
@@ -34,7 +34,7 @@ class HierarchyGraph(tk.Frame):
                 return networkx_graph
 
             def covert_hierarchy_to_digraph(
-                hierarchy_graph: tasks.HierarchyGraphView,
+                hierarchy_graph: tasks.IHierarchyGraphView,
             ) -> graphs.DirectedAcyclicGraph[tasks.UID]:
                 graph = graphs.DirectedAcyclicGraph[tasks.UID]()
                 for task in hierarchy_graph:
