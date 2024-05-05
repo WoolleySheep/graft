@@ -69,7 +69,7 @@ class DependencyCreationWindow(tk.Toplevel):
                 self.selected_dependent_task.get()
             )
             try:
-                logic_layer.create_dependency(dependee_task, dependent_task)
+                logic_layer.create_task_dependency(dependee_task, dependent_task)
             except Exception as e:
                 helpers.UnknownExceptionOperationFailedWindow(master=self, exception=e)
                 return

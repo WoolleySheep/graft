@@ -24,13 +24,13 @@ def test_delete_dependency_success(
 
     system_without_dependency = copy.deepcopy(system)
 
-    system.add_dependency(dependee_task, dependent_task)
+    system.add_task_dependency(dependee_task, dependent_task)
 
     data_layer_mock.load_system.return_value = system
 
     logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
 
-    logic_layer.delete_dependency(dependee_task, dependent_task)
+    logic_layer.delete_task_dependency(dependee_task, dependent_task)
 
     data_layer_mock.load_system.assert_called_once()
     data_layer_mock.save_system.assert_called_once_with(system_without_dependency)
@@ -52,7 +52,7 @@ def test_delete_dependency_failure_dependee_task_not_exists(
     logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.TaskDoesNotExistError) as exc_info:
-        logic_layer.delete_hierarchy(absent_dependee_task, dependent_task)
+        logic_layer.delete_task_hierarchy(absent_dependee_task, dependent_task)
     assert exc_info.value.task == absent_dependee_task
 
     data_layer_mock.load_system.assert_called_once()
@@ -75,7 +75,7 @@ def test_delete_dependency_failure_dependent_task_not_exists(
     logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.TaskDoesNotExistError) as exc_info:
-        logic_layer.delete_hierarchy(dependee_task, absent_dependent_task)
+        logic_layer.delete_task_hierarchy(dependee_task, absent_dependent_task)
     assert exc_info.value.task == absent_dependent_task
 
     data_layer_mock.load_system.assert_called_once()
@@ -97,7 +97,7 @@ def test_delete_dependency_failure_dependency_loop(
     logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.DependencyLoopError) as exc_info:
-        logic_layer.delete_dependency(task, task)
+        logic_layer.delete_task_dependency(task, task)
     assert exc_info.value.task == task
 
     data_layer_mock.load_system.assert_called_once()
@@ -121,7 +121,7 @@ def test_delete_dependency_failure_dependency_not_exist(
     logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.DependencyDoesNotExistError) as exc_info:
-        logic_layer.delete_dependency(dependee_task, dependent_task)
+        logic_layer.delete_task_dependency(dependee_task, dependent_task)
     assert exc_info.value.dependee_task == dependee_task
     assert exc_info.value.dependent_task == dependent_task
 

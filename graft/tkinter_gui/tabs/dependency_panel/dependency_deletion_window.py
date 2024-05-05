@@ -18,7 +18,7 @@ def _get_dependencies_with_names(
     for (
         dependee_task,
         dependent_task,
-    ) in logic_layer.get_dependency_graph_view().dependencies():
+    ) in logic_layer.get_task_dependency_graph_view().dependencies():
         yield (
             (dependee_task, attributes_register[dependee_task].name),
             (dependent_task, attributes_register[dependent_task].name),
@@ -102,7 +102,7 @@ class DependencyDeletionWindow(tk.Toplevel):
                 self.selected_dependency.get()
             )
             try:
-                logic_layer.delete_dependency(dependee_task, dependent_task)
+                logic_layer.delete_task_dependency(dependee_task, dependent_task)
             except Exception as e:
                 helpers.UnknownExceptionOperationFailedWindow(master=self, exception=e)
                 return

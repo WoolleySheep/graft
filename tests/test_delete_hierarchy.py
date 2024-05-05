@@ -24,13 +24,13 @@ def test_delete_hierarchy_success(
 
     system_without_hierarchy = copy.deepcopy(system)
 
-    system.add_hierarchy(supertask, subtask)
+    system.add_task_hierarchy(supertask, subtask)
 
     data_layer_mock.load_system.return_value = system
 
     logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
 
-    logic_layer.delete_hierarchy(supertask, subtask)
+    logic_layer.delete_task_hierarchy(supertask, subtask)
 
     data_layer_mock.load_system.assert_called_once()
     data_layer_mock.save_system.assert_called_once_with(system_without_hierarchy)
@@ -52,7 +52,7 @@ def test_delete_hierarchy_failure_supertask_not_exist(
     logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.TaskDoesNotExistError) as exc_info:
-        logic_layer.delete_hierarchy(absent_supertask, subtask)
+        logic_layer.delete_task_hierarchy(absent_supertask, subtask)
     assert exc_info.value.task == absent_supertask
 
     data_layer_mock.load_system.assert_called_once()
@@ -75,7 +75,7 @@ def test_delete_hierarchy_failure_subtask_not_exist(
     logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.TaskDoesNotExistError) as exc_info:
-        logic_layer.delete_hierarchy(supertask, absent_subtask)
+        logic_layer.delete_task_hierarchy(supertask, absent_subtask)
     assert exc_info.value.task == absent_subtask
 
     data_layer_mock.load_system.assert_called_once()
@@ -97,7 +97,7 @@ def test_delete_hierarchy_failure_hierarchy_loop(
     logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.HierarchyLoopError) as exc_info:
-        logic_layer.delete_hierarchy(task, task)
+        logic_layer.delete_task_hierarchy(task, task)
     assert exc_info.value.task == task
 
     data_layer_mock.load_system.assert_called_once()
@@ -121,7 +121,7 @@ def test_delete_hierarchy_failure_hierarchy_not_exist(
     logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.HierarchyDoesNotExistError) as exc_info:
-        logic_layer.delete_hierarchy(supertask, subtask)
+        logic_layer.delete_task_hierarchy(supertask, subtask)
     assert exc_info.value.supertask == supertask
     assert exc_info.value.subtask == subtask
 

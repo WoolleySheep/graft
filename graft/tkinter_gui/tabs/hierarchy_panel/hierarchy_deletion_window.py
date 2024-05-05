@@ -15,7 +15,7 @@ def _get_hierarchies_with_names(
     None,
 ]:
     attributes_register = logic_layer.get_task_attributes_register_view()
-    for supertask, subtask in logic_layer.get_hierarchy_graph_view().hierarchies():
+    for supertask, subtask in logic_layer.get_task_hierarchy_graph_view().hierarchies():
         yield (
             (supertask, attributes_register[supertask].name),
             (subtask, attributes_register[subtask].name),
@@ -85,7 +85,7 @@ class HierarchyDeletionWindow(tk.Toplevel):
                 self.selected_hierarchy.get()
             )
             try:
-                logic_layer.delete_hierarchy(supertask, subtask)
+                logic_layer.delete_task_hierarchy(supertask, subtask)
             except Exception as e:
                 helpers.UnknownExceptionOperationFailedWindow(master=self, exception=e)
                 return

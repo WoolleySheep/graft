@@ -124,7 +124,7 @@ class HierarchyGraph(tk.Frame):
             )
             annotation.set_visible(False)
 
-            hierarchy_graph = self.logic_layer.get_hierarchy_graph_view()
+            hierarchy_graph = self.logic_layer.get_task_hierarchy_graph_view()
             networkx_graph = convert_hierarchy_to_networkx_graph(hierarchy_graph)
             digraph = covert_hierarchy_to_digraph(hierarchy_graph)
 

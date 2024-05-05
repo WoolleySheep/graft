@@ -31,7 +31,7 @@ class TaskDetails(tk.Frame):
             self.task_description.delete(1.0, tk.END)
             self.task_description.insert(1.0, str(attributes.description) or "")
 
-            hierarchy_graph = self.logic_layer.get_hierarchy_graph_view()
+            hierarchy_graph = self.logic_layer.get_task_hierarchy_graph_view()
 
             subtasks = []
             for subtask in hierarchy_graph.subtasks(self.task):

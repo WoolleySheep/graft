@@ -2,7 +2,7 @@
 
 import collections
 import itertools
-from collections.abc import Generator, Iterator
+from collections.abc import Generator, Iterable, Iterator
 from typing import Any, Self
 
 from graft.domain.tasks.attributes_register import (
@@ -330,6 +330,17 @@ class NoConnectingSubsystemError(Exception):
         )
 
 
+class NotConcreteTaskError(Exception):
+    """Raised when a task is not concrete, and therefore has no explicit progress."""
+
+    def __init__(
+        self, task: UID, *args: tuple[Any, ...], **kwargs: dict[str, Any]
+    ) -> None:
+        """Initialise NotConcreteTaskError."""
+        self.task = task
+        super().__init__(f"Task [{task}] is not concrete.", *args, **kwargs)
+
+
 class ConcreteTaskError(Exception):
     """Raised when a task is concrete, and therefore has no inferred progress."""
 
@@ -339,6 +350,88 @@ class ConcreteTaskError(Exception):
         """Initialise ConcreteTaskError."""
         self.task = task
         super().__init__(f"Task [{task}] is concrete.", *args, **kwargs)
+
+
+class StartedDependentTasksError(Exception):
+    """Raised when a task has started dependent tasks.
+
+    Task cannot be uncompleted, as dependent tasks depend on it being completed.
+    """
+
+    def __init__(
+        self,
+        task: UID,
+        started_dependent_tasks_with_progress: Iterable[tuple[UID, Progress]],
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
+        """Initialise StartedDependentTasksError."""
+        self.task = task
+        self.dependee_tasks_with_progress = list(started_dependent_tasks_with_progress)
+        super().__init__(f"Task [{task}] has started dependent tasks.", *args, **kwargs)
+
+
+class StartedDependentTasksOfSuperiorTasksError(Exception):
+    """Raised when a task has started dependent tasks of superior tasks.
+
+    Task cannot be uncompleted, as dependent tasks depend on it being completed.
+    """
+
+    def __init__(
+        self,
+        task: UID,
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
+        """Initialise StartedDependentTasksOfSuperiorTasksError."""
+        self.task = task
+        super().__init__(
+            f"Task [{task}] has started dependent tasks of superior tasks.",
+            *args,
+            **kwargs,
+        )
+
+
+class IncompleteDependeeTasksError(Exception):
+    """Raised when a task has not completed dependee tasks.
+
+    Task cannot be started, as dependee tasks must be completed before the task can be started.
+    """
+
+    def __init__(
+        self,
+        task: UID,
+        incomplete_dependee_tasks: Iterable[UID],
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
+        """Initialise NotCompletedDependeeTasksError."""
+        self.task = task
+        self.incomplete_dependee_tasks = list(incomplete_dependee_tasks)
+        super().__init__(
+            f"Task [{task}] has incomplete dependee tasks.", *args, **kwargs
+        )
+
+
+class IncompleteDependeeTasksOfSuperiorTasksError(Exception):
+    """Raised when a task has incomplete dependee tasks of superior tasks.
+
+    Task cannot be started, as dependee tasks must be completed before the task can be started.
+    """
+
+    def __init__(
+        self,
+        task: UID,
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
+        """Initialise NotCompletedDependeeTasksOfSuperiorTasksError."""
+        self.task = task
+        super().__init__(
+            f"Task [{task}] has incomplete dependee tasks of superior tasks.",
+            *args,
+            **kwargs,
+        )
 
 
 class System:
@@ -832,6 +925,100 @@ class System:
     ) -> None:
         """Set the description of the specified task."""
         self._attributes_register.set_description(task, description)
+
+    def set_progress(self, task: UID, progress: Progress) -> None:
+        """Set the progress of the specified task."""
+
+        def get_progress_of_concrete_task(task: UID, /) -> Progress:
+            """Get the progress of a concrete task."""
+            if not self._hierarchy_graph.is_concrete(task):
+                raise NotConcreteTaskError(task=task)
+
+            progress = self._attributes_register[task].progress
+            assert progress is not None
+            return progress
+
+        def get_dependent_tasks_of_superior_tasks(
+            task: UID, /
+        ) -> Generator[UID, None, None]:
+            """Get all the dependent tasks of all the superior tasks of the specified task."""
+            visited_dependent_tasks = set[UID]()
+            for superior_task in self._hierarchy_graph.superior_tasks_bfs(task):
+                for dependent_task in self._dependency_graph.dependent_tasks(
+                    superior_task
+                ):
+                    if dependent_task in visited_dependent_tasks:
+                        continue
+                    visited_dependent_tasks.add(dependent_task)
+                    yield dependent_task
+
+        def get_dependee_tasks_of_superior_tasks(
+            task: UID, /
+        ) -> Generator[UID, None, None]:
+            """Get all the dependee tasks of all the superior tasks of the specified task."""
+            visited_dependee_tasks = set[UID]()
+            for superior_task in self._hierarchy_graph.superior_tasks_bfs(task):
+                for dependee_task in self._dependency_graph.dependee_tasks(
+                    superior_task
+                ):
+                    if dependee_task in visited_dependee_tasks:
+                        continue
+                    visited_dependee_tasks.add(dependee_task)
+                    yield dependee_task
+
+        current_progress = get_progress_of_concrete_task(task)
+
+        if (
+            current_progress is Progress.COMPLETED
+            and progress is not Progress.COMPLETED
+        ):
+            if any(
+                self.get_progress(dependent_task) is not Progress.NOT_STARTED
+                for dependent_task in self._dependency_graph.dependent_tasks(task)
+            ):
+                dependent_tasks_with_progress = (
+                    (dependent_task, (progress := self.get_progress(dependent_task)))
+                    for dependent_task in self._dependency_graph.dependent_tasks(task)
+                    if progress is not Progress.NOT_STARTED
+                )
+                raise StartedDependentTasksError(
+                    task=task,
+                    started_dependent_tasks_with_progress=dependent_tasks_with_progress,
+                )
+
+            if any(
+                self.get_progress(dependent_task) is Progress.COMPLETED
+                for dependent_task in get_dependent_tasks_of_superior_tasks(task)
+            ):
+                # TODO: Add subgraph to error
+                raise StartedDependentTasksOfSuperiorTasksError(task=task)
+
+        if (
+            current_progress is Progress.NOT_STARTED
+            and progress is not Progress.NOT_STARTED
+        ):
+            if any(
+                self.get_progress(dependee_task) is not Progress.COMPLETED
+                for dependee_task in self._dependency_graph.dependee_tasks(task)
+            ):
+                incomplete_dependee_tasks = (
+                    dependee_task
+                    for dependee_task in self._dependency_graph.dependee_tasks(task)
+                    if self.get_progress(task) is not Progress.COMPLETED
+                )
+                raise IncompleteDependeeTasksError(
+                    task=task,
+                    incomplete_dependee_tasks=incomplete_dependee_tasks,
+                )
+
+            if any(
+                self.get_progress(dependee_task) is Progress.COMPLETED
+                for dependee_task in get_dependee_tasks_of_superior_tasks(task)
+            ):
+                # TODO: Add subgraph to error
+                raise IncompleteDependeeTasksOfSuperiorTasksError(task=task)
+
+        self._attributes_register.set_progress(task, progress)
 
     def add_hierarchy(self, supertask: UID, subtask: UID) -> None:
         """Create a new hierarchy between the specified tasks."""

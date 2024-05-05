@@ -23,13 +23,13 @@ def test_create_hierarchy_success(
     system.add_task(subtask)
 
     system_with_hierarchy = copy.deepcopy(system)
-    system_with_hierarchy.add_hierarchy(supertask, subtask)
+    system_with_hierarchy.add_task_hierarchy(supertask, subtask)
 
     data_layer_mock.load_system.return_value = system
 
     logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
 
-    logic_layer.create_hierarchy(supertask=supertask, subtask=subtask)
+    logic_layer.create_task_hierarchy(supertask=supertask, subtask=subtask)
 
     data_layer_mock.load_system.assert_called_once()
     data_layer_mock.save_system.assert_called_once_with(system_with_hierarchy)
@@ -53,7 +53,7 @@ def test_create_hierarchy_failure_supertask_not_exist(
     logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.TaskDoesNotExistError) as exc_info:
-        logic_layer.create_hierarchy(supertask=absent_supertask, subtask=subtask)
+        logic_layer.create_task_hierarchy(supertask=absent_supertask, subtask=subtask)
     assert exc_info.value.task == absent_supertask
 
     data_layer_mock.load_system.assert_called_once()
@@ -78,7 +78,7 @@ def test_create_hierarchy_failure_subtask_not_exist(
     logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.TaskDoesNotExistError) as exc_info:
-        logic_layer.create_hierarchy(supertask=supertask, subtask=absent_subtask)
+        logic_layer.create_task_hierarchy(supertask=supertask, subtask=absent_subtask)
     assert exc_info.value.task == absent_subtask
 
     data_layer_mock.load_system.assert_called_once()
@@ -100,7 +100,7 @@ def test_create_hierarchy_failure_supertask_subtask_the_same(
     logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.HierarchyLoopError) as exc_info:
-        logic_layer.create_hierarchy(supertask=task, subtask=task)
+        logic_layer.create_task_hierarchy(supertask=task, subtask=task)
     assert exc_info.value.task == task
 
     data_layer_mock.load_system.assert_called_once()
@@ -118,14 +118,14 @@ def test_create_hierarchy_failure_hierarchy_already_exists(
     system = empty_system
     system.add_task(supertask)
     system.add_task(subtask)
-    system.add_hierarchy(supertask=supertask, subtask=subtask)
+    system.add_task_hierarchy(supertask=supertask, subtask=subtask)
 
     data_layer_mock.load_system.return_value = system
 
     logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.HierarchyAlreadyExistsError) as exc_info:
-        logic_layer.create_hierarchy(supertask=supertask, subtask=subtask)
+        logic_layer.create_task_hierarchy(supertask=supertask, subtask=subtask)
     assert exc_info.value.supertask == supertask
     assert exc_info.value.subtask == subtask
 
@@ -144,14 +144,14 @@ def test_create_hierarchy_failure_inverse_hierarchy_already_exists(
     system = empty_system
     system.add_task(supertask)
     system.add_task(subtask)
-    system.add_hierarchy(supertask=subtask, subtask=supertask)
+    system.add_task_hierarchy(supertask=subtask, subtask=supertask)
 
     data_layer_mock.load_system.return_value = system
 
     logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.InverseHierarchyAlreadyExistsError) as exc_info:
-        logic_layer.create_hierarchy(supertask=supertask, subtask=subtask)
+        logic_layer.create_task_hierarchy(supertask=supertask, subtask=subtask)
     assert exc_info.value.supertask == supertask
     assert exc_info.value.subtask == subtask
 
@@ -172,8 +172,8 @@ def test_create_hierarchy_failure_introduces_cycle(
     system.add_task(task0)
     system.add_task(task1)
     system.add_task(task2)
-    system.add_hierarchy(supertask=task0, subtask=task1)
-    system.add_hierarchy(supertask=task1, subtask=task2)
+    system.add_task_hierarchy(supertask=task0, subtask=task1)
+    system.add_task_hierarchy(supertask=task1, subtask=task2)
 
     expected_subgraph = tasks.HierarchyGraph()
     expected_subgraph.add_task(task0)
@@ -187,7 +187,7 @@ def test_create_hierarchy_failure_introduces_cycle(
     logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.HierarchyIntroducesCycleError) as exc_info:
-        logic_layer.create_hierarchy(supertask=task2, subtask=task0)
+        logic_layer.create_task_hierarchy(supertask=task2, subtask=task0)
     assert exc_info.value.supertask == task2
     assert exc_info.value.subtask == task0
     assert exc_info.value.connecting_subgraph == expected_subgraph
@@ -214,9 +214,9 @@ def test_create_hierarchy_failure_introduces_cycle_prunes_subgraph_correctly(
     system.add_task(task1)
     system.add_task(task2)
     system.add_task(task3)
-    system.add_hierarchy(supertask=task0, subtask=task1)
-    system.add_hierarchy(supertask=task1, subtask=task2)
-    system.add_hierarchy(supertask=task1, subtask=task3)
+    system.add_task_hierarchy(supertask=task0, subtask=task1)
+    system.add_task_hierarchy(supertask=task1, subtask=task2)
+    system.add_task_hierarchy(supertask=task1, subtask=task3)
 
     expected_subgraph = tasks.HierarchyGraph()
     expected_subgraph.add_task(task0)
@@ -230,7 +230,7 @@ def test_create_hierarchy_failure_introduces_cycle_prunes_subgraph_correctly(
     logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.HierarchyIntroducesCycleError) as exc_info:
-        logic_layer.create_hierarchy(supertask=task2, subtask=task0)
+        logic_layer.create_task_hierarchy(supertask=task2, subtask=task0)
     assert exc_info.value.supertask == task2
     assert exc_info.value.subtask == task0
     assert exc_info.value.connecting_subgraph == expected_subgraph
@@ -255,8 +255,8 @@ def test_create_hierarchy_failure_path_already_exists_from_supertask_to_subtask(
     system.add_task(task0)
     system.add_task(task1)
     system.add_task(task2)
-    system.add_hierarchy(supertask=task0, subtask=task1)
-    system.add_hierarchy(supertask=task1, subtask=task2)
+    system.add_task_hierarchy(supertask=task0, subtask=task1)
+    system.add_task_hierarchy(supertask=task1, subtask=task2)
 
     expected_subgraph = tasks.HierarchyGraph()
     expected_subgraph.add_task(task0)
@@ -270,7 +270,7 @@ def test_create_hierarchy_failure_path_already_exists_from_supertask_to_subtask(
     logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.HierarchyPathAlreadyExistsError) as exc_info:
-        logic_layer.create_hierarchy(supertask=task0, subtask=task2)
+        logic_layer.create_task_hierarchy(supertask=task0, subtask=task2)
     assert exc_info.value.supertask == task0
     assert exc_info.value.subtask == task2
     assert exc_info.value.connecting_subgraph == expected_subgraph
@@ -298,9 +298,9 @@ def test_create_hierarchy_failure_path_already_exists_from_supertask_to_subtask_
     system.add_task(task1)
     system.add_task(task2)
     system.add_task(task3)
-    system.add_hierarchy(supertask=task0, subtask=task1)
-    system.add_hierarchy(supertask=task1, subtask=task2)
-    system.add_hierarchy(supertask=task1, subtask=task3)
+    system.add_task_hierarchy(supertask=task0, subtask=task1)
+    system.add_task_hierarchy(supertask=task1, subtask=task2)
+    system.add_task_hierarchy(supertask=task1, subtask=task3)
 
     expected_subgraph = tasks.HierarchyGraph()
     expected_subgraph.add_task(task0)
@@ -314,7 +314,7 @@ def test_create_hierarchy_failure_path_already_exists_from_supertask_to_subtask_
     logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.HierarchyPathAlreadyExistsError) as exc_info:
-        logic_layer.create_hierarchy(supertask=task0, subtask=task2)
+        logic_layer.create_task_hierarchy(supertask=task0, subtask=task2)
     assert exc_info.value.supertask == task0
     assert exc_info.value.subtask == task2
     assert exc_info.value.connecting_subgraph == expected_subgraph
@@ -339,8 +339,8 @@ def test_create_hierarchy_failure_subtask_is_already_subtask_of_superior_task_of
     system.add_task(task0)
     system.add_task(task1)
     system.add_task(task2)
-    system.add_hierarchy(supertask=task0, subtask=task1)
-    system.add_hierarchy(supertask=task0, subtask=task2)
+    system.add_task_hierarchy(supertask=task0, subtask=task1)
+    system.add_task_hierarchy(supertask=task0, subtask=task2)
 
     expected_subgraph = tasks.HierarchyGraph()
     expected_subgraph.add_task(task0)
@@ -354,7 +354,7 @@ def test_create_hierarchy_failure_subtask_is_already_subtask_of_superior_task_of
     with pytest.raises(
         tasks.SubTaskIsAlreadySubTaskOfSuperiorTaskOfSuperTaskError
     ) as exc_info:
-        logic_layer.create_hierarchy(supertask=task1, subtask=task2)
+        logic_layer.create_task_hierarchy(supertask=task1, subtask=task2)
     assert exc_info.value.supertask == task1
     assert exc_info.value.subtask == task2
     assert exc_info.value.subgraph == expected_subgraph
@@ -382,9 +382,9 @@ def test_create_hierarchy_failure_subtask_is_already_subtask_of_superior_task_of
     system.add_task(task1)
     system.add_task(task2)
     system.add_task(task3)
-    system.add_hierarchy(supertask=task0, subtask=task1)
-    system.add_hierarchy(supertask=task0, subtask=task2)
-    system.add_hierarchy(supertask=task3, subtask=task1)
+    system.add_task_hierarchy(supertask=task0, subtask=task1)
+    system.add_task_hierarchy(supertask=task0, subtask=task2)
+    system.add_task_hierarchy(supertask=task3, subtask=task1)
 
     expected_subgraph = tasks.HierarchyGraph()
     expected_subgraph.add_task(task0)
@@ -398,7 +398,7 @@ def test_create_hierarchy_failure_subtask_is_already_subtask_of_superior_task_of
     with pytest.raises(
         tasks.SubTaskIsAlreadySubTaskOfSuperiorTaskOfSuperTaskError
     ) as exc_info:
-        logic_layer.create_hierarchy(supertask=task1, subtask=task2)
+        logic_layer.create_task_hierarchy(supertask=task1, subtask=task2)
     assert exc_info.value.supertask == task1
     assert exc_info.value.subtask == task2
     assert exc_info.value.subgraph == expected_subgraph
@@ -421,7 +421,7 @@ def test_create_hierarchy_failure_dependency_path_from_supertask_to_subtask(
     system = empty_system
     system.add_task(supertask)
     system.add_task(subtask)
-    system.add_dependency(dependee_task=supertask, dependent_task=subtask)
+    system.add_task_dependency(dependee_task=supertask, dependent_task=subtask)
 
     expected_subgraph = tasks.DependencyGraph()
     expected_subgraph.add_task(supertask)
@@ -435,7 +435,7 @@ def test_create_hierarchy_failure_dependency_path_from_supertask_to_subtask(
     with pytest.raises(
         tasks.DependencyPathAlreadyExistsFromSuperTaskToSubTaskError
     ) as exc_info:
-        logic_layer.create_hierarchy(supertask=supertask, subtask=subtask)
+        logic_layer.create_task_hierarchy(supertask=supertask, subtask=subtask)
     assert exc_info.value.supertask == supertask
     assert exc_info.value.subtask == subtask
     assert exc_info.value.connecting_subgraph == expected_subgraph
@@ -458,7 +458,7 @@ def test_create_hierarchy_failure_dependency_path_from_subtask_to_supertask(
     system = empty_system
     system.add_task(supertask)
     system.add_task(subtask)
-    system.add_dependency(dependee_task=subtask, dependent_task=supertask)
+    system.add_task_dependency(dependee_task=subtask, dependent_task=supertask)
 
     expected_subgraph = tasks.DependencyGraph()
     expected_subgraph.add_task(supertask)
@@ -472,7 +472,7 @@ def test_create_hierarchy_failure_dependency_path_from_subtask_to_supertask(
     with pytest.raises(
         tasks.DependencyPathAlreadyExistsFromSubTaskToSuperTaskError
     ) as exc_info:
-        logic_layer.create_hierarchy(supertask=supertask, subtask=subtask)
+        logic_layer.create_task_hierarchy(supertask=supertask, subtask=subtask)
     assert exc_info.value.supertask == supertask
     assert exc_info.value.subtask == subtask
     assert exc_info.value.connecting_subgraph == expected_subgraph
@@ -497,15 +497,15 @@ def test_create_hierarchy_failure_stream_path_from_supertask_to_subtask(
     system.add_task(task0)
     system.add_task(task1)
     system.add_task(task2)
-    system.add_dependency(dependee_task=task0, dependent_task=task1)
-    system.add_hierarchy(supertask=task1, subtask=task2)
+    system.add_task_dependency(dependee_task=task0, dependent_task=task1)
+    system.add_task_hierarchy(supertask=task1, subtask=task2)
 
     data_layer_mock.load_system.return_value = system
 
     logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.StreamPathFromSuperTaskToSubTaskExistsError) as exc_info:
-        logic_layer.create_hierarchy(supertask=task0, subtask=task2)
+        logic_layer.create_task_hierarchy(supertask=task0, subtask=task2)
     assert exc_info.value.supertask == task0
     assert exc_info.value.subtask == task2
 
@@ -529,15 +529,15 @@ def test_create_hierarchy_failure_stream_path_from_subtask_to_supertask(
     system.add_task(task0)
     system.add_task(task1)
     system.add_task(task2)
-    system.add_dependency(dependee_task=task0, dependent_task=task1)
-    system.add_hierarchy(supertask=task1, subtask=task2)
+    system.add_task_dependency(dependee_task=task0, dependent_task=task1)
+    system.add_task_hierarchy(supertask=task1, subtask=task2)
 
     data_layer_mock.load_system.return_value = system
 
     logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.StreamPathFromSubTaskToSuperTaskExistsError) as exc_info:
-        logic_layer.create_hierarchy(supertask=task2, subtask=task0)
+        logic_layer.create_task_hierarchy(supertask=task2, subtask=task0)
     assert exc_info.value.supertask == task2
     assert exc_info.value.subtask == task0
 
@@ -561,8 +561,8 @@ def test_create_hierarchy_failure_stream_path_from_supertask_to_inferior_task_of
     system.add_task(task0)
     system.add_task(task1)
     system.add_task(task2)
-    system.add_dependency(dependee_task=task0, dependent_task=task1)
-    system.add_hierarchy(supertask=task2, subtask=task1)
+    system.add_task_dependency(dependee_task=task0, dependent_task=task1)
+    system.add_task_hierarchy(supertask=task2, subtask=task1)
 
     data_layer_mock.load_system.return_value = system
 
@@ -571,7 +571,7 @@ def test_create_hierarchy_failure_stream_path_from_supertask_to_inferior_task_of
     with pytest.raises(
         tasks.StreamPathFromSuperTaskToInferiorTaskOfSubTaskExistsError
     ) as exc_info:
-        logic_layer.create_hierarchy(supertask=task0, subtask=task2)
+        logic_layer.create_task_hierarchy(supertask=task0, subtask=task2)
     assert exc_info.value.supertask == task0
     assert exc_info.value.subtask == task2
 
@@ -598,9 +598,9 @@ def test_create_hierarchy_failure_stream_path_from_inferior_task_of_subtask_to_s
     system.add_task(task2)
     system.add_task(task3)
 
-    system.add_hierarchy(supertask=task0, subtask=task1)
-    system.add_hierarchy(supertask=task1, subtask=task2)
-    system.add_dependency(dependee_task=task2, dependent_task=task3)
+    system.add_task_hierarchy(supertask=task0, subtask=task1)
+    system.add_task_hierarchy(supertask=task1, subtask=task2)
+    system.add_task_dependency(dependee_task=task2, dependent_task=task3)
 
     data_layer_mock.load_system.return_value = system
 
@@ -609,7 +609,7 @@ def test_create_hierarchy_failure_stream_path_from_inferior_task_of_subtask_to_s
     with pytest.raises(
         tasks.StreamPathFromInferiorTaskOfSubTaskToSuperTaskExistsError
     ) as exc_info:
-        logic_layer.create_hierarchy(supertask=task3, subtask=task0)
+        logic_layer.create_task_hierarchy(supertask=task3, subtask=task0)
     assert exc_info.value.supertask == task3
     assert exc_info.value.subtask == task0
 
@@ -633,16 +633,16 @@ def test_create_hierarchy_failure_dependency_clash(
     system.add_task(task2)
     system.add_task(task3)
 
-    system.add_hierarchy(supertask=task0, subtask=task1)
-    system.add_dependency(dependee_task=task0, dependent_task=task2)
-    system.add_dependency(dependee_task=task1, dependent_task=task3)
+    system.add_task_hierarchy(supertask=task0, subtask=task1)
+    system.add_task_dependency(dependee_task=task0, dependent_task=task2)
+    system.add_task_dependency(dependee_task=task1, dependent_task=task3)
 
     data_layer_mock.load_system.return_value = system
 
     logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.HierarchyIntroducesDependencyClashError) as exc_info:
-        logic_layer.create_hierarchy(supertask=task2, subtask=task3)
+        logic_layer.create_task_hierarchy(supertask=task2, subtask=task3)
     assert exc_info.value.supertask == task2
     assert exc_info.value.subtask == task3
 

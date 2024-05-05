@@ -178,7 +178,7 @@ class SystemGraph(tk.Frame, abc.ABC):
         task_path_collection: mpl_collections.PathCollection = nx.draw_networkx_nodes(
             nx_graph,
             pos=pos,
-            node_color=task_colours,    # pyright: ignore [reportArgumentType] (node_colour also accepts array[str])
+            node_color=task_colours,  # pyright: ignore [reportArgumentType] (node_colour also accepts array[str])
             ax=ax,
         )
 

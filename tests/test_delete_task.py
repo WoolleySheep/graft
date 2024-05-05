@@ -60,7 +60,7 @@ def test_delete_task_failure_has_supertask(
     system_with_hierarchy = empty_system
     system_with_hierarchy.add_task(supertask)
     system_with_hierarchy.add_task(subtask)
-    system_with_hierarchy.add_hierarchy(supertask=supertask, subtask=subtask)
+    system_with_hierarchy.add_task_hierarchy(supertask=supertask, subtask=subtask)
 
     data_layer_mock.load_system.return_value = system_with_hierarchy
 
@@ -86,7 +86,7 @@ def test_delete_task_failure_has_subtask(
     system_with_hierarchy = empty_system
     system_with_hierarchy.add_task(supertask)
     system_with_hierarchy.add_task(subtask)
-    system_with_hierarchy.add_hierarchy(supertask=supertask, subtask=subtask)
+    system_with_hierarchy.add_task_hierarchy(supertask=supertask, subtask=subtask)
 
     data_layer_mock.load_system.return_value = system_with_hierarchy
 
@@ -112,7 +112,7 @@ def test_delete_task_failure_has_dependee_task(
     system_with_dependency = empty_system
     system_with_dependency.add_task(dependee_task)
     system_with_dependency.add_task(dependent_task)
-    system_with_dependency.add_dependency(
+    system_with_dependency.add_task_dependency(
         dependee_task=dependee_task, dependent_task=dependent_task
     )
 
@@ -140,7 +140,7 @@ def test_delete_task_failure_has_dependent_task(
     system_with_dependency = empty_system
     system_with_dependency.add_task(dependee_task)
     system_with_dependency.add_task(dependent_task)
-    system_with_dependency.add_dependency(
+    system_with_dependency.add_task_dependency(
         dependee_task=dependee_task, dependent_task=dependent_task
     )
 

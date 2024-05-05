@@ -128,7 +128,7 @@ class DependencyGraph(tk.Frame):
             )
             annotation.set_visible(False)
 
-            dependency_graph = self.logic_layer.get_dependency_graph_view()
+            dependency_graph = self.logic_layer.get_task_dependency_graph_view()
             networkx_graph = _convert_dependency_to_networkx_graph(dependency_graph)
             digraph = _covert_dependency_to_digraph(dependency_graph)
 

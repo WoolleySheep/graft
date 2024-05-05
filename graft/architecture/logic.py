@@ -44,15 +44,19 @@ class LogicLayer(abc.ABC):
         """Update the specified task's description."""
 
     @abc.abstractmethod
+    def update_task_progress(self, task: tasks.UID, progress: tasks.Progress) -> None:
+        """Update the specified task's progress."""
+
+    @abc.abstractmethod
     def get_task_attributes_register_view(self) -> tasks.AttributesRegisterView:
         """Return the task attributes register."""
 
     @abc.abstractmethod
-    def get_hierarchy_graph_view(self) -> tasks.HierarchyGraphView:
+    def get_task_hierarchy_graph_view(self) -> tasks.HierarchyGraphView:
         """Return the hierarchy graph."""
 
     @abc.abstractmethod
-    def get_dependency_graph_view(self) -> tasks.DependencyGraphView:
+    def get_task_dependency_graph_view(self) -> tasks.DependencyGraphView:
         """Return the dependency graph."""
 
     @abc.abstractmethod
@@ -60,21 +64,21 @@ class LogicLayer(abc.ABC):
         """Return the task system."""
 
     @abc.abstractmethod
-    def create_hierarchy(self, supertask: tasks.UID, subtask: tasks.UID) -> None:
+    def create_task_hierarchy(self, supertask: tasks.UID, subtask: tasks.UID) -> None:
         """Create a new hierarchy between the specified tasks."""
 
     @abc.abstractmethod
-    def delete_hierarchy(self, supertask: tasks.UID, subtask: tasks.UID) -> None:
+    def delete_task_hierarchy(self, supertask: tasks.UID, subtask: tasks.UID) -> None:
         """Delete the specified hierarchy."""
 
     @abc.abstractmethod
-    def create_dependency(
+    def create_task_dependency(
         self, dependee_task: tasks.UID, dependent_task: tasks.UID
     ) -> None:
         """Create a new dependency between the specified tasks."""
 
     @abc.abstractmethod
-    def delete_dependency(
+    def delete_task_dependency(
         self, dependee_task: tasks.UID, dependent_task: tasks.UID
     ) -> None:
         """Delete the specified dependency."""

@@ -1,5 +1,7 @@
 """System and associated classes/exceptions."""
 
+from typing import Self
+
 from graft.domain import tasks
 
 
@@ -8,6 +10,11 @@ class System:
 
     Yes, this is a bit of a god object. But there's a lot of state to manage.
     """
+
+    @classmethod
+    def empty(cls) -> Self:
+        """Create an empty system."""
+        return cls(task_system=tasks.System.empty())
 
     def __init__(
         self,
@@ -45,15 +52,19 @@ class System:
         """Set the description of the specified task."""
         self._task_system.set_description(task, description)
 
-    def add_hierarchy(self, supertask: tasks.UID, subtask: tasks.UID) -> None:
+    def set_task_progress(self, task: tasks.UID, progress: tasks.Progress) -> None:
+        """Set the progress of the specified task."""
+        self._task_system.set_progress(task, progress)
+
+    def add_task_hierarchy(self, supertask: tasks.UID, subtask: tasks.UID) -> None:
         """Add a hierarchy between the specified tasks."""
         self._task_system.add_hierarchy(supertask, subtask)
 
-    def remove_hierarchy(self, supertask: tasks.UID, subtask: tasks.UID) -> None:
+    def remove_task_hierarchy(self, supertask: tasks.UID, subtask: tasks.UID) -> None:
         """Remove a hierarchy between the specified tasks."""
         self._task_system.remove_hierarchy(supertask=supertask, subtask=subtask)
 
-    def add_dependency(
+    def add_task_dependency(
         self, dependee_task: tasks.UID, dependent_task: tasks.UID
     ) -> None:
         """Add a dependency between the specified tasks."""
@@ -61,7 +72,7 @@ class System:
             dependee_task=dependee_task, dependent_task=dependent_task
         )
 
-    def remove_dependency(
+    def remove_task_dependency(
         self, dependee_task: tasks.UID, dependent_task: tasks.UID
     ) -> None:
         """Remove a dependency between the specified tasks."""

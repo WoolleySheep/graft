@@ -65,7 +65,7 @@ class HierarchyCreationWindow(tk.Toplevel):
             supertask = _parse_task_uid_from_menu_option(self.selected_supertask.get())
             subtask = _parse_task_uid_from_menu_option(self.selected_subtask.get())
             try:
-                self.logic_layer.create_hierarchy(supertask, subtask)
+                self.logic_layer.create_task_hierarchy(supertask, subtask)
             except tasks.HierarchyLoopError as e:
                 system = tasks.System.empty()
                 system.add_task(e.task)

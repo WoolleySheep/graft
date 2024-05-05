@@ -60,17 +60,22 @@ class StandardLogicLayer(architecture.LogicLayer):
         self._data_layer.save_system(system=self._system)
 
     @override
+    def update_task_progress(self, task: UID, progress: tasks.Progress) -> None:
+        self._system.set_task_progress(task, progress)
+        self._data_layer.save_system(system=self._system)
+
+    @override
     def get_task_attributes_register_view(self) -> tasks.AttributesRegisterView:
         """Return a view of the task attributes register."""
         return self._system.task_system_view().attributes_register_view()
 
     @override
-    def get_hierarchy_graph_view(self) -> tasks.HierarchyGraphView:
+    def get_task_hierarchy_graph_view(self) -> tasks.HierarchyGraphView:
         """Return a view of the hierarchy graph."""
         return self._system.task_system_view().hierarchy_graph_view()
 
     @override
-    def get_dependency_graph_view(self) -> tasks.DependencyGraphView:
+    def get_task_dependency_graph_view(self) -> tasks.DependencyGraphView:
         return self._system.task_system_view().dependency_graph_view()
 
     @override
@@ -78,33 +83,33 @@ class StandardLogicLayer(architecture.LogicLayer):
         return self._system.task_system_view()
 
     @override
-    def create_hierarchy(self, supertask: tasks.UID, subtask: tasks.UID) -> None:
+    def create_task_hierarchy(self, supertask: tasks.UID, subtask: tasks.UID) -> None:
         """Create a new hierarchy between the specified tasks."""
-        self._system.add_hierarchy(supertask=supertask, subtask=subtask)
+        self._system.add_task_hierarchy(supertask=supertask, subtask=subtask)
         self._data_layer.save_system(system=self._system)
 
     @override
-    def delete_hierarchy(self, supertask: tasks.UID, subtask: tasks.UID) -> None:
+    def delete_task_hierarchy(self, supertask: tasks.UID, subtask: tasks.UID) -> None:
         """Delete the specified hierarchy."""
-        self._system.remove_hierarchy(supertask=supertask, subtask=subtask)
+        self._system.remove_task_hierarchy(supertask=supertask, subtask=subtask)
         self._data_layer.save_system(system=self._system)
 
     @override
-    def create_dependency(
+    def create_task_dependency(
         self, dependee_task: tasks.UID, dependent_task: tasks.UID
     ) -> None:
         """Create a new dependency between the specified tasks."""
-        self._system.add_dependency(
+        self._system.add_task_dependency(
             dependee_task=dependee_task, dependent_task=dependent_task
         )
         self._data_layer.save_system(system=self._system)
 
     @override
-    def delete_dependency(
+    def delete_task_dependency(
         self, dependee_task: tasks.UID, dependent_task: tasks.UID
     ) -> None:
         """Delete the specified dependency."""
-        self._system.remove_dependency(
+        self._system.remove_task_dependency(
             dependee_task=dependee_task, dependent_task=dependent_task
         )
         self._data_layer.save_system(system=self._system)
