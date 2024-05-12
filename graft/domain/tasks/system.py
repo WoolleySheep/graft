@@ -401,13 +401,15 @@ class IncompleteDependeeTasksError(Exception):
     def __init__(
         self,
         task: UID,
-        incomplete_dependee_tasks: Iterable[UID],
+        incomplete_dependee_tasks_with_progress: Iterable[tuple[UID, Progress]],
         *args: tuple[Any, ...],
         **kwargs: dict[str, Any],
     ) -> None:
         """Initialise NotCompletedDependeeTasksError."""
         self.task = task
-        self.incomplete_dependee_tasks = list(incomplete_dependee_tasks)
+        self.incomplete_dependee_tasks_with_progress = list(
+            incomplete_dependee_tasks_with_progress
+        )
         super().__init__(
             f"Task [{task}] has incomplete dependee tasks.", *args, **kwargs
         )
@@ -977,9 +979,10 @@ class System:
                 for dependent_task in self._dependency_graph.dependent_tasks(task)
             ):
                 dependent_tasks_with_progress = (
-                    (dependent_task, (progress := self.get_progress(dependent_task)))
+                    (dependent_task, dependent_progress)
                     for dependent_task in self._dependency_graph.dependent_tasks(task)
-                    if progress is not Progress.NOT_STARTED
+                    if (dependent_progress := self.get_progress(dependent_task))
+                    is not Progress.NOT_STARTED
                 )
                 raise StartedDependentTasksError(
                     task=task,
@@ -987,7 +990,7 @@ class System:
                 )
 
             if any(
-                self.get_progress(dependent_task) is Progress.COMPLETED
+                self.get_progress(dependent_task) is not Progress.NOT_STARTED
                 for dependent_task in get_dependent_tasks_of_superior_tasks(task)
             ):
                 # TODO: Add subgraph to error
@@ -1001,18 +1004,19 @@ class System:
                 self.get_progress(dependee_task) is not Progress.COMPLETED
                 for dependee_task in self._dependency_graph.dependee_tasks(task)
             ):
-                incomplete_dependee_tasks = (
-                    dependee_task
+                incomplete_dependee_tasks_with_progress = (
+                    (dependee_task, dependee_progress)
                     for dependee_task in self._dependency_graph.dependee_tasks(task)
-                    if self.get_progress(task) is not Progress.COMPLETED
+                    if (dependee_progress := self.get_progress(dependee_task))
+                    is not Progress.COMPLETED
                 )
                 raise IncompleteDependeeTasksError(
                     task=task,
-                    incomplete_dependee_tasks=incomplete_dependee_tasks,
+                    incomplete_dependee_tasks_with_progress=incomplete_dependee_tasks_with_progress,
                 )
 
             if any(
-                self.get_progress(dependee_task) is Progress.COMPLETED
+                self.get_progress(dependee_task) is not Progress.COMPLETED
                 for dependee_task in get_dependee_tasks_of_superior_tasks(task)
             ):
                 # TODO: Add subgraph to error
