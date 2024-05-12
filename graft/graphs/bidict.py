@@ -128,10 +128,9 @@ class BiDirectionalSetDict[T: Hashable](MutableMapping[T, SetView[T]]):
 
     def __eq__(self, other: object) -> bool:
         """Check if bidict is equal to other."""
-        if not isinstance(other, BiDirectionalSetDict):
-            return False
-
-        return dict(self.items()) == dict(other.items())
+        return isinstance(other, BiDirectionalSetDict) and dict(self.items()) == dict(
+            other.items()
+        )
 
     def __getitem__(self, key: T) -> SetView[T]:
         """Return SetView over values of key."""

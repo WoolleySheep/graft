@@ -1,6 +1,7 @@
 """Unit tests for `System.create_hierarchy`."""
 
 import copy
+import itertools
 from unittest import mock
 
 import pytest
@@ -638,13 +639,55 @@ def test_create_hierarchy_failure_dependency_clash(
     system.add_task_dependency(dependee_task=task1, dependent_task=task3)
 
     data_layer_mock.load_system.return_value = system
-
     logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.HierarchyIntroducesDependencyClashError) as exc_info:
         logic_layer.create_task_hierarchy(supertask=task2, subtask=task3)
     assert exc_info.value.supertask == task2
     assert exc_info.value.subtask == task3
+
+    data_layer_mock.load_system.assert_called_once()
+    assert data_layer_mock.save_system.called is False
+
+
+@pytest.mark.parametrize(
+    ("supertask_progress", "subtask_progress"),
+    list(
+        itertools.combinations(
+            iterable=[
+                tasks.Progress.NOT_STARTED,
+                tasks.Progress.IN_PROGRESS,
+                tasks.Progress.COMPLETED,
+            ],
+            r=2,
+        )
+    ),
+)
+@mock.patch("graft.architecture.data.DataLayer", autospec=True)
+def test_create_hierarchy_failure_concrete_supertask_differing_progress(
+    data_layer_mock: mock.MagicMock,
+    supertask_progress: tasks.Progress,
+    subtask_progress: tasks.Progress,
+) -> None:
+    """Test that create_hierarchy fails when the supertask is concrete and the progress of supertask and subtask differ."""
+    supertask = tasks.UID(0)
+    subtask = tasks.UID(1)
+    system = domain.System.empty()
+
+    system.add_task(supertask)
+    system.add_task(subtask)
+    system.set_task_progress(supertask, supertask_progress)
+    system.set_task_progress(subtask, subtask_progress)
+
+    data_layer_mock.load_system.return_value = system
+    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+
+    with pytest.raises(tasks.MismatchedProgressForNewSupertaskError) as exc_info:
+        logic_layer.create_task_hierarchy(supertask=supertask, subtask=subtask)
+    assert exc_info.value.supertask == supertask
+    assert exc_info.value.supertask_progress == supertask_progress
+    assert exc_info.value.subtask == subtask
+    assert exc_info.value.subtask_progress == subtask_progress
 
     data_layer_mock.load_system.assert_called_once()
     assert data_layer_mock.save_system.called is False

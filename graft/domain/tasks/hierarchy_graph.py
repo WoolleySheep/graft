@@ -356,11 +356,10 @@ class HierarchyGraph:
 
     def __str__(self) -> str:
         """Return string representation of graph."""
-        tasks_with_subtasks = list[str]()
-        for task, subtasks in self._reduced_dag.node_successors_pairs():
-            tasks_with_subtasks.append(
-                f"{task}: {{{', '.join(str(value) for value in subtasks)}}}",
-            )
+        tasks_with_subtasks = (
+            f"{task}: {{{', '.join(str(value) for value in subtasks)}}}"
+            for task, subtasks in self._reduced_dag.node_successors_pairs()
+        )
         return f"hierarchy_graph({{{', '.join(tasks_with_subtasks)}}})"
 
     def tasks(self) -> UIDsView:

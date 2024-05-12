@@ -436,6 +436,36 @@ class IncompleteDependeeTasksOfSuperiorTasksError(Exception):
         )
 
 
+class MismatchedProgressForNewSupertaskError(Exception):
+    """Raised when a new supertask has a progress different from its subtask.
+
+    When transforming a concrete task into a non-concrete task by establishing a
+    hierarchy, it is important that the progress of the supertask remains the
+    same. This means that the progress of any dependent or superior tasks will
+    also be unaffected.
+    """
+
+    def __init__(
+        self,
+        supertask: UID,
+        supertask_progress: Progress,
+        subtask: UID,
+        subtask_progress: Progress,
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
+        """Initialise MismatchedProgressForNewSupertaskError."""
+        self.supertask = supertask
+        self.supertask_progress = supertask_progress
+        self.subtask = subtask
+        self.subtask_progress = subtask_progress
+        super().__init__(
+            f"The progress [{supertask_progress}] of supertask [{supertask}] does not match the progress [{subtask_progress}] of subtask [{subtask}].",
+            *args,
+            **kwargs,
+        )
+
+
 class System:
     """System of task information."""
 
@@ -477,11 +507,9 @@ class System:
 
     def __eq__(self, other: object) -> bool:
         """Check if two systems are equal."""
-        if not isinstance(other, System):
-            return False
-
         return (
-            self.attributes_register_view() == other.attributes_register_view()
+            isinstance(other, System)
+            and self.attributes_register_view() == other.attributes_register_view()
             and self.hierarchy_graph_view() == other.hierarchy_graph_view()
             and self.dependency_graph_view() == other.dependency_graph_view()
         )
@@ -928,6 +956,30 @@ class System:
         """Set the description of the specified task."""
         self._attributes_register.set_description(task, description)
 
+    def _get_dependent_tasks_of_superior_tasks(
+        self, task: UID, /
+    ) -> Generator[UID, None, None]:
+        """Get all the dependent tasks of all the superior tasks of the specified task."""
+        visited_dependent_tasks = set[UID]()
+        for superior_task in self._hierarchy_graph.superior_tasks_bfs(task):
+            for dependent_task in self._dependency_graph.dependent_tasks(superior_task):
+                if dependent_task in visited_dependent_tasks:
+                    continue
+                visited_dependent_tasks.add(dependent_task)
+                yield dependent_task
+
+    def _get_dependee_tasks_of_superior_tasks(
+        self, task: UID, /
+    ) -> Generator[UID, None, None]:
+        """Get all the dependee tasks of all the superior tasks of the specified task."""
+        visited_dependee_tasks = set[UID]()
+        for superior_task in self._hierarchy_graph.superior_tasks_bfs(task):
+            for dependee_task in self._dependency_graph.dependee_tasks(superior_task):
+                if dependee_task in visited_dependee_tasks:
+                    continue
+                visited_dependee_tasks.add(dependee_task)
+                yield dependee_task
+
     def set_progress(self, task: UID, progress: Progress) -> None:
         """Set the progress of the specified task."""
 
@@ -940,87 +992,67 @@ class System:
             assert progress is not None
             return progress
 
-        def get_dependent_tasks_of_superior_tasks(
-            task: UID, /
-        ) -> Generator[UID, None, None]:
-            """Get all the dependent tasks of all the superior tasks of the specified task."""
-            visited_dependent_tasks = set[UID]()
-            for superior_task in self._hierarchy_graph.superior_tasks_bfs(task):
-                for dependent_task in self._dependency_graph.dependent_tasks(
-                    superior_task
-                ):
-                    if dependent_task in visited_dependent_tasks:
-                        continue
-                    visited_dependent_tasks.add(dependent_task)
-                    yield dependent_task
-
-        def get_dependee_tasks_of_superior_tasks(
-            task: UID, /
-        ) -> Generator[UID, None, None]:
-            """Get all the dependee tasks of all the superior tasks of the specified task."""
-            visited_dependee_tasks = set[UID]()
-            for superior_task in self._hierarchy_graph.superior_tasks_bfs(task):
-                for dependee_task in self._dependency_graph.dependee_tasks(
-                    superior_task
-                ):
-                    if dependee_task in visited_dependee_tasks:
-                        continue
-                    visited_dependee_tasks.add(dependee_task)
-                    yield dependee_task
-
         current_progress = get_progress_of_concrete_task(task)
 
-        if (
-            current_progress is Progress.COMPLETED
-            and progress is not Progress.COMPLETED
-        ):
-            if any(
-                self.get_progress(dependent_task) is not Progress.NOT_STARTED
-                for dependent_task in self._dependency_graph.dependent_tasks(task)
-            ):
-                dependent_tasks_with_progress = (
-                    (dependent_task, dependent_progress)
-                    for dependent_task in self._dependency_graph.dependent_tasks(task)
-                    if (dependent_progress := self.get_progress(dependent_task))
-                    is not Progress.NOT_STARTED
-                )
-                raise StartedDependentTasksError(
-                    task=task,
-                    started_dependent_tasks_with_progress=dependent_tasks_with_progress,
-                )
+        match current_progress:
+            case Progress.COMPLETED:
+                if progress is not Progress.COMPLETED:
+                    if any(
+                        self.get_progress(dependent_task) is not Progress.NOT_STARTED
+                        for dependent_task in self._dependency_graph.dependent_tasks(
+                            task
+                        )
+                    ):
+                        dependent_tasks_with_progress = (
+                            (dependent_task, dependent_progress)
+                            for dependent_task in self._dependency_graph.dependent_tasks(
+                                task
+                            )
+                            if (dependent_progress := self.get_progress(dependent_task))
+                            is not Progress.NOT_STARTED
+                        )
+                        raise StartedDependentTasksError(
+                            task=task,
+                            started_dependent_tasks_with_progress=dependent_tasks_with_progress,
+                        )
 
-            if any(
-                self.get_progress(dependent_task) is not Progress.NOT_STARTED
-                for dependent_task in get_dependent_tasks_of_superior_tasks(task)
-            ):
-                # TODO: Add subgraph to error
-                raise StartedDependentTasksOfSuperiorTasksError(task=task)
+                    if any(
+                        self.get_progress(dependent_task) is not Progress.NOT_STARTED
+                        for dependent_task in self._get_dependent_tasks_of_superior_tasks(
+                            task
+                        )
+                    ):
+                        # TODO: Add subgraph to error
+                        raise StartedDependentTasksOfSuperiorTasksError(task=task)
+            case Progress.NOT_STARTED:
+                if progress is not Progress.NOT_STARTED:
+                    if any(
+                        self.get_progress(dependee_task) is not Progress.COMPLETED
+                        for dependee_task in self._dependency_graph.dependee_tasks(task)
+                    ):
+                        incomplete_dependee_tasks_with_progress = (
+                            (dependee_task, dependee_progress)
+                            for dependee_task in self._dependency_graph.dependee_tasks(
+                                task
+                            )
+                            if (dependee_progress := self.get_progress(dependee_task))
+                            is not Progress.COMPLETED
+                        )
+                        raise IncompleteDependeeTasksError(
+                            task=task,
+                            incomplete_dependee_tasks_with_progress=incomplete_dependee_tasks_with_progress,
+                        )
 
-        if (
-            current_progress is Progress.NOT_STARTED
-            and progress is not Progress.NOT_STARTED
-        ):
-            if any(
-                self.get_progress(dependee_task) is not Progress.COMPLETED
-                for dependee_task in self._dependency_graph.dependee_tasks(task)
-            ):
-                incomplete_dependee_tasks_with_progress = (
-                    (dependee_task, dependee_progress)
-                    for dependee_task in self._dependency_graph.dependee_tasks(task)
-                    if (dependee_progress := self.get_progress(dependee_task))
-                    is not Progress.COMPLETED
-                )
-                raise IncompleteDependeeTasksError(
-                    task=task,
-                    incomplete_dependee_tasks_with_progress=incomplete_dependee_tasks_with_progress,
-                )
-
-            if any(
-                self.get_progress(dependee_task) is not Progress.COMPLETED
-                for dependee_task in get_dependee_tasks_of_superior_tasks(task)
-            ):
-                # TODO: Add subgraph to error
-                raise IncompleteDependeeTasksOfSuperiorTasksError(task=task)
+                    if any(
+                        self.get_progress(dependee_task) is not Progress.COMPLETED
+                        for dependee_task in self._get_dependee_tasks_of_superior_tasks(
+                            task
+                        )
+                    ):
+                        # TODO: Add subgraph to error
+                        raise IncompleteDependeeTasksOfSuperiorTasksError(task=task)
+            case _:
+                pass
 
         self._attributes_register.set_progress(task, progress)
 
@@ -1185,10 +1217,29 @@ class System:
             # TODO: Get relevant subgraph and return as part of exception
             raise HierarchyIntroducesDependencyClashError(supertask, subtask)
 
+        if self._hierarchy_graph.is_concrete(supertask):
+            if (supertask_progress := self.get_progress(supertask)) is not (
+                subtask_progress := self.get_progress(subtask)
+            ):
+                raise MismatchedProgressForNewSupertaskError(
+                    supertask=supertask,
+                    supertask_progress=supertask_progress,
+                    subtask=subtask,
+                    subtask_progress=subtask_progress,
+                )
+
+            self._attributes_register.set_progress(task=supertask, progress=None)
+        else:
+            pass
+
         self._hierarchy_graph.add_hierarchy(supertask, subtask)
 
     def remove_hierarchy(self, supertask: UID, subtask: UID) -> None:
         """Remove the specified hierarchy."""
+        if len(self._hierarchy_graph.subtasks(supertask)) == 1:
+            subtask_progress = self.get_progress(subtask)
+            self._attributes_register.set_progress(supertask, subtask_progress)
+
         self._hierarchy_graph.remove_hierarchy(supertask, subtask)
 
     def add_dependency(self, dependee_task: UID, dependent_task: UID) -> None:
@@ -1363,11 +1414,9 @@ class SystemView:
 
     def __eq__(self, other: object) -> bool:
         """Check if system views are equal."""
-        if not isinstance(other, SystemView):
-            return False
-
         return (
-            self.attributes_register_view() == other.attributes_register_view()
+            isinstance(other, SystemView)
+            and self.attributes_register_view() == other.attributes_register_view()
             and self.hierarchy_graph_view() == other.hierarchy_graph_view()
             and self.dependency_graph_view() == other.dependency_graph_view()
         )

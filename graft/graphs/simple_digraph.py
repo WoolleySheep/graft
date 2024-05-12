@@ -177,10 +177,7 @@ class NodesView[T: Hashable](Set[T]):
 
     def __eq__(self, other: object) -> bool:
         """Check if nodeview is equal to other."""
-        if not isinstance(other, NodesView):
-            return False
-
-        return set(self._nodes) == set(other)
+        return isinstance(other, NodesView) and set(self._nodes) == set(other)
 
     def __str__(self) -> str:
         """Return string representation of view."""
@@ -212,13 +209,11 @@ class EdgesView[T: Hashable](Set[tuple[T, T]]):
             strictly true). Done to get around impossibility of runtime checking
             of T.
             """
-            if not isinstance(item, tuple):
-                return False
-
-            if len(item) != 2:
-                return False
-
-            return all(isinstance(element, Hashable) for element in item)
+            return (
+                isinstance(item, tuple)
+                and len(item) == 2
+                and all(isinstance(element, Hashable) for element in item)
+            )
 
         if not is_two_element_tuple_of_hashables(item):
             raise TypeError
@@ -275,10 +270,9 @@ class SimpleDiGraph[T: Hashable]:
 
     def __eq__(self, other: object) -> bool:
         """Check if digraph is equal to other."""
-        if not isinstance(other, SimpleDiGraph):
-            return False
-
-        return set(self.edges()) == set(other.edges())
+        return isinstance(other, SimpleDiGraph) and set(self.edges()) == set(
+            other.edges()
+        )
 
     def __str__(self) -> str:
         """Return string representation of digraph."""

@@ -78,10 +78,7 @@ class UIDsView(Set[UID]):
 
     def __eq__(self, other: object) -> bool:
         """Check if two views are equal."""
-        if not isinstance(other, UIDsView):
-            return False
-
-        return set(self) == set(other)
+        return isinstance(other, UIDsView) and set(self) == set(other)
 
     def __str__(self) -> str:
         """Return string representation of view."""
