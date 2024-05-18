@@ -117,7 +117,6 @@ def test_delete_hierarchy_failure_hierarchy_not_exist(
     system.add_task(subtask)
 
     data_layer_mock.load_system.return_value = system
-
     logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.HierarchyDoesNotExistError) as exc_info:
@@ -127,3 +126,47 @@ def test_delete_hierarchy_failure_hierarchy_not_exist(
 
     data_layer_mock.load_system.assert_called_once()
     assert data_layer_mock.save_system.called is False
+
+
+@pytest.mark.parametrize(
+    "subtask_progress",
+    [tasks.Progress.NOT_STARTED, tasks.Progress.IN_PROGRESS, tasks.Progress.COMPLETED],
+)
+@mock.patch("graft.architecture.data.DataLayer", autospec=True)
+def test_delete_hierarchy_success_supertask_becomes_concrete(
+    data_layer_mock: mock.MagicMock, subtask_progress: tasks.Progress
+) -> None:
+    """Test that delete_hierarchy successfully makes a supertask concrete when it has only one subtask.
+
+    The newly-concrete supertask will inherit the progress of the subtask.
+    """
+    supertask = tasks.UID(0)
+    subtask = tasks.UID(1)
+    system = domain.System.empty()
+
+    system.add_task(supertask)
+    system.add_task(subtask)
+    system.add_task_hierarchy(supertask, subtask)
+    system.set_task_progress(subtask, subtask_progress)
+
+    assert (
+        system.task_system_view().attributes_register_view()[supertask].progress is None
+    )
+
+    system_without_hierarchy = copy.deepcopy(system)
+    system_without_hierarchy.remove_task_hierarchy(supertask, subtask)
+
+    assert (
+        system_without_hierarchy.task_system_view()
+        .attributes_register_view()[supertask]
+        .progress
+        is subtask_progress
+    )
+
+    data_layer_mock.load_system.return_value = system
+    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+
+    logic_layer.delete_task_hierarchy(supertask, subtask)
+
+    data_layer_mock.load_system.assert_called_once()
+    data_layer_mock.save_system.assert_called_once_with(system_without_hierarchy)
