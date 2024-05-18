@@ -1,6 +1,5 @@
 """Task-specific classes and exceptions."""
 
-
 from graft.domain.tasks.attributes import Attributes, AttributesView
 from graft.domain.tasks.attributes_register import (
     AttributesRegister,
@@ -48,10 +47,14 @@ from graft.domain.tasks.system import (
     HierarchyPathAlreadyExistsFromDependentTaskToDependeeTaskError,
     IncompleteDependeeTasksError,
     IncompleteDependeeTasksOfSuperiorTasksError,
+    IncompleteDependeeTasksOfSuperiorTasksOfSupertaskError,
+    IncompleteDependeeTasksOfSupertaskError,
     MismatchedProgressForNewSupertaskError,
     NotConcreteTaskError,
     StartedDependentTasksError,
     StartedDependentTasksOfSuperiorTasksError,
+    StartedDependentTasksOfSuperiorTasksOfSupertaskError,
+    StartedDependentTasksOfSupertaskError,
     StreamPathFromDependentTaskToInferiorTaskOfDependeeTaskExistsError,
     StreamPathFromInferiorTaskOfDependentTaskToDependeeTaskExistsError,
     StreamPathFromInferiorTaskOfSubTaskToSuperTaskExistsError,

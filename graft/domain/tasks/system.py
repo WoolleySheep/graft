@@ -393,7 +393,7 @@ class StartedDependentTasksOfSuperiorTasksError(Exception):
 
 
 class IncompleteDependeeTasksError(Exception):
-    """Raised when a task has not completed dependee tasks.
+    """Raised when a task has not incomplete dependee tasks.
 
     Task cannot be started, as dependee tasks must be completed before the task can be started.
     """
@@ -433,6 +433,113 @@ class IncompleteDependeeTasksOfSuperiorTasksError(Exception):
             f"Task [{task}] has incomplete dependee tasks of superior tasks.",
             *args,
             **kwargs,
+        )
+
+
+class IncompleteDependeeTasksOfSuperiorTasksOfSupertaskError(Exception):
+    """Raised when a supertask has incomplete dependee tasks of superior tasks.
+
+    Started subtask cannot be connected, as dependee tasks must be completed
+    before the task can be started.
+    """
+
+    def __init__(
+        self,
+        supertask: UID,
+        subtask: UID,
+        subtask_progress: Progress,
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
+        """Initialise NotCompletedDependeeTasksOfSuperiorTasksOfSupertaskError."""
+        self.supertask = supertask
+        self.subtask = subtask
+        self.subtask_progress = subtask_progress
+        super().__init__(
+            f"Supertask [{supertask}] has incomplete dependee tasks of superior tasks.",
+            *args,
+            **kwargs,
+        )
+
+
+class StartedDependentTasksOfSuperiorTasksOfSupertaskError(Exception):
+    """Raised when a supertask has started dependent tasks of superior tasks.
+
+    Incomplete subtask cannot be connected, as dependent tasks depend on it being completed.
+    """
+
+    def __init__(
+        self,
+        supertask: UID,
+        subtask: UID,
+        subtask_progress: Progress,
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
+        """Initialise StartedDependentTasksOfSuperiorTasksOfSupertaskError."""
+        self.supertask = supertask
+        self.subtask = subtask
+        self.subtask_progress = subtask_progress
+        super().__init__(
+            f"Supertask [{supertask}] has started dependent tasks of superior tasks.",
+            *args,
+            **kwargs,
+        )
+
+
+class IncompleteDependeeTasksOfSupertaskError(Exception):
+    """Raised when a supertask has incomplete dependee tasks.
+
+    Started subtask cannot be connected, as dependee tasks must be completed
+    before the subtask can be started.
+    """
+
+    def __init__(
+        self,
+        supertask: UID,
+        subtask: UID,
+        incomplete_dependee_tasks_of_supertask_with_progress: Iterable[
+            tuple[UID, Progress]
+        ],
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
+        """Initialise IncompleteDependeeTasksOfSupertaskError."""
+        self.supertask = supertask
+        self.subtask = subtask
+        self.incomplete_dependee_tasks_of_supertask_with_progress = list(
+            incomplete_dependee_tasks_of_supertask_with_progress
+        )
+        super().__init__(
+            f"Supertask [{supertask}] has incomplete dependee tasks.", *args, **kwargs
+        )
+
+
+class StartedDependentTasksOfSupertaskError(Exception):
+    """Raised when a supertask has started dependent tasks.
+
+    Incomplete subtask cannot be connected, as dependent tasks depend on it
+    being completed.
+    """
+
+    def __init__(
+        self,
+        supertask: UID,
+        subtask: UID,
+        started_dependent_tasks_of_supertask_with_progress: Iterable[
+            tuple[UID, Progress]
+        ],
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
+        """Initialise StartedDependentTasksOfSupertaskError."""
+        self.supertask = supertask
+        self.subtask = subtask
+        self.started_dependent_tasks_of_supertask_with_progress = list(
+            started_dependent_tasks_of_supertask_with_progress
+        )
+        super().__init__(
+            f"Supertask [{supertask}] has started dependent tasks.", *args, **kwargs
         )
 
 
@@ -982,17 +1089,7 @@ class System:
 
     def set_progress(self, task: UID, progress: Progress) -> None:
         """Set the progress of the specified task."""
-
-        def get_progress_of_concrete_task(task: UID, /) -> Progress:
-            """Get the progress of a concrete task."""
-            if not self._hierarchy_graph.is_concrete(task):
-                raise NotConcreteTaskError(task=task)
-
-            progress = self._attributes_register[task].progress
-            assert progress is not None
-            return progress
-
-        current_progress = get_progress_of_concrete_task(task)
+        current_progress = self._get_progress_of_concrete_task(task)
 
         match current_progress:
             case Progress.COMPLETED:
@@ -1051,7 +1148,7 @@ class System:
                     ):
                         # TODO: Add subgraph to error
                         raise IncompleteDependeeTasksOfSuperiorTasksError(task=task)
-            case _:
+            case Progress.IN_PROGRESS:
                 pass
 
         self._attributes_register.set_progress(task, progress)
@@ -1217,10 +1314,65 @@ class System:
             # TODO: Get relevant subgraph and return as part of exception
             raise HierarchyIntroducesDependencyClashError(supertask, subtask)
 
-        if self._hierarchy_graph.is_concrete(supertask):
-            if (supertask_progress := self.get_progress(supertask)) is not (
-                subtask_progress := self.get_progress(subtask)
+        subtask_progress = self.get_progress(subtask)
+        if subtask_progress is not Progress.NOT_STARTED:
+            if any(
+                self.get_progress(task) is not Progress.COMPLETED
+                for task in self._dependency_graph.dependee_tasks(supertask)
             ):
+                incomplete_dependee_tasks_of_supertask_with_progress = (
+                    (task, progress)
+                    for task in self._dependency_graph.dependee_tasks(supertask)
+                    if (progress := self.get_progress(task)) is not Progress.COMPLETED
+                )
+                raise IncompleteDependeeTasksOfSupertaskError(
+                    supertask=supertask,
+                    subtask=subtask,
+                    incomplete_dependee_tasks_of_supertask_with_progress=incomplete_dependee_tasks_of_supertask_with_progress,
+                )
+
+            if any(
+                self.get_progress(task) is not Progress.COMPLETED
+                for task in self._get_dependee_tasks_of_superior_tasks(supertask)
+            ):
+                # TODO: Get proper subgraph
+                raise IncompleteDependeeTasksOfSuperiorTasksOfSupertaskError(
+                    supertask=supertask,
+                    subtask=subtask,
+                    subtask_progress=subtask_progress,
+                )
+
+        if subtask is not Progress.COMPLETED:
+            if any(
+                self.get_progress(task) is not Progress.NOT_STARTED
+                for task in self._dependency_graph.dependent_tasks(supertask)
+            ):
+                started_dependent_tasks_of_supertask_with_progress = (
+                    (task, progress)
+                    for task in self._dependency_graph.dependent_tasks(supertask)
+                    if (progress := self.get_progress(task)) is not Progress.NOT_STARTED
+                )
+                raise StartedDependentTasksOfSupertaskError(
+                    supertask=supertask,
+                    subtask=subtask,
+                    started_dependent_tasks_of_supertask_with_progress=started_dependent_tasks_of_supertask_with_progress,
+                )
+
+            if any(
+                self.get_progress(task) is not Progress.NOT_STARTED
+                for task in self._get_dependent_tasks_of_superior_tasks(supertask)
+            ):
+                # TODO: Get proper subgraph
+                raise StartedDependentTasksOfSuperiorTasksOfSupertaskError(
+                    supertask=supertask,
+                    subtask=subtask,
+                    subtask_progress=subtask_progress,
+                )
+
+        if self._hierarchy_graph.is_concrete(supertask):
+            if (
+                supertask_progress := self._get_progress_of_concrete_task(supertask)
+            ) is not (subtask_progress := self.get_progress(subtask)):
                 raise MismatchedProgressForNewSupertaskError(
                     supertask=supertask,
                     supertask_progress=supertask_progress,
@@ -1229,8 +1381,6 @@ class System:
                 )
 
             self._attributes_register.set_progress(task=supertask, progress=None)
-        else:
-            pass
 
         self._hierarchy_graph.add_hierarchy(supertask, subtask)
 
@@ -1363,12 +1513,20 @@ class System:
         If it is a concrete tasks, returns its progress. If it is a non-concrete
         task, returns its inferred progress.
         """
-        if self._hierarchy_graph.is_concrete(task):
-            progress = self._attributes_register[task].progress
-            assert progress is not None
-            return progress
+        return (
+            self._get_progress_of_concrete_task(task)
+            if self._hierarchy_graph.is_concrete(task)
+            else self._get_inferred_progress(task)
+        )
 
-        return self._get_inferred_progress(task)
+    def _get_progress_of_concrete_task(self, task: UID, /) -> Progress:
+        """Get the progress of a concrete task."""
+        if not self._hierarchy_graph.is_concrete(task):
+            raise NotConcreteTaskError(task=task)
+
+        progress = self._attributes_register[task].progress
+        assert progress is not None
+        return progress
 
     def _get_inferred_progress(self, task: UID) -> Progress:
         """Return the inferred progress of the specified non-concrete task."""
@@ -1376,12 +1534,12 @@ class System:
             raise ConcreteTaskError(task=task)
 
         progress: Progress | None = None
-        for inferior_task in self._hierarchy_graph.inferior_tasks_bfs(task):
+        # DFS will get to the concrete tasks faster, so use that
+        for inferior_task in self._hierarchy_graph.inferior_tasks_dfs(task):
             if not self._hierarchy_graph.is_concrete(inferior_task):
                 continue
 
-            concrete_task_progress = self._attributes_register[inferior_task].progress
-            assert concrete_task_progress is not None
+            concrete_task_progress = self._get_progress_of_concrete_task(inferior_task)
 
             match concrete_task_progress:
                 case Progress.NOT_STARTED:
@@ -1394,8 +1552,6 @@ class System:
                     if progress is Progress.NOT_STARTED:
                         return Progress.IN_PROGRESS
                     progress = Progress.COMPLETED
-                case _:
-                    raise ValueError(f"Unknown progress [{concrete_task_progress}]")
 
         assert progress is not None
         return progress

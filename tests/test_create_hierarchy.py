@@ -650,6 +650,174 @@ def test_create_hierarchy_failure_dependency_clash(
     assert data_layer_mock.save_system.called is False
 
 
+@mock.patch("graft.architecture.data.DataLayer", autospec=True)
+def test_create_hierarchy_failure_incomplete_dependee_tasks_of_supertask(
+    data_layer_mock: mock.MagicMock,
+) -> None:
+    """Test that create_hierarchy fails when the subtask is started and a dependee task of the supertask is incomplete."""
+    task0 = tasks.UID(0)
+    task1 = tasks.UID(1)
+    task2 = tasks.UID(2)
+    system = domain.System.empty()
+
+    system.add_task(task0)
+    system.add_task(task1)
+    system.add_task(task2)
+    system.add_task_dependency(dependee_task=task0, dependent_task=task1)
+    system.set_task_progress(task=task2, progress=tasks.Progress.IN_PROGRESS)
+
+    data_layer_mock.load_system.return_value = system
+    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+
+    with pytest.raises(tasks.IncompleteDependeeTasksOfSupertaskError) as exc_info:
+        logic_layer.create_task_hierarchy(supertask=task1, subtask=task2)
+    assert exc_info.value.supertask == task1
+    assert exc_info.value.subtask == task2
+    assert exc_info.value.incomplete_dependee_tasks_of_supertask_with_progress == [
+        (task0, tasks.Progress.NOT_STARTED)
+    ]
+
+    data_layer_mock.load_system.assert_called_once()
+    assert data_layer_mock.save_system.called is False
+
+
+@mock.patch("graft.architecture.data.DataLayer", autospec=True)
+def test_create_hierarchy_failure_incomplete_dependee_tasks_of_superior_task_of_supertask(
+    data_layer_mock: mock.MagicMock,
+) -> None:
+    """Test that create_hierarchy fails when the subtask is started and a dependee task of the superior task of the supertask is incomplete."""
+    task0 = tasks.UID(0)
+    task1 = tasks.UID(1)
+    task2 = tasks.UID(2)
+    task3 = tasks.UID(3)
+    system = domain.System.empty()
+
+    system.add_task(task0)
+    system.add_task(task1)
+    system.add_task(task2)
+    system.add_task(task3)
+    system.add_task_hierarchy(supertask=task0, subtask=task1)
+    system.add_task_dependency(dependee_task=task2, dependent_task=task0)
+    system.set_task_progress(task=task3, progress=tasks.Progress.IN_PROGRESS)
+
+    data_layer_mock.load_system.return_value = system
+    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+
+    with pytest.raises(
+        tasks.IncompleteDependeeTasksOfSuperiorTasksOfSupertaskError
+    ) as exc_info:
+        logic_layer.create_task_hierarchy(supertask=task1, subtask=task3)
+    assert exc_info.value.supertask == task1
+    assert exc_info.value.subtask == task3
+
+    data_layer_mock.load_system.assert_called_once()
+    assert data_layer_mock.save_system.called is False
+
+
+@mock.patch("graft.architecture.data.DataLayer", autospec=True)
+def test_create_hierarchy_failure_started_dependent_tasks_of_supertask(
+    data_layer_mock: mock.MagicMock,
+) -> None:
+    """Test that create_hierarchy fails when the subtask is incomplete and a dependent task of the supertask is started."""
+    task0 = tasks.UID(0)
+    task1 = tasks.UID(1)
+    task2 = tasks.UID(2)
+    system = domain.System.empty()
+
+    system.add_task(task0)
+    system.add_task(task1)
+    system.add_task(task2)
+    system.add_task_dependency(dependee_task=task0, dependent_task=task1)
+    system.set_task_progress(task=task0, progress=tasks.Progress.COMPLETED)
+    system.set_task_progress(task=task1, progress=tasks.Progress.IN_PROGRESS)
+
+    data_layer_mock.load_system.return_value = system
+    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+
+    with pytest.raises(tasks.StartedDependentTasksOfSupertaskError) as exc_info:
+        logic_layer.create_task_hierarchy(supertask=task0, subtask=task2)
+    assert exc_info.value.supertask == task0
+    assert exc_info.value.subtask == task2
+    assert exc_info.value.started_dependent_tasks_of_supertask_with_progress == [
+        (task1, tasks.Progress.IN_PROGRESS)
+    ]
+
+    data_layer_mock.load_system.assert_called_once()
+    assert data_layer_mock.save_system.called is False
+
+
+@mock.patch("graft.architecture.data.DataLayer", autospec=True)
+def test_create_hierarchy_failure_started_dependent_tasks_of_superior_tasks_of_supertask(
+    data_layer_mock: mock.MagicMock,
+) -> None:
+    """Test that create_hierarchy fails when the subtask is incomplete and a dependent task of the superior tasks of the supertask is started."""
+    task0 = tasks.UID(0)
+    task1 = tasks.UID(1)
+    task2 = tasks.UID(2)
+    task3 = tasks.UID(3)
+    system = domain.System.empty()
+
+    system.add_task(task0)
+    system.add_task(task1)
+    system.add_task(task2)
+    system.add_task(task3)
+    system.add_task_hierarchy(supertask=task0, subtask=task1)
+    system.add_task_dependency(dependee_task=task0, dependent_task=task2)
+    system.set_task_progress(task=task1, progress=tasks.Progress.COMPLETED)
+    system.set_task_progress(task=task2, progress=tasks.Progress.IN_PROGRESS)
+
+    data_layer_mock.load_system.return_value = system
+    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+
+    with pytest.raises(
+        tasks.StartedDependentTasksOfSuperiorTasksOfSupertaskError
+    ) as exc_info:
+        logic_layer.create_task_hierarchy(supertask=task1, subtask=task3)
+    assert exc_info.value.supertask == task1
+    assert exc_info.value.subtask == task3
+
+    data_layer_mock.load_system.assert_called_once()
+    assert data_layer_mock.save_system.called is False
+
+
+@mock.patch("graft.architecture.data.DataLayer", autospec=True)
+def test_create_hierarchy_success_concrete_supertask(
+    data_layer_mock: mock.MagicMock,
+) -> None:
+    """Test that create_hierarchy succeeds when the supertask is concrete.
+
+    Ensures that the supertask progress is erased as expected.
+    """
+    supertask = tasks.UID(0)
+    subtask = tasks.UID(1)
+    system = domain.System.empty()
+
+    system.add_task(supertask)
+    system.add_task(subtask)
+    assert (
+        system.task_system_view().attributes_register_view()[supertask].progress
+        is tasks.Progress.NOT_STARTED
+    )
+
+    system_with_hierarchy = copy.deepcopy(system)
+    system_with_hierarchy.add_task_hierarchy(supertask=supertask, subtask=subtask)
+
+    assert (
+        system_with_hierarchy.task_system_view()
+        .attributes_register_view()[supertask]
+        .progress
+        is None
+    )
+
+    data_layer_mock.load_system.return_value = system
+    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+
+    logic_layer.create_task_hierarchy(supertask=supertask, subtask=subtask)
+
+    data_layer_mock.load_system.assert_called_once()
+    data_layer_mock.save_system.assert_called_once_with(system_with_hierarchy)
+
+
 @pytest.mark.parametrize(
     ("supertask_progress", "subtask_progress"),
     list(
