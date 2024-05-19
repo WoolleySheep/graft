@@ -496,3 +496,71 @@ def test_create_dependency_failure_introduces_hierarchy_clash(
 
     data_layer_mock.load_system.assert_called_once()
     assert data_layer_mock.save_system.called is False
+
+
+@pytest.mark.parametrize(
+    "started_progress",
+    [tasks.Progress.IN_PROGRESS, tasks.Progress.COMPLETED],
+)
+@mock.patch("graft.architecture.data.DataLayer", autospec=True)
+def test_create_dependency_success_completed_dependee_task_started_dependent_task(
+    data_layer_mock: mock.MagicMock, started_progress: tasks.Progress
+) -> None:
+    """Test the create_dependency method succeeds when the dependee-task is completed and the dependent-task is started."""
+    dependent_task = tasks.UID(0)
+    dependee_task = tasks.UID(1)
+    system = domain.System.empty()
+
+    system.add_task(dependee_task)
+    system.add_task(dependent_task)
+    system.set_task_progress(dependee_task, tasks.Progress.COMPLETED)
+    system.set_task_progress(dependent_task, started_progress)
+
+    system_with_dependency = copy.deepcopy(system)
+    system_with_dependency.add_task_dependency(dependee_task, dependent_task)
+
+    data_layer_mock.load_system.return_value = system
+    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+
+    logic_layer.create_task_dependency(dependee_task, dependent_task)
+
+    data_layer_mock.load_system.assert_called_once()
+    data_layer_mock.save_system.assert_called_once_with(system_with_dependency)
+
+
+@pytest.mark.parametrize(
+    "incomplete_progress",
+    [tasks.Progress.NOT_STARTED, tasks.Progress.IN_PROGRESS],
+)
+@pytest.mark.parametrize(
+    "started_progress",
+    [tasks.Progress.IN_PROGRESS, tasks.Progress.COMPLETED],
+)
+@mock.patch("graft.architecture.data.DataLayer", autospec=True)
+def test_create_dependency_failure_incomplete_dependee_task_started_dependent_task(
+    data_layer_mock: mock.MagicMock,
+    started_progress: tasks.Progress,
+    incomplete_progress: tasks.Progress,
+) -> None:
+    """Test the create_dependency method fails when the dependee-task is incomplete and the dependent-task is started."""
+    dependent_task = tasks.UID(0)
+    dependee_task = tasks.UID(1)
+    system = domain.System.empty()
+
+    system.add_task(dependee_task)
+    system.add_task(dependent_task)
+    system.set_task_progress(dependee_task, incomplete_progress)
+    system.set_task_progress(dependent_task, started_progress)
+
+    data_layer_mock.load_system.return_value = system
+    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+
+    with pytest.raises(tasks.DependeeIncompleteDependentStartedError) as exc_info:
+        logic_layer.create_task_dependency(dependee_task, dependent_task)
+    assert exc_info.value.dependee_task == dependee_task
+    assert exc_info.value.dependent_task == dependent_task
+    assert exc_info.value.dependee_progress == incomplete_progress
+    assert exc_info.value.dependent_progress == started_progress
+
+    data_layer_mock.load_system.assert_called_once()
+    assert data_layer_mock.save_system.called is False

@@ -573,6 +573,33 @@ class MismatchedProgressForNewSupertaskError(Exception):
         )
 
 
+class DependeeIncompleteDependentStartedError(Exception):
+    """Raised when a dependee task is incomplete and a dependent task is started.
+
+    The dependee task cannot be incomplete, as the started dependent task depends on it being complete.
+    """
+
+    def __init__(
+        self,
+        dependee_task: UID,
+        dependent_task: UID,
+        dependee_progress: Progress,
+        dependent_progress: Progress,
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
+        """Initialise DependeeIncompleteDependentStartedError."""
+        self.dependee_task = dependee_task
+        self.dependent_task = dependent_task
+        self.dependee_progress = dependee_progress
+        self.dependent_progress = dependent_progress
+        super().__init__(
+            f"Dependee task [{dependee_task}] is [{dependee_progress}] and dependent task [{dependent_task}] is [{dependent_progress}].",
+            *args,
+            **kwargs,
+        )
+
+
 class System:
     """System of task information."""
 
@@ -1500,6 +1527,18 @@ class System:
         ):
             # TODO: Get relevant subgraph and return as part of exception
             raise DependencyIntroducesHierarchyClashError(dependee_task, dependent_task)
+
+        if (
+            dependee_progress := self.get_progress(dependee_task)
+        ) is not Progress.COMPLETED and (
+            dependent_progress := self.get_progress(dependent_task)
+        ) is not Progress.NOT_STARTED:
+            raise DependeeIncompleteDependentStartedError(
+                dependee_task=dependee_task,
+                dependent_task=dependent_task,
+                dependee_progress=dependee_progress,
+                dependent_progress=dependent_progress,
+            )
 
         self._dependency_graph.add_dependency(dependee_task, dependent_task)
 

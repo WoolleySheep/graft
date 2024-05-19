@@ -38,6 +38,7 @@ from graft.domain.tasks.hierarchy_graph import (
 from graft.domain.tasks.name import Name
 from graft.domain.tasks.progress import Progress
 from graft.domain.tasks.system import (
+    DependeeIncompleteDependentStartedError,
     DependencyIntroducesHierarchyClashError,
     DependencyIntroducesStreamCycleError,
     DependencyPathAlreadyExistsFromSubTaskToSuperTaskError,
