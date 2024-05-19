@@ -56,19 +56,31 @@ class TaskDetails(tk.Frame):
 
             hierarchy_graph = self.logic_layer.get_task_hierarchy_graph_view()
 
-            subtasks = list[str]()
-            for subtask in hierarchy_graph.subtasks(self.task):
-                attributes = register[subtask]
-                subtasks.append(f"{subtask}: {attributes.name or ""}")
+            formatted_subtasks = (
+                f"{subtask}: {register[subtask].name or ""}"
+                for subtask in hierarchy_graph.subtasks(self.task)
+            )
+            self.subtasks_list.config(text="\n".join(formatted_subtasks))
 
-            self.subtasks_list.config(text="\n".join(subtasks))
+            formatted_supertasks = (
+                f"{supertask}: {register[supertask].name or ""}"
+                for supertask in hierarchy_graph.supertasks(self.task)
+            )
+            self.supertasks_list.config(text="\n".join(formatted_supertasks))
 
-            supertasks = list[str]()
-            for supertask in hierarchy_graph.supertasks(self.task):
-                attributes = register[supertask]
-                supertasks.append(f"{supertask}: {attributes.name or ""}")
+            dependency_graph = self.logic_layer.get_task_dependency_graph_view()
 
-            self.supertasks_list.config(text="\n".join(supertasks))
+            formatted_dependee_tasks = (
+                f"{supertask}: {register[supertask].name or ""}"
+                for supertask in dependency_graph.dependee_tasks(self.task)
+            )
+            self.dependee_tasks_list.config(text="\n".join(formatted_dependee_tasks))
+
+            formatted_dependent_tasks = (
+                f"{supertask}: {register[supertask].name or ""}"
+                for supertask in dependency_graph.dependent_tasks(self.task)
+            )
+            self.dependent_tasks_list.config(text="\n".join(formatted_dependent_tasks))
 
         def update_no_task(self: Self) -> None:
             assert self.task is None
@@ -184,6 +196,12 @@ class TaskDetails(tk.Frame):
         self.supertasks_label = ttk.Label(self, text="Supertasks")
         self.supertasks_list = ttk.Label(self, text="")
 
+        self.dependee_tasks_label = ttk.Label(self, text="Dependee-tasks")
+        self.dependee_tasks_list = ttk.Label(self, text="")
+
+        self.dependent_tasks_label = ttk.Label(self, text="Dependent-tasks")
+        self.dependent_tasks_list = ttk.Label(self, text="")
+
         self.task_id.grid(row=0, column=0)
         self.task_name.grid(row=0, column=1, columnspan=3)
         self.task_progress.grid(row=1, column=1)
@@ -194,9 +212,13 @@ class TaskDetails(tk.Frame):
         self.task_description.grid(row=2, column=0, columnspan=4)
         self.save_button.grid(row=3, column=0, columnspan=3)
         self.subtasks_label.grid(row=4, column=0)
-        self.subtasks_list.grid(row=4, column=1)
+        self.subtasks_list.grid(row=4, column=1, columnspan=3)
         self.supertasks_label.grid(row=5, column=0)
-        self.supertasks_list.grid(row=5, column=1)
+        self.supertasks_list.grid(row=5, column=1, columnspan=3)
+        self.dependee_tasks_label.grid(row=6, column=0)
+        self.dependee_tasks_list.grid(row=6, column=1, columnspan=3)
+        self.dependent_tasks_label.grid(row=7, column=0)
+        self.dependent_tasks_list.grid(row=7, column=1, columnspan=3)
 
         broker = event_broker.get_singleton()
         broker.subscribe(
