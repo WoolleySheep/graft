@@ -341,7 +341,7 @@ class MultipleImportancesInHierarchyError(Exception):
     ) -> None:
         """Initialise MultipleImportanceInHierarchyError."""
         super().__init__(
-            f"Multiple importances in hierarchy.",
+            "Multiple importances in hierarchy.",
             *args,
             **kwargs,
         )
@@ -1492,7 +1492,7 @@ class System:
             )
         ):
             # TODO: Get relevant subgraph and return as part of exception
-            raise MultipleImportancesInHierarchyError()
+            raise MultipleImportancesInHierarchyError
 
         subtask_progress = self.get_progress(subtask)
         if subtask_progress is not Progress.NOT_STARTED:
@@ -1748,6 +1748,47 @@ class System:
         assert progress is not None
         return progress
 
+    def get_importance(self, task: UID, /) -> Importance | set[Importance] | None:
+        """Return the importance of the specified task.
+
+        If it has its own importance, return that. If not, return the inferred
+        importance.
+        """
+        if (importance := self._attributes_register[task].importance) is not None:
+            return importance
+
+        return self._get_inferred_importance(task)
+
+    def _get_inferred_importance(self, task: UID, /) -> set[Importance] | None:
+        """Return the inferred importance of the specified task with no importance.
+
+        If the task has one or more superior tasks with importances, then
+        they'll be returned as part of a set.
+        """
+        assert self._attributes_register[task].importance is None
+
+        importances = set[Importance]()
+        visited = set[UID]()
+        queue = collections.deque[UID](self._hierarchy_graph.supertasks(task))
+        all_importance_levels = set(Importance)
+        # if we've found every possible importance level, no need to keep searching
+        while queue and importances != all_importance_levels:
+            superior_task = queue.popleft()
+            if superior_task in visited:
+                continue
+            visited.add(superior_task)
+
+            if (
+                importance := self._attributes_register[superior_task].importance
+            ) is not None:
+                importances.add(importance)
+                # Don't go any further along this branch, as there'll be no more importances
+                continue
+
+            queue.extend(self._hierarchy_graph.supertasks(superior_task))
+
+        return importances or None
+
     def is_active(self, task: UID, /) -> bool:
         """Return whether the specified task is active."""
         match self.get_progress(task):
@@ -1823,3 +1864,11 @@ class SystemView:
         task, returns its inferred progress.
         """
         return self._system.get_progress(task)
+
+    def get_importance(self, task: UID, /) -> Importance | set[Importance] | None:
+        """Return the importance of the specified task.
+
+        If it has its own importance, return that. If not, return the inferred
+        importance.
+        """
+        return self._system.get_importance(task)
