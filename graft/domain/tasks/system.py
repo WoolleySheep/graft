@@ -33,6 +33,7 @@ from graft.domain.tasks.hierarchy_graph import (
     InverseHierarchyAlreadyExistsError,
     SubTaskIsAlreadySubTaskOfSuperiorTaskOfSuperTaskError,
 )
+from graft.domain.tasks.importance import Importance
 from graft.domain.tasks.name import Name
 from graft.domain.tasks.progress import Progress
 from graft.domain.tasks.uid import UID
@@ -597,6 +598,72 @@ class DependeeIncompleteDependentStartedError(Exception):
             f"Dependee task [{dependee_task}] is [{dependee_progress}] and dependent task [{dependent_task}] is [{dependent_progress}].",
             *args,
             **kwargs,
+        )
+
+
+class SupertaskHasImportanceError(Exception):
+    """Raised when a supertask has an importance."""
+
+    def __init__(
+        self,
+        task: UID,
+        supertasks_with_importance: Iterable[tuple[UID, Importance]],
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
+        """Initialise SupertaskHasImportanceError."""
+        self.task = task
+        self.supertasks_with_importance = list(supertasks_with_importance)
+        super().__init__(
+            f"Task [{task}] has supertasks with importance", *args, **kwargs
+        )
+
+
+class SuperiorTaskHasImportanceError(Exception):
+    """Raised when a superior task has an importance."""
+
+    def __init__(
+        self,
+        task: UID,
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
+        """Initialise SuperiorTaskHasImportanceError."""
+        self.task = task
+        super().__init__(
+            f"Task [{task}] has superior tasks with importance", *args, **kwargs
+        )
+
+
+class SubtaskHasImportanceError(Exception):
+    """Raised when a subtask has an importance."""
+
+    def __init__(
+        self,
+        task: UID,
+        subtasks_with_importance: Iterable[tuple[UID, Importance]],
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
+        """Initialise SubtaskHasImportanceError."""
+        self.task = task
+        self.subtasks_with_importance = list(subtasks_with_importance)
+        super().__init__(f"Task [{task}] has subtasks with importance", *args, **kwargs)
+
+
+class InferiorTaskHasImportanceError(Exception):
+    """Raised when a inferior task has an importance."""
+
+    def __init__(
+        self,
+        task: UID,
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
+        """Initialise InferiorTaskHasImportanceError."""
+        self.task = task
+        super().__init__(
+            f"Task [{task}] has inferior tasks with importance", *args, **kwargs
         )
 
 
@@ -1179,6 +1246,60 @@ class System:
                 pass
 
         self._attributes_register.set_progress(task, progress)
+
+    def set_importance(self, task: UID, importance: Importance | None = None) -> None:
+        """Set the importance of the specified task."""
+        if importance is None or self._attributes_register[task].importance is not None:
+            self._attributes_register.set_importance(task, importance)
+            return
+
+        if any(
+            self._attributes_register[supertask].importance is not None
+            for supertask in self._hierarchy_graph.supertasks(task)
+        ):
+            supertasks_with_importance = (
+                (supertask, supertask_importance)
+                for supertask in self._hierarchy_graph.supertasks(task)
+                if (
+                    supertask_importance := self._attributes_register[
+                        supertask
+                    ].importance
+                )
+                is not None
+            )
+            raise SupertaskHasImportanceError(
+                task=task, supertasks_with_importance=supertasks_with_importance
+            )
+
+        if any(
+            self._attributes_register[superior_task].importance is not None
+            for superior_task in self._hierarchy_graph.superior_tasks_bfs(task)
+        ):
+            # TODO: Get subgraph and importances
+            raise SuperiorTaskHasImportanceError(task=task)
+
+        if any(
+            self._attributes_register[subtask].importance is not None
+            for subtask in self._hierarchy_graph.subtasks(task)
+        ):
+            subtasks_with_importance = (
+                (subtask, subtask_importance)
+                for subtask in self._hierarchy_graph.subtasks(task)
+                if (subtask_importance := self._attributes_register[subtask].importance)
+                is not None
+            )
+            raise SubtaskHasImportanceError(
+                task=task, subtasks_with_importance=subtasks_with_importance
+            )
+
+        if any(
+            self._attributes_register[inferior_task].importance is not None
+            for inferior_task in self._hierarchy_graph.inferior_tasks_bfs(task)
+        ):
+            # TODO: Get subgraph and importances
+            raise InferiorTaskHasImportanceError(task=task)
+
+        self._attributes_register.set_importance(task, importance)
 
     def add_hierarchy(self, supertask: UID, subtask: UID) -> None:
         """Create a new hierarchy between the specified tasks."""

@@ -57,12 +57,22 @@ class StandardLogicLayer(architecture.LogicLayer):
     def update_task_description(
         self, task: UID, description: Description | None = None
     ) -> None:
+        """Update the specified task's description."""
         self._system.set_task_description(task, description)
         self._data_layer.save_system(system=self._system)
 
     @override
     def update_task_progress(self, task: UID, progress: tasks.Progress) -> None:
+        """Update the specified task's progress."""
         self._system.set_task_progress(task, progress)
+        self._data_layer.save_system(system=self._system)
+
+    @override
+    def update_task_importance(
+        self, task: UID, importance: tasks.Importance | None = None
+    ) -> None:
+        """Update the specified task's importance."""
+        self._system.set_task_importance(task, importance)
         self._data_layer.save_system(system=self._system)
 
     @override

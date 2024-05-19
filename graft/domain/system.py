@@ -57,6 +57,12 @@ class System:
         """Set the progress of the specified task."""
         self._task_system.set_progress(task, progress)
 
+    def set_task_importance(
+        self, task: tasks.UID, importance: tasks.Importance | None = None
+    ) -> None:
+        """Set the importance of the specified task."""
+        self._task_system.set_importance(task, importance)
+
     def add_task_hierarchy(self, supertask: tasks.UID, subtask: tasks.UID) -> None:
         """Add a hierarchy between the specified tasks."""
         self._task_system.add_hierarchy(supertask, subtask)

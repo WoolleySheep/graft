@@ -25,17 +25,15 @@ def test_update_task_progress_success_one_task(
 ) -> None:
     """Test that update_task_progress works for a single task."""
     task = tasks.UID(0)
-
     system = domain.System.empty()
-    system.add_task(task)
 
-    system_with_old_progress = copy.deepcopy(system)
-    system_with_old_progress.set_task_progress(task=task, progress=old_progress)
+    system.add_task(task)
+    system.set_task_progress(task=task, progress=old_progress)
 
     system_with_new_progress = copy.deepcopy(system)
     system_with_new_progress.set_task_progress(task=task, progress=new_progress)
 
-    data_layer_mock.load_system.return_value = system_with_old_progress
+    data_layer_mock.load_system.return_value = system
 
     logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
 

@@ -49,6 +49,12 @@ class LogicLayer(abc.ABC):
         """Update the specified task's progress."""
 
     @abc.abstractmethod
+    def update_task_importance(
+        self, task: tasks.UID, importance: tasks.Importance | None = None
+    ) -> None:
+        """Update the specified task's importance."""
+
+    @abc.abstractmethod
     def get_task_attributes_register_view(self) -> tasks.AttributesRegisterView:
         """Return the task attributes register."""
 

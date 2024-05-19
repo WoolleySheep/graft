@@ -42,6 +42,7 @@ class TaskAttributesJSONDict(TypedDict):
     name: str | None
     description: str | None
     progress: str | None
+    importance: str | None
 
 
 def _encode_task_uid(uid: tasks.UID) -> str:
@@ -68,6 +69,9 @@ def _encode_task_attributes_register(
             "progress": attributes.progress.value
             if attributes.progress is not None
             else None,
+            "importance": attributes.importance.value
+            if attributes.importance is not None
+            else None,
         }
 
     if isinstance(o, tasks.AttributesRegisterView):
@@ -90,7 +94,12 @@ def _decode_task_attributes_register(
 
     def decode_attributes(d: TaskAttributesJSONDict) -> tasks.Attributes:
         """Decode task attributes."""
-        if "name" not in d or "description" not in d or "progress" not in d:
+        if (
+            "name" not in d
+            or "description" not in d
+            or "progress" not in d
+            or "importance" not in d
+        ):
             raise ValueError  # TODO (mjw): Use better named error
 
         return tasks.Attributes(
@@ -102,6 +111,11 @@ def _decode_task_attributes_register(
             ),
             progress=(
                 tasks.Progress(d["progress"]) if d["progress"] is not None else None
+            ),
+            importance=(
+                tasks.Importance(d["importance"])
+                if d["importance"] is not None
+                else None
             ),
         )
 
@@ -215,6 +229,8 @@ class LocalFileDataLayer(architecture.DataLayer):
                 self._initialise()
             case InitialisationStatus.PARTIALLY_INITIALISED:
                 raise PartiallyInitialisedError
+            case InitialisationStatus.FULLY_INITIALISED:
+                pass
 
     @override
     def erase(self) -> None:

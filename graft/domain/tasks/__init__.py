@@ -52,6 +52,7 @@ from graft.domain.tasks.system import (
     IncompleteDependeeTasksOfSuperiorTasksError,
     IncompleteDependeeTasksOfSuperiorTasksOfSupertaskError,
     IncompleteDependeeTasksOfSupertaskError,
+    InferiorTaskHasImportanceError,
     MismatchedProgressForNewSupertaskError,
     NotConcreteTaskError,
     StartedDependentTasksError,
@@ -64,6 +65,9 @@ from graft.domain.tasks.system import (
     StreamPathFromSubTaskToSuperTaskExistsError,
     StreamPathFromSuperTaskToInferiorTaskOfSubTaskExistsError,
     StreamPathFromSuperTaskToSubTaskExistsError,
+    SubtaskHasImportanceError,
+    SuperiorTaskHasImportanceError,
+    SupertaskHasImportanceError,
     System,
     SystemView,
 )

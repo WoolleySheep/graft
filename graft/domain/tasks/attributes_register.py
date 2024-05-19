@@ -7,6 +7,7 @@ from typing import Protocol
 from graft.domain.tasks.attributes import Attributes, AttributesView
 from graft.domain.tasks.description import Description
 from graft.domain.tasks.helpers import TaskAlreadyExistsError, TaskDoesNotExistError
+from graft.domain.tasks.importance import Importance
 from graft.domain.tasks.name import Name
 from graft.domain.tasks.progress import Progress
 from graft.domain.tasks.uid import UID
@@ -119,6 +120,13 @@ class AttributesRegister(Mapping[UID, AttributesView]):
             raise TaskDoesNotExistError(task=task)
 
         self._task_to_attributes_map[task].progress = progress
+
+    def set_importance(self, task: UID, importance: Importance | None = None) -> None:
+        """Set importance of an existing task."""
+        if task not in self:
+            raise TaskDoesNotExistError(task=task)
+
+        self._task_to_attributes_map[task].importance = importance
 
 
 class AttributesRegisterView(Mapping[UID, AttributesView]):
