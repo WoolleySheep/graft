@@ -11,12 +11,10 @@ from graft.tkinter_gui import event_broker
 class TaskDetails(tk.Frame):
     def __init__(self, master: tk.Misc, logic_layer: LogicLayer) -> None:
         def update(event: event_broker.Event, self: Self) -> None:
-            if not isinstance(event, event_broker.TaskSelected):
-                raise TypeError
-
-            self.task = event.task
-
-            self.task_id.config(text=str(self.task))
+            if isinstance(event, event_broker.TaskSelected):
+                self.task = event.task
+                self.task_id.config(text=str(self.task))
+            assert self.task is not None
 
             register = self.logic_layer.get_task_attributes_register_view()
             attributes = register[self.task]
@@ -54,6 +52,48 @@ class TaskDetails(tk.Frame):
 
             self.supertasks_list.config(text="\n".join(supertasks))
 
+        def increment_progress(self: Self) -> None:
+            assert self.task
+            current_progress = self.logic_layer.get_task_system_view().get_progress(
+                self.task
+            )
+            match current_progress:
+                case tasks.Progress.NOT_STARTED:
+                    incremented_progress = tasks.Progress.IN_PROGRESS
+                case tasks.Progress.IN_PROGRESS:
+                    incremented_progress = tasks.Progress.COMPLETED
+                case tasks.Progress.COMPLETED:
+                    raise ValueError("Cannot increment progress of completed task")
+
+            try:
+                self.logic_layer.update_task_progress(self.task, incremented_progress)
+            except Exception as e:
+                raise NotImplementedError from e
+
+            broker = event_broker.get_singleton()
+            broker.publish(event_broker.SystemModified())
+
+        def decrement_progress(self: Self) -> None:
+            assert self.task
+            current_progress = self.logic_layer.get_task_system_view().get_progress(
+                self.task
+            )
+            match current_progress:
+                case tasks.Progress.NOT_STARTED:
+                    raise ValueError("Cannot decrement progress of not started task")
+                case tasks.Progress.IN_PROGRESS:
+                    decremented_progress = tasks.Progress.NOT_STARTED
+                case tasks.Progress.COMPLETED:
+                    decremented_progress = tasks.Progress.IN_PROGRESS
+
+            try:
+                self.logic_layer.update_task_progress(self.task, decremented_progress)
+            except Exception as e:
+                raise NotImplementedError from e
+
+            broker = event_broker.get_singleton()
+            broker.publish(event_broker.SystemModified())
+
         def save(self: Self) -> None:
             assert self.task
 
@@ -76,7 +116,13 @@ class TaskDetails(tk.Frame):
         self.task_id = ttk.Label(self, text="")
         self.task_name = ttk.Entry(self)
 
+        self.decrement_task_progress_button = ttk.Button(
+            self, text="<", command=functools.partial(decrement_progress, self=self)
+        )
         self.task_progress = ttk.Label(self, text="")
+        self.increment_task_progress_button = ttk.Button(
+            self, text=">", command=functools.partial(increment_progress, self=self)
+        )
 
         self.save_button = ttk.Button(
             self, text="Save", command=functools.partial(save, self=self)
@@ -92,7 +138,9 @@ class TaskDetails(tk.Frame):
 
         self.task_id.grid(row=0, column=0)
         self.task_name.grid(row=0, column=1)
-        self.task_progress.grid(row=1, column=0)
+        self.decrement_task_progress_button.grid(row=1, column=0)
+        self.task_progress.grid(row=1, column=1)
+        self.increment_task_progress_button.grid(row=1, column=2)
         self.save_button.grid(row=2, column=0, rowspan=2, columnspan=2)
         self.task_description.grid(row=4, column=0, rowspan=2)
         self.subtasks_label.grid(row=5, column=0)
@@ -103,4 +151,7 @@ class TaskDetails(tk.Frame):
         broker = event_broker.get_singleton()
         broker.subscribe(
             event_broker.TaskSelected, functools.partial(update, self=self)
+        )
+        broker.subscribe(
+            event_broker.SystemModified, functools.partial(update, self=self)
         )
