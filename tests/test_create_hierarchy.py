@@ -820,16 +820,7 @@ def test_create_hierarchy_success_concrete_supertask(
 
 @pytest.mark.parametrize(
     ("supertask_progress", "subtask_progress"),
-    list(
-        itertools.combinations(
-            iterable=[
-                tasks.Progress.NOT_STARTED,
-                tasks.Progress.IN_PROGRESS,
-                tasks.Progress.COMPLETED,
-            ],
-            r=2,
-        )
-    ),
+    list(itertools.combinations(iterable=tasks.Progress, r=2)),
 )
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_hierarchy_failure_concrete_supertask_differing_progress(

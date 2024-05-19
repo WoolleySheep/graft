@@ -34,7 +34,6 @@ def test_update_task_progress_success_one_task(
     system_with_new_progress.set_task_progress(task=task, progress=new_progress)
 
     data_layer_mock.load_system.return_value = system
-
     logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
 
     logic_layer.update_task_progress(task=task, progress=new_progress)
