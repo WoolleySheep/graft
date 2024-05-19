@@ -22,25 +22,32 @@ class TaskDetails(tk.Frame):
             attributes = register[self.task]
 
             self.task_name.delete(0, tk.END)
-            self.task_name.insert(0, str(attributes.name) or "")
+            self.task_name.insert(
+                0, str(attributes.name) if attributes.name is not None else ""
+            )
 
             system = self.logic_layer.get_task_system_view()
             progress = system.get_progress(self.task)
             self.task_progress.config(text=progress.value)
 
             self.task_description.delete(1.0, tk.END)
-            self.task_description.insert(1.0, str(attributes.description) or "")
+            self.task_description.insert(
+                1.0,
+                str(attributes.description)
+                if attributes.description is not None
+                else "",
+            )
 
             hierarchy_graph = self.logic_layer.get_task_hierarchy_graph_view()
 
-            subtasks = []
+            subtasks = list[str]()
             for subtask in hierarchy_graph.subtasks(self.task):
                 attributes = register[subtask]
                 subtasks.append(f"{subtask}: {attributes.name or ""}")
 
             self.subtasks_list.config(text="\n".join(subtasks))
 
-            supertasks = []
+            supertasks = list[str]()
             for supertask in hierarchy_graph.supertasks(self.task):
                 attributes = register[supertask]
                 supertasks.append(f"{supertask}: {attributes.name or ""}")
