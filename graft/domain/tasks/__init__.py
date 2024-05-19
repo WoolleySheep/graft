@@ -35,6 +35,7 @@ from graft.domain.tasks.hierarchy_graph import (
     InverseHierarchyAlreadyExistsError,
     SubTaskIsAlreadySubTaskOfSuperiorTaskOfSuperTaskError,
 )
+from graft.domain.tasks.importance import Importance
 from graft.domain.tasks.name import Name
 from graft.domain.tasks.progress import Progress
 from graft.domain.tasks.system import (
