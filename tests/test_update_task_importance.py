@@ -12,11 +12,11 @@ from graft.domain import tasks
 
 @pytest.mark.parametrize(
     "old_importance",
-    [tasks.Importance.LOW, tasks.Importance.MEDIUM, tasks.Importance.HIGH, None],
+    itertools.chain(tasks.Importance, [None]),
 )
 @pytest.mark.parametrize(
     "new_importance",
-    [tasks.Importance.LOW, tasks.Importance.MEDIUM, tasks.Importance.HIGH, None],
+    itertools.chain(tasks.Importance, [None]),
 )
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_update_task_importance_success_one_task(
@@ -45,7 +45,7 @@ def test_update_task_importance_success_one_task(
 
 @pytest.mark.parametrize(
     ("task_importance", "supertask_importance"),
-    list(itertools.combinations(iterable=tasks.Importance, r=2)),
+    itertools.combinations(iterable=tasks.Importance, r=2),
 )
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_update_task_importance_failure_supertask_with_importance(
@@ -79,7 +79,7 @@ def test_update_task_importance_failure_supertask_with_importance(
 
 @pytest.mark.parametrize(
     ("task_importance", "superior_task_importance"),
-    list(itertools.combinations(iterable=tasks.Importance, r=2)),
+    itertools.combinations(iterable=tasks.Importance, r=2),
 )
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_update_task_importance_failure_superior_task_with_importance(
@@ -113,7 +113,7 @@ def test_update_task_importance_failure_superior_task_with_importance(
 
 @pytest.mark.parametrize(
     ("task_importance", "subtask_importance"),
-    list(itertools.combinations(iterable=tasks.Importance, r=2)),
+    itertools.combinations(iterable=tasks.Importance, r=2),
 )
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_update_task_importance_failure_subtask_with_importance(
@@ -145,7 +145,7 @@ def test_update_task_importance_failure_subtask_with_importance(
 
 @pytest.mark.parametrize(
     ("task_importance", "inferior_task_importance"),
-    list(itertools.combinations(iterable=tasks.Importance, r=2)),
+    itertools.combinations(iterable=tasks.Importance, r=2),
 )
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_update_task_importance_failure_inferior_task_with_importance(

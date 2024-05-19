@@ -54,6 +54,7 @@ from graft.domain.tasks.system import (
     IncompleteDependeeTasksOfSupertaskError,
     InferiorTaskHasImportanceError,
     MismatchedProgressForNewSupertaskError,
+    MultipleImportancesInHierarchyError,
     NotConcreteTaskError,
     StartedDependentTasksError,
     StartedDependentTasksOfSuperiorTasksError,

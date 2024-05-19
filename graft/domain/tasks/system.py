@@ -331,6 +331,22 @@ class NoConnectingSubsystemError(Exception):
         )
 
 
+class MultipleImportancesInHierarchyError(Exception):
+    """Raised when there are multiple importances in a hierarchy."""
+
+    def __init__(
+        self,
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
+        """Initialise MultipleImportanceInHierarchyError."""
+        super().__init__(
+            f"Multiple importances in hierarchy.",
+            *args,
+            **kwargs,
+        )
+
+
 class NotConcreteTaskError(Exception):
     """Raised when a task is not concrete, and therefore has no explicit progress."""
 
@@ -1461,6 +1477,22 @@ class System:
         if has_dependency_clash(self, supertask, subtask):
             # TODO: Get relevant subgraph and return as part of exception
             raise HierarchyIntroducesDependencyClashError(supertask, subtask)
+
+        if (
+            self._attributes_register[supertask].importance is not None
+            or any(
+                self._attributes_register[superior_task].importance is not None
+                for superior_task in self._hierarchy_graph.superior_tasks_bfs(supertask)
+            )
+        ) and (
+            self._attributes_register[subtask].importance is not None
+            or any(
+                self._attributes_register[inferior_task].importance is not None
+                for inferior_task in self._hierarchy_graph.inferior_tasks_bfs(subtask)
+            )
+        ):
+            # TODO: Get relevant subgraph and return as part of exception
+            raise MultipleImportancesInHierarchyError()
 
         subtask_progress = self.get_progress(subtask)
         if subtask_progress is not Progress.NOT_STARTED:
