@@ -11,9 +11,10 @@ from matplotlib import collections as mpl_collections
 from matplotlib import text as mpl_text
 from matplotlib.backends import backend_tkagg
 
-from graft import architecture, graphs
+from graft import architecture
 from graft.domain import tasks
 from graft.tkinter_gui import event_broker, layered_graph_drawing
+from graft.tkinter_gui.helpers import graph_conversion
 
 GRAPH_ORIENTATION = layered_graph_drawing.GraphOrientation.VERTICAL
 
@@ -21,28 +22,6 @@ GRAPH_ORIENTATION = layered_graph_drawing.GraphOrientation.VERTICAL
 class HierarchyGraph(tk.Frame):
     def __init__(self, master: tk.Misc, logic_layer: architecture.LogicLayer) -> None:
         def update_figure(self: Self) -> None:
-            def convert_hierarchy_to_networkx_graph(
-                hierarchy_graph: tasks.IHierarchyGraphView,
-            ) -> nx.DiGraph:
-                networkx_graph = nx.DiGraph()
-                for task in hierarchy_graph:
-                    networkx_graph.add_node(task)
-
-                for parent, child in hierarchy_graph.hierarchies():
-                    networkx_graph.add_edge(parent, child)
-
-                return networkx_graph
-
-            def covert_hierarchy_to_digraph(
-                hierarchy_graph: tasks.IHierarchyGraphView,
-            ) -> graphs.DirectedAcyclicGraph[tasks.UID]:
-                graph = graphs.DirectedAcyclicGraph[tasks.UID]()
-                for task in hierarchy_graph:
-                    graph.add_node(task)
-                for supertask, subtask in hierarchy_graph.hierarchies():
-                    graph.add_edge(supertask, subtask)
-                return graph
-
             def draw_graph(
                 self: Self,
                 graph: nx.DiGraph,
@@ -125,8 +104,12 @@ class HierarchyGraph(tk.Frame):
             annotation.set_visible(False)
 
             hierarchy_graph = self.logic_layer.get_task_hierarchy_graph_view()
-            networkx_graph = convert_hierarchy_to_networkx_graph(hierarchy_graph)
-            digraph = covert_hierarchy_to_digraph(hierarchy_graph)
+            digraph = graph_conversion.convert_hierarchy_to_reduced_dag(
+                graph=hierarchy_graph
+            )
+            networkx_graph = graph_conversion.convert_simple_digraph_to_nx_digraph(
+                digraph
+            )
 
             pos = layered_graph_drawing.calculate_node_positions_sugiyama_method(
                 graph=digraph, orientation=GRAPH_ORIENTATION

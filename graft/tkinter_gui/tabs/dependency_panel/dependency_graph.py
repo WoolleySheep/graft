@@ -10,39 +10,12 @@ from matplotlib import collections as mpl_collections
 from matplotlib import text as mpl_text
 from matplotlib.backends import backend_tkagg
 
-from graft import architecture, graphs
+from graft import architecture
 from graft.domain import tasks
 from graft.tkinter_gui import event_broker, layered_graph_drawing
+from graft.tkinter_gui.helpers import graph_conversion
 
 GRAPH_ORIENTATION = layered_graph_drawing.GraphOrientation.HORIZONTAL
-
-
-def _convert_dependency_to_networkx_graph(
-    dependency_graph: tasks.IDependencyGraphView,
-) -> nx.DiGraph:
-    networkx_graph = nx.DiGraph()
-
-    for task in dependency_graph:
-        networkx_graph.add_node(task)
-
-    for parent, child in dependency_graph.dependencies():
-        networkx_graph.add_edge(parent, child)
-
-    return networkx_graph
-
-
-def _covert_dependency_to_digraph(
-    dependency_graph: tasks.IDependencyGraphView,
-) -> graphs.DirectedAcyclicGraph[tasks.UID]:
-    graph = graphs.DirectedAcyclicGraph[tasks.UID]()
-
-    for task in dependency_graph:
-        graph.add_node(task)
-
-    for supertask, subtask in dependency_graph.dependencies():
-        graph.add_edge(supertask, subtask)
-
-    return graph
 
 
 class DependencyGraph(tk.Frame):
@@ -129,8 +102,10 @@ class DependencyGraph(tk.Frame):
             annotation.set_visible(False)
 
             dependency_graph = self.logic_layer.get_task_dependency_graph_view()
-            networkx_graph = _convert_dependency_to_networkx_graph(dependency_graph)
-            digraph = _covert_dependency_to_digraph(dependency_graph)
+            digraph = graph_conversion.convert_dependency_to_dag(graph=dependency_graph)
+            networkx_graph = graph_conversion.convert_simple_digraph_to_nx_digraph(
+                digraph
+            )
 
             pos = layered_graph_drawing.calculate_node_positions_sugiyama_method(
                 graph=digraph, orientation=GRAPH_ORIENTATION

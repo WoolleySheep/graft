@@ -1,4 +1,3 @@
-import itertools
 import tkinter as tk
 from collections.abc import Generator
 from tkinter import ttk
