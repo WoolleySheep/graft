@@ -1,6 +1,7 @@
 """Logic-layer interface and associated exceptions."""
 
 import abc
+from collections.abc import Generator
 
 from graft.architecture import data
 from graft.domain import tasks
@@ -82,3 +83,9 @@ class LogicLayer(abc.ABC):
         self, dependee_task: tasks.UID, dependent_task: tasks.UID
     ) -> None:
         """Delete the specified dependency."""
+
+    @abc.abstractmethod
+    def get_active_concrete_tasks_in_priority_order(
+        self,
+    ) -> Generator[tasks.UID, None, None]:
+        """Return the active concrete tasks in priority order."""

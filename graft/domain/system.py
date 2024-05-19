@@ -1,5 +1,6 @@
 """System and associated classes/exceptions."""
 
+from collections.abc import Generator
 from typing import Self
 
 from graft.domain import tasks
@@ -79,3 +80,9 @@ class System:
         self._task_system.remove_dependency(
             dependee_task=dependee_task, dependent_task=dependent_task
         )
+
+    def get_active_concrete_tasks_in_priority_order(
+        self,
+    ) -> Generator[tasks.UID, None, None]:
+        """Return the active concrete tasks in priority order."""
+        return self._task_system.get_active_concrete_tasks_in_priority_order()

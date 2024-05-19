@@ -1595,6 +1595,37 @@ class System:
         assert progress is not None
         return progress
 
+    def is_active(self, task: UID, /) -> bool:
+        """Return whether the specified task is active."""
+        match self.get_progress(task):
+            case Progress.COMPLETED:
+                return False
+            case Progress.IN_PROGRESS:
+                return True
+            case Progress.NOT_STARTED:
+                return all(
+                    self.get_progress(dependee_task) is Progress.COMPLETED
+                    for dependee_task in itertools.chain(
+                        self._dependency_graph.dependee_tasks(task),
+                        self._get_dependee_tasks_of_superior_tasks(task),
+                    )
+                )
+
+    def get_active_concrete_tasks_in_priority_order(self) -> Generator[UID, None, None]:
+        """Return the active concrete tasks in priority order."""
+        not_started_tasks = list[UID]()
+        for task in self._hierarchy_graph.concrete_tasks():
+            if not self.is_active(task):
+                continue
+
+            if self.get_progress(task) is Progress.NOT_STARTED:
+                not_started_tasks.append(task)
+                continue
+
+            yield task
+
+        yield from not_started_tasks
+
 
 class SystemView:
     """View of System."""

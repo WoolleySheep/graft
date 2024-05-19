@@ -1,5 +1,6 @@
 """Standard logic-layer implementation and associated exceptions."""
 
+from collections.abc import Generator
 from typing import override
 
 from graft import architecture
@@ -113,3 +114,10 @@ class StandardLogicLayer(architecture.LogicLayer):
             dependee_task=dependee_task, dependent_task=dependent_task
         )
         self._data_layer.save_system(system=self._system)
+
+    @override
+    def get_active_concrete_tasks_in_priority_order(
+        self,
+    ) -> Generator[tasks.UID, None, None]:
+        """Return the active concrete tasks in priority order."""
+        return self._system.get_active_concrete_tasks_in_priority_order()

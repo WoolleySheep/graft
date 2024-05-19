@@ -7,6 +7,9 @@ from graft.architecture.logic import LogicLayer
 from graft.domain import tasks
 from graft.tkinter_gui import event_broker, helpers
 
+_DECREMENT_PROGRESS_BUTTON_GRID_POSITION = (1, 0)
+_INCREMENT_PROGRESS_BUTTON_GRID_POSITION = (1, 2)
+
 
 class TaskDetails(tk.Frame):
     def __init__(self, master: tk.Misc, logic_layer: LogicLayer) -> None:
@@ -182,18 +185,18 @@ class TaskDetails(tk.Frame):
         self.supertasks_list = ttk.Label(self, text="")
 
         self.task_id.grid(row=0, column=0)
-        self.task_name.grid(row=0, column=1)
+        self.task_name.grid(row=0, column=1, columnspan=3)
         self.task_progress.grid(row=1, column=1)
         self.decrement_task_progress_button.grid(row=1, column=0)
         self.decrement_task_progress_button.grid_remove()
         self.increment_task_progress_button.grid(row=1, column=2)
         self.increment_task_progress_button.grid_remove()
-        self.save_button.grid(row=2, column=0, rowspan=2, columnspan=2)
-        self.task_description.grid(row=4, column=0, rowspan=2)
-        self.subtasks_label.grid(row=5, column=0)
-        self.subtasks_list.grid(row=5, column=1)
-        self.supertasks_label.grid(row=6, column=0)
-        self.supertasks_list.grid(row=6, column=1)
+        self.task_description.grid(row=2, column=0, columnspan=4)
+        self.save_button.grid(row=3, column=0, columnspan=3)
+        self.subtasks_label.grid(row=4, column=0)
+        self.subtasks_list.grid(row=4, column=1)
+        self.supertasks_label.grid(row=5, column=0)
+        self.supertasks_list.grid(row=5, column=1)
 
         broker = event_broker.get_singleton()
         broker.subscribe(
