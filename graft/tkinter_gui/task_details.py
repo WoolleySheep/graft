@@ -52,6 +52,8 @@ class TaskDetails(tk.Frame):
                 attributes = register[supertask]
                 supertasks.append(f"{supertask}: {attributes.name or ""}")
 
+            self.supertasks_list.config(text="\n".join(supertasks))
+
         def save(self: Self) -> None:
             assert self.task
 
