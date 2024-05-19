@@ -4,6 +4,7 @@ from graft.domain.tasks.attributes import Attributes, AttributesView
 from graft.domain.tasks.attributes_register import (
     AttributesRegister,
     AttributesRegisterView,
+    IAttributesRegisterView,
 )
 from graft.domain.tasks.dependency_graph import (
     DependenciesView,

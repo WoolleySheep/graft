@@ -2,6 +2,7 @@
 
 import copy
 from collections.abc import Iterator, Mapping
+from typing import Protocol
 
 from graft.domain.tasks.attributes import Attributes, AttributesView
 from graft.domain.tasks.description import Description
@@ -9,6 +10,30 @@ from graft.domain.tasks.helpers import TaskAlreadyExistsError, TaskDoesNotExistE
 from graft.domain.tasks.name import Name
 from graft.domain.tasks.progress import Progress
 from graft.domain.tasks.uid import UID
+
+
+class IAttributesRegisterView(Protocol):
+    """Interface for a view of an attributes register."""
+
+    def __bool__(self) -> bool:
+        """Check if any tasks registered."""
+        ...
+
+    def __contains__(self, item: object) -> bool:
+        """Check if task UID is in register."""
+        ...
+
+    def __iter__(self) -> Iterator[UID]:
+        """Return iterator over task UIDs in register."""
+        ...
+
+    def __len__(self) -> int:
+        """Return number of tasks in the register."""
+        ...
+
+    def __getitem__(self, key: UID) -> AttributesView:
+        """Return view of attributes associated with key."""
+        ...
 
 
 class AttributesRegister(Mapping[UID, AttributesView]):
@@ -99,9 +124,13 @@ class AttributesRegister(Mapping[UID, AttributesView]):
 class AttributesRegisterView(Mapping[UID, AttributesView]):
     """View-only task attributes register."""
 
-    def __init__(self, attributes_register: AttributesRegister) -> None:
+    def __init__(self, attributes_register: IAttributesRegisterView) -> None:
         """Initialise AttributesRegisterView."""
         self._attributes_register = attributes_register
+
+    def __bool__(self) -> bool:
+        """Check if any tasks registered."""
+        return bool(self._attributes_register)
 
     def __contains__(self, item: object) -> bool:
         """Check if task UID is in register."""

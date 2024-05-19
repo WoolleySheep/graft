@@ -92,7 +92,7 @@ class SystemGraph(tk.Frame, abc.ABC):
             annotation: mpl_text.Annotation,
             task_path_collection: mpl_collections.PathCollection,
             tasks_in_path_order: Sequence[tasks.UID],
-            register: tasks.AttributesRegisterView,
+            register: tasks.IAttributesRegisterView,
         ) -> None:
             if not isinstance(event, mpl_backend_bases.MouseEvent):
                 raise TypeError
