@@ -1616,6 +1616,10 @@ class SystemView:
             and self.dependency_graph_view() == other.dependency_graph_view()
         )
 
+    def __contains__(self, task: UID) -> bool:
+        """Check if the specified task exists in the system."""
+        return task in self._system
+
     def attributes_register_view(self) -> AttributesRegisterView:
         """Return a view of the attributes register."""
         return self._system.attributes_register_view()
