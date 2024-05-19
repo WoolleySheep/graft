@@ -126,8 +126,11 @@ class StandardLogicLayer(architecture.LogicLayer):
         self._data_layer.save_system(system=self._system)
 
     @override
-    def get_active_concrete_tasks_in_priority_order(
+    def get_active_concrete_tasks_in_order_of_descending_priority(
         self,
-    ) -> Generator[tasks.UID, None, None]:
-        """Return the active concrete tasks in priority order."""
-        return self._system.get_active_concrete_tasks_in_priority_order()
+    ) -> Generator[tuple[tasks.UID, tasks.Importance | None], None, None]:
+        """Return the active concrete tasks in order of descending priority.
+        
+        Tasks are paired with the maximum importance of downstream tasks.
+        """
+        return self._system.get_active_concrete_tasks_in_order_of_descending_priority()
