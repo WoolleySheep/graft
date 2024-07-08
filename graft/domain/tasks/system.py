@@ -1853,7 +1853,7 @@ class System:
         self,
     ) -> Generator[tuple[UID, Importance | None], None, None]:
         """Return the active concrete tasks in order of descending priority.
-        
+
         Tasks are paired with the maximum importance of downstream tasks.
         """
 

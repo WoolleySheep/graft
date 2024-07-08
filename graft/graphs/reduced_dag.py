@@ -2,10 +2,20 @@
 
 from __future__ import annotations
 
-from collections.abc import Hashable
-from typing import Any
+from collections.abc import Hashable, Mapping, Set
+from typing import Any, Literal
 
+from graft.graphs import bidict as bd
 from graft.graphs import directed_acyclic_graph, simple_digraph
+
+
+class UnderlyingDictHasSuperfluousEdgesError[T: Hashable](Exception):
+    """Underlying dictionary has superfluous edges."""
+
+    def __init__(self, dictionary: Mapping[T, Set[T]]) -> None:
+        """Initialize UnderlyingDictHasSuperfluousEdgesError."""
+        self.dictionary = dict(dictionary)
+        super().__init__(f"underlying dictionary [{dictionary}] has superfluous edges")
 
 
 class PathAlreadyExistsError[T: Hashable](Exception):
@@ -64,6 +74,14 @@ class ReducedDAG[T: Hashable](directed_acyclic_graph.DirectedAcyclicGraph[T]):
     Only the minimal number of edges to describe the graph is allowed.
     """
 
+    def __init__(self, bidict: bd.BiDirectionalSetDict[T] | None = None) -> None:
+        """Initialize ReducedDAG."""
+        super().__init__(bidict=bidict)
+
+        dag = directed_acyclic_graph.DirectedAcyclicGraph(bidict=bidict)
+        if dag.has_superfluous_edges():
+            raise UnderlyingDictHasSuperfluousEdgesError(dictionary=self._bidict)
+
     def add_edge(self, source: T, target: T) -> None:
         """Add edge to minimal digraph."""
         if (source, target) in self.edges():
@@ -114,3 +132,6 @@ class ReducedDAG[T: Hashable](directed_acyclic_graph.DirectedAcyclicGraph[T]):
             )
 
         super().add_edge(source=source, target=target)
+
+    def has_superfluous_edges(self) -> Literal[False]:
+        return False

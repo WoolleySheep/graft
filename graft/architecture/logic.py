@@ -95,6 +95,6 @@ class LogicLayer(abc.ABC):
         self,
     ) -> Generator[tuple[tasks.UID, tasks.Importance | None], None, None]:
         """Return the active concrete tasks in order of descending priority.
-        
+
         Tasks are paired with the maximum importance of downstream tasks.
         """

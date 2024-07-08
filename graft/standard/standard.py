@@ -130,7 +130,7 @@ class StandardLogicLayer(architecture.LogicLayer):
         self,
     ) -> Generator[tuple[tasks.UID, tasks.Importance | None], None, None]:
         """Return the active concrete tasks in order of descending priority.
-        
+
         Tasks are paired with the maximum importance of downstream tasks.
         """
         return self._system.get_active_concrete_tasks_in_order_of_descending_priority()

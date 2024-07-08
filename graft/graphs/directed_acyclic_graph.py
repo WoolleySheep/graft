@@ -1,10 +1,20 @@
 """Acyclic digraph and associated Exceptions."""
 
 import collections
-from collections.abc import Generator, Hashable
-from typing import Any
+from collections.abc import Generator, Hashable, Mapping, Set
+from typing import Any, Literal
 
+from graft.graphs import bidict as bd
 from graft.graphs import simple_digraph
+
+
+class UnderlyingDictHasCycleError[T: Hashable](Exception):
+    """Underlying dictionary has a cycle."""
+
+    def __init__(self, dictionary: Mapping[T, Set[T]]) -> None:
+        """Initialize UnderlyingDictHasCycleError."""
+        self.dictionary = dict(dictionary)
+        super().__init__(f"underlying dictionary [{dictionary}] has a cycle")
 
 
 class InverseEdgeAlreadyExistsError[T: Hashable](Exception):
@@ -52,6 +62,14 @@ class IntroducesCycleError[T: Hashable, G: "DirectedAcyclicGraph"](Exception):
 class DirectedAcyclicGraph[T: Hashable](simple_digraph.SimpleDiGraph[T]):
     """Simple Digraph with no cycles."""
 
+    def __init__(self, bidict: bd.BiDirectionalSetDict[T] | None = None) -> None:
+        """Initialize DirectedAcyclicGraph."""
+        super().__init__(bidict=bidict)
+
+        tmp_simple_digraph = simple_digraph.SimpleDiGraph(bidict=self._bidict)
+        if tmp_simple_digraph.has_cycle():
+            raise UnderlyingDictHasCycleError(dictionary=self._bidict)
+
     def add_edge(self, source: T, target: T) -> None:
         """Add edge to graph."""
         if (source, target) in self.edges():
@@ -69,6 +87,13 @@ class DirectedAcyclicGraph[T: Hashable](simple_digraph.SimpleDiGraph[T]):
             )
 
         return super().add_edge(source, target)
+
+    def has_cycle(self) -> Literal[False]:
+        """Check if the graph has a cycle.
+
+        Will always return False for a DAG.
+        """
+        return False
 
     def topological_sort_with_grouping(self) -> Generator[set[T], None, None]:
         """Return groups of nodes in topologically sorted order.
@@ -99,3 +124,7 @@ class DirectedAcyclicGraph[T: Hashable](simple_digraph.SimpleDiGraph[T]):
         # Yield node groups from lowest to highest
         for group, _ in enumerate(group_nodes):
             yield group_nodes[group]
+
+    def has_superfluous_edges(self) -> bool:
+        """Check if has edges that are not required for a reduced DAG."""
+        # TODO

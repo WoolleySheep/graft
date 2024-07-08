@@ -1,7 +1,6 @@
-"""DiGraph and associated Exceptions."""
+"""Simple DiGraph and associated Exceptions."""
 
 import collections
-import copy
 import itertools
 from collections.abc import (
     Callable,
@@ -130,7 +129,7 @@ class LoopError[T: Hashable](Exception):
 
 
 class NoConnectingSubgraphError[T: Hashable](Exception):
-    """Raised when no connecting subgraph exists."""
+    """Raised when no connecting subgraph exists between two set of nodes."""
 
     def __init__(
         self,
@@ -249,12 +248,14 @@ class SimpleDiGraph[T: Hashable]:
     """Digraph with no loops or parallel edges."""
 
     def __init__(self, bidict: bd.BiDirectionalSetDict[T] | None = None) -> None:
-        """Initialize simple digraph.
+        """Initialize simple digraph."""
+        self._bidict = bidict or bd.BiDirectionalSetDict[T]()
 
-        We are relying on the bi-dict being well formed - no validation is done.
-        This may be changed in the future.
-        """
-        self._bidict = copy.deepcopy(bidict) if bidict else bd.BiDirectionalSetDict[T]()
+        # TODO: Think of a a different exception, seeing as this is occurring in
+        # the initialiser
+        for node, successors in self._bidict.items():
+            if node in successors:
+                raise LoopError(node=node)
 
     def __bool__(self) -> bool:
         """Check if digraph has any nodes."""
@@ -396,6 +397,7 @@ class SimpleDiGraph[T: Hashable]:
         if node not in self:
             raise NodeDoesNotExistError(node=node)
 
+        # TODO: Fix the typing of this function - should not use type(self)
         subgraph = type(self)()
         subgraph.add_node(node)
 
@@ -632,3 +634,32 @@ class SimpleDiGraph[T: Hashable]:
         """Yield all node-successors pairs."""
         for node in self:
             yield node, self.successors(node)
+
+    def has_cycle(self) -> bool:
+        """Check if the graph has a cycle."""
+
+        def process_node(
+            node: T, visited_nodes: set[T], current_subgraph_nodes: set[T]
+        ) -> bool:
+            visited_nodes.add(node)
+            current_subgraph_nodes.add(node)
+
+            for successor in self.successors(node):
+                if successor in current_subgraph_nodes or (
+                    successor not in visited_nodes
+                    and process_node(successor, visited_nodes, current_subgraph_nodes)
+                ):
+                    return True
+
+            current_subgraph_nodes.remove(node)
+            return False
+
+        visited_nodes = set[T]()
+        current_subgraph_nodes = set[T]()
+        for node in self:
+            if node not in visited_nodes and process_node(
+                node, visited_nodes, current_subgraph_nodes
+            ):
+                return True
+
+        return False
