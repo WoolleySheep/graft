@@ -31,7 +31,7 @@ _TASK_DEPENDENCY_GRAPH_FILEPATH: Final = (
 _TASK_ATTRIBUTES_REGISTER_FILEPATH: Final = (
     _DATA_DIRECTORY_PATH / _TASK_ATTRIBUTES_REGISTER_FILENAME
 )
-_TASK_NEXT_UID_FILEPATH: Final = _DATA_DIRECTORY_PATH / _TASK_NEXT_UID_FILENAME
+_TASK_NEXT_UNUSED_UID_FILEPATH: Final = _DATA_DIRECTORY_PATH / _TASK_NEXT_UID_FILENAME
 
 
 class PartiallyInitialisedError(Exception):
@@ -167,9 +167,8 @@ class InitialisationStatus(enum.Enum):
 class LocalFileDataLayer(architecture.DataLayer):
     """Local File data layer.
 
-        Implementation of the data-layer interface that stores and retrieves data
-        from files on the local filesystem.
-    import shutil
+    Implementation of the data-layer interface that stores and retrieves data
+    from files on the local filesystem.
     """
 
     def __init__(self) -> None:
@@ -189,52 +188,81 @@ class LocalFileDataLayer(architecture.DataLayer):
                     _TASK_HIERARCHY_GRAPH_FILEPATH.exists()
                     and _TASK_DEPENDENCY_GRAPH_FILEPATH.exists()
                     and _TASK_ATTRIBUTES_REGISTER_FILEPATH.exists()
-                    and _TASK_NEXT_UID_FILEPATH.exists()
+                    and _TASK_NEXT_UNUSED_UID_FILEPATH.exists()
                 )
                 else InitialisationStatus.PARTIALLY_INITIALISED
             )
 
         match get_initialisation_status():
             case InitialisationStatus.NOT_INITIALISED:
-                self._initialise()
+                _initialise()
             case InitialisationStatus.PARTIALLY_INITIALISED:
                 raise PartiallyInitialisedError
             case InitialisationStatus.FULLY_INITIALISED:
                 pass
 
     @override
-    def erase(self) -> None:
-        """Erase all data."""
-        shutil.rmtree(_DATA_DIRECTORY_PATH)
-        self._initialise()
-
-    @override
-    def get_next_task_uid(self) -> tasks.UID:
-        """Return the next task UID."""
-        number = int(_TASK_NEXT_UID_FILEPATH.read_text())
-        return tasks.UID(number)
-
-    @override
-    def increment_next_task_uid_counter(self) -> None:
-        number = int(_TASK_NEXT_UID_FILEPATH.read_text())
-        number += 1
-        _TASK_NEXT_UID_FILEPATH.write_text(str(number))
-
-    @override
-    def save_system(self, system: domain.System) -> None:
-        """Save the state of the system."""
-        _save_task_system(system_view=system.task_system_view())
+    def get_next_unused_task_uid(self) -> tasks.UID:
+        """Return the next unused task UID."""
+        return _get_next_unused_task_uid()
 
     @override
     def load_system(self) -> domain.System:
         task_system = _load_task_system()
         return domain.System(task_system=task_system)
 
-    def _initialise(self) -> None:
-        """Initialise the local file data-layer."""
-        _DATA_DIRECTORY_PATH.mkdir()
-        _save_task_system(system_view=SystemView(system=tasks.System.empty()))
-        _TASK_NEXT_UID_FILEPATH.write_text(str(_STARTING_TASK_ID_NUMBER))
+    @override
+    def erase(self) -> None:
+        _erase()
+
+    @override
+    def save_system(self, system: domain.System) -> None:
+        """Save the system to file.
+
+        If the next unused task UID is present in the system, the counter will
+        be incremented so th next call to _get_next_unused_task_uid produces a
+        UID not in the system.
+        """
+        next_task = _get_next_unused_task_uid()
+        max_system_task = max(system.task_system_view())
+
+        if max_system_task > next_task:
+            # TODO: Better exception
+            raise ValueError("Cannot save system with future task UIDs")
+
+        if max_system_task == next_task:
+            _increment_next_task_uid_counter()
+
+        _save_system(system=system)
+
+
+def _initialise() -> None:
+    """Initialise the local file data-layer."""
+    _DATA_DIRECTORY_PATH.mkdir()
+    _save_task_system(system_view=SystemView(system=tasks.System.empty()))
+    _TASK_NEXT_UNUSED_UID_FILEPATH.write_text(str(_STARTING_TASK_ID_NUMBER))
+
+
+def _erase() -> None:
+    """Erase all data."""
+    shutil.rmtree(_DATA_DIRECTORY_PATH)
+    _initialise()
+
+
+def _get_next_unused_task_uid() -> tasks.UID:
+    number = int(_TASK_NEXT_UNUSED_UID_FILEPATH.read_text())
+    return tasks.UID(number)
+
+
+def _increment_next_task_uid_counter() -> None:
+    number = int(_TASK_NEXT_UNUSED_UID_FILEPATH.read_text())
+    number += 1
+    _TASK_NEXT_UNUSED_UID_FILEPATH.write_text(str(number))
+
+
+def _save_system(system: domain.System) -> None:
+    """Save the state of the system."""
+    _save_task_system(system_view=system.task_system_view())
 
 
 def _save_task_attributes_register(register: tasks.AttributesRegisterView) -> None:

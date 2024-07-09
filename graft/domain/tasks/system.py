@@ -1956,6 +1956,10 @@ class SystemView:
             and self.dependency_graph_view() == other.dependency_graph_view()
         )
 
+    def __iter__(self) -> Iterator[UID]:
+        """Return an iterator over the tasks in the system."""
+        return iter(self._system)
+
     def __contains__(self, task: UID) -> bool:
         """Check if the specified task exists in the system."""
         return task in self._system
