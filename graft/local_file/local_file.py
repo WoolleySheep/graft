@@ -4,10 +4,12 @@ import enum
 import json
 import pathlib
 import shutil
+from collections.abc import Callable, Generator, Iterable
 from typing import Any, Final, TypedDict, override
 
 from graft import architecture, domain, graphs
 from graft.domain import tasks
+from graft.domain.tasks.system import SystemView
 
 _STARTING_TASK_ID_NUMBER = 0
 
@@ -39,8 +41,8 @@ class PartiallyInitialisedError(Exception):
 class TaskAttributesJSONDict(TypedDict):
     """Dictionary representation of Task Attributes in JSON format."""
 
-    name: str | None
-    description: str | None
+    name: str
+    description: str
     progress: str | None
     importance: str | None
 
@@ -62,10 +64,8 @@ def _encode_task_attributes_register(
 
     def encode_attributes(attributes: tasks.AttributesView) -> TaskAttributesJSONDict:
         return {
-            "name": str(attributes.name) if attributes.name is not None else None,
-            "description": str(attributes.description)
-            if attributes.description is not None
-            else None,
+            "name": str(attributes.name),
+            "description": str(attributes.description),
             "progress": attributes.progress.value
             if attributes.progress is not None
             else None,
@@ -103,12 +103,8 @@ def _decode_task_attributes_register(
             raise ValueError  # TODO (mjw): Use better named error
 
         return tasks.Attributes(
-            name=tasks.Name(d["name"]) if d["name"] is not None else None,
-            description=(
-                tasks.Description(d["description"])
-                if d["description"] is not None
-                else None
-            ),
+            name=tasks.Name(d["name"]),
+            description=(tasks.Description(d["description"])),
             progress=(
                 tasks.Progress(d["progress"]) if d["progress"] is not None else None
             ),
@@ -130,60 +126,34 @@ def _decode_task_attributes_register(
         return d
 
 
-def _encode_task_hierarchy_graph(
-    hierarchy_graph_view: Any,
+def _encode_relationships[T](
+    relationships: Iterable[tuple[T, Iterable[T]]], encode: Callable[[T], str]
 ) -> dict[str, list[str]]:
-    """Encode task hierarchy graph."""
-    if isinstance(hierarchy_graph_view, tasks.HierarchyGraphView):
-        return {
-            _encode_task_uid(uid): [
-                _encode_task_uid(subtask_uid) for subtask_uid in subtask_uids
-            ]
-            for uid, subtask_uids in hierarchy_graph_view.task_subtasks_pairs()
-        }
-
-    raise TypeError
-
-
-def _decode_task_hierarchy_graph(d: dict[str, list[str]]) -> tasks.HierarchyGraph:
-    """Decode task hierarchy graph."""
-    task_subtasks_map = {
-        _decode_task_uid(number): {_decode_task_uid(uid) for uid in uids}
-        for number, uids in d.items()
+    return {
+        encode(key): [encode(value) for value in values]
+        for (key, values) in relationships
     }
-    return tasks.HierarchyGraph(
-        reduced_dag=graphs.ReducedDAG(
-            bidict=graphs.BiDirectionalSetDict(forward=task_subtasks_map)
-        )
-    )
 
 
-def _encode_task_dependency_graph(
-    dependency_graph_view: Any,
+def _decode_relationships[T](
+    d: dict[str, list[str]], decode: Callable[[str], T]
+) -> Generator[tuple[T, Generator[T, None, None]], None, None]:
+    for key, values in d.items():
+        yield decode(key), (decode(value) for value in values)
+
+
+def _encode_task_relationships(
+    relationships: Iterable[tuple[tasks.UID, Iterable[tasks.UID]]],
 ) -> dict[str, list[str]]:
-    """Encode task dependency graph."""
-    if isinstance(dependency_graph_view, tasks.DependencyGraphView):
-        return {
-            _encode_task_uid(uid): [
-                _encode_task_uid(dependent_uid) for dependent_uid in dependent_uids
-            ]
-            for uid, dependent_uids in dependency_graph_view.task_dependents_pairs()
-        }
-
-    raise TypeError
+    """Encode relationships between task UIDs."""
+    return _encode_relationships(relationships, _encode_task_uid)
 
 
-def _decode_task_dependency_graph(d: dict[str, list[str]]) -> tasks.DependencyGraph:
-    """Decode task dependency graph."""
-    task_dependents_map = {
-        _decode_task_uid(number): {_decode_task_uid(uid) for uid in uids}
-        for number, uids in d.items()
-    }
-    return tasks.DependencyGraph(
-        dag=graphs.DirectedAcyclicGraph(
-            bidict=graphs.BiDirectionalSetDict(forward=task_dependents_map)
-        )
-    )
+def _decode_task_relationships(
+    d: dict[str, list[str]],
+) -> Generator[tuple[tasks.UID, Generator[tasks.UID, None, None]], None, None]:
+    """Decode relationships between task UIDs."""
+    return _decode_relationships(d, _decode_task_uid)
 
 
 class InitialisationStatus(enum.Enum):
@@ -263,12 +233,7 @@ class LocalFileDataLayer(architecture.DataLayer):
     def _initialise(self) -> None:
         """Initialise the local file data-layer."""
         _DATA_DIRECTORY_PATH.mkdir()
-        with _TASK_HIERARCHY_GRAPH_FILEPATH.open("w") as fp:
-            json.dump({}, fp)
-        with _TASK_DEPENDENCY_GRAPH_FILEPATH.open("w") as fp:
-            json.dump({}, fp)
-        with _TASK_ATTRIBUTES_REGISTER_FILEPATH.open("w") as fp:
-            json.dump({}, fp)
+        _save_task_system(system_view=SystemView(system=tasks.System.empty()))
         _TASK_NEXT_UID_FILEPATH.write_text(str(_STARTING_TASK_ID_NUMBER))
 
 
@@ -287,13 +252,17 @@ def _load_task_attributes_register() -> tasks.AttributesRegister:
 def _save_task_hierarchy_graph(graph: tasks.IHierarchyGraphView) -> None:
     """Save the task hierarchy graph."""
     with _TASK_HIERARCHY_GRAPH_FILEPATH.open("w") as fp:
-        json.dump(obj=graph, fp=fp, default=_encode_task_hierarchy_graph)
+        json.dump(
+            obj=graph.task_subtasks_pairs(), fp=fp, default=_encode_task_relationships
+        )
 
 
 def _save_task_dependency_graph(graph: tasks.IDependencyGraphView) -> None:
     """Save the task dependency graph."""
     with _TASK_DEPENDENCY_GRAPH_FILEPATH.open("w") as fp:
-        json.dump(obj=graph, fp=fp, default=_encode_task_dependency_graph)
+        json.dump(
+            obj=graph.task_dependents_pairs(), fp=fp, default=_encode_task_relationships
+        )
 
 
 def _save_task_system(system_view: tasks.SystemView) -> None:
@@ -318,10 +287,24 @@ def _load_task_system() -> tasks.System:
 def _load_task_hierarchy_graph() -> tasks.HierarchyGraph:
     """Load the task hierarchy graph."""
     with _TASK_HIERARCHY_GRAPH_FILEPATH.open("r") as fp:
-        return json.load(fp=fp, object_hook=_decode_task_hierarchy_graph)
+        hierarchy_relationships = json.load(
+            fp=fp, object_hook=_decode_task_relationships
+        )
+    return tasks.HierarchyGraph(
+        reduced_dag=graphs.ReducedDAG(
+            bidict=graphs.BiDirectionalSetDict(forward=hierarchy_relationships)
+        )
+    )
 
 
 def _load_task_dependency_graph() -> tasks.DependencyGraph:
     """Load the task dependency graph."""
     with _TASK_DEPENDENCY_GRAPH_FILEPATH.open("r") as fp:
-        return json.load(fp=fp, object_hook=_decode_task_dependency_graph)
+        dependency_relationships = json.load(
+            fp=fp, object_hook=_decode_task_relationships
+        )
+    return tasks.DependencyGraph(
+        dag=graphs.DirectedAcyclicGraph(
+            bidict=graphs.BiDirectionalSetDict(forward=dependency_relationships)
+        )
+    )

@@ -3,6 +3,7 @@
 from collections.abc import (
     Hashable,
     ItemsView,
+    Iterable,
     Iterator,
     KeysView,
     Mapping,
@@ -100,10 +101,10 @@ class BiDirectionalSetDict[T: Hashable](MutableMapping[T, SetView[T]]):
     Each key can have multiple unique values associated with it, and vice-versa.
     """
 
-    def __init__(self, forward: Mapping[T, Set[T]] | None = None) -> None:
+    def __init__(self, forward: Iterable[tuple[T, Iterable[T]]] | None = None) -> None:
         """Initialize bidict."""
         self._forward = (
-            {key: set(values) for key, values in forward.items()}
+            {key: set(values) for (key, values) in forward}
             if forward
             else dict[T, set[T]]()
         )

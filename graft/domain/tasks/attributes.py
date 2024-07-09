@@ -12,8 +12,8 @@ from graft.domain.tasks.progress import Progress
 class Attributes:
     """Attributes of a task."""
 
-    name: Name | None = None
-    description: Description | None = None
+    name: Name = dataclasses.field(default_factory=Name)
+    description: Description = dataclasses.field(default_factory=Description)
     progress: Progress | None = Progress.NOT_STARTED
     importance: Importance | None = None
 
@@ -46,12 +46,12 @@ class AttributesView:
         )
 
     @property
-    def name(self) -> Name | None:
+    def name(self) -> Name:
         """Get name."""
         return self._attributes.name
 
     @property
-    def description(self) -> Description | None:
+    def description(self) -> Description:
         """Get description."""
         return self._attributes.description
 

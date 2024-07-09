@@ -1,7 +1,6 @@
 """Hierarchy Graph and associated classes/exceptions."""
 
 
-import copy
 from collections.abc import Callable, Generator, Iterable, Iterator, Set
 from typing import Any, Protocol, Self
 
@@ -326,9 +325,7 @@ class HierarchyGraph:
 
     def __init__(self, reduced_dag: graphs.ReducedDAG[UID] | None = None) -> None:
         """Initialise HierarchyGraph."""
-        self._reduced_dag = (
-            copy.deepcopy(reduced_dag) if reduced_dag else graphs.ReducedDAG[UID]()
-        )
+        self._reduced_dag = reduced_dag or graphs.ReducedDAG[UID]()
 
     def __bool__(self) -> bool:
         """Check if graph has any tasks."""

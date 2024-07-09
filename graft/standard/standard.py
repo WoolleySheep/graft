@@ -31,8 +31,8 @@ class StandardLogicLayer(architecture.LogicLayer):
         """Create a new task."""
         uid = self._data_layer.get_next_task_uid()
         self._system.add_task(uid)
-        self._system.set_task_name(uid, name)
-        self._system.set_task_description(uid, description)
+        self._system.set_task_name(uid, name or tasks.Name())
+        self._system.set_task_description(uid, description or tasks.Description())
         self._data_layer.save_system(system=self._system)
         self._data_layer.increment_next_task_uid_counter()
         return uid
@@ -48,15 +48,13 @@ class StandardLogicLayer(architecture.LogicLayer):
         self._data_layer.save_system(system=self._system)
 
     @override
-    def update_task_name(self, task: tasks.UID, name: tasks.Name | None = None) -> None:
+    def update_task_name(self, task: tasks.UID, name: tasks.Name) -> None:
         """Update the specified task's name."""
         self._system.set_task_name(task, name)
         self._data_layer.save_system(system=self._system)
 
     @override
-    def update_task_description(
-        self, task: UID, description: Description | None = None
-    ) -> None:
+    def update_task_description(self, task: UID, description: Description) -> None:
         """Update the specified task's description."""
         self._system.set_task_description(task, description)
         self._data_layer.save_system(system=self._system)

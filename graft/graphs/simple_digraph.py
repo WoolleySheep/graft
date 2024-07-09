@@ -16,6 +16,15 @@ from typing import Any, Self, TypeGuard
 from graft.graphs import bidict as bd
 
 
+class UnderlyingDictHasLoopsError[T: Hashable](Exception):
+    """Underlying dictionary has loops."""
+
+    def __init__(self, dictionary: Mapping[T, Set[T]]) -> None:
+        """Initialize UnderlyingDictHasLoopsError."""
+        self.dictionary = dict(dictionary)
+        super().__init__(f"underlying dictionary [{dictionary}] has loop(s)")
+
+
 class NodeAlreadyExistsError[T: Hashable](Exception):
     """Raised when node already exists."""
 
@@ -255,7 +264,7 @@ class SimpleDiGraph[T: Hashable]:
         # the initialiser
         for node, successors in self._bidict.items():
             if node in successors:
-                raise LoopError(node=node)
+                raise UnderlyingDictHasLoopsError(dictionary=self._bidict)
 
     def __bool__(self) -> bool:
         """Check if digraph has any nodes."""

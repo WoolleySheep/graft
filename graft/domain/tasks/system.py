@@ -702,6 +702,7 @@ class System:
         dependency_graph: DependencyGraph,
     ) -> None:
         """Initialise System."""
+        # TODO: Add input validation
         self._attributes_register = attributes_register
         self._hierarchy_graph = hierarchy_graph
         self._dependency_graph = dependency_graph
@@ -1163,13 +1164,11 @@ class System:
         self._hierarchy_graph.remove_task(task)
         self._dependency_graph.remove_task(task)
 
-    def set_name(self, task: UID, name: Name | None = None) -> None:
+    def set_name(self, task: UID, name: Name) -> None:
         """Set the name of the specified task."""
         self._attributes_register.set_name(task, name)
 
-    def set_description(
-        self, task: UID, description: Description | None = None
-    ) -> None:
+    def set_description(self, task: UID, description: Description) -> None:
         """Set the description of the specified task."""
         self._attributes_register.set_description(task, description)
 

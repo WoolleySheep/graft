@@ -43,12 +43,12 @@ class System:
         """Remove a task."""
         self._task_system.remove_task(task)
 
-    def set_task_name(self, task: tasks.UID, name: tasks.Name | None = None) -> None:
+    def set_task_name(self, task: tasks.UID, name: tasks.Name) -> None:
         """Set the name of the specified task."""
         self._task_system.set_name(task, name)
 
     def set_task_description(
-        self, task: tasks.UID, description: tasks.Description | None = None
+        self, task: tasks.UID, description: tasks.Description
     ) -> None:
         """Set the description of the specified task."""
         self._task_system.set_description(task, description)

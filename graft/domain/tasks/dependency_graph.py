@@ -1,6 +1,5 @@
 """Task Dependency Graph and associated classes/exceptions."""
 
-import copy
 from collections.abc import Generator, Iterable, Iterator, Set
 from typing import Any, Protocol, Self
 
@@ -275,7 +274,7 @@ class DependencyGraph:
 
     def __init__(self, dag: graphs.DirectedAcyclicGraph[UID] | None = None) -> None:
         """Initialise DependencyGraph."""
-        self._dag = copy.deepcopy(dag) if dag else graphs.DirectedAcyclicGraph[UID]()
+        self._dag = dag or graphs.DirectedAcyclicGraph[UID]()
 
     def __bool__(self) -> bool:
         """Check if graph has any tasks."""

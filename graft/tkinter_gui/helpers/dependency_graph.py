@@ -6,7 +6,7 @@ from graft.tkinter_gui.helpers.system_graph import GraphType, SystemGraph
 
 
 class DependencyGraph(SystemGraph):
-    """tkinter frame showing a Dependency graph."""
+    """Tkinter frame showing a Dependency graph."""
 
     def __init__(
         self,

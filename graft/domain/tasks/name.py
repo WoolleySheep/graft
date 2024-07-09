@@ -4,7 +4,7 @@
 class Name:
     """Task name."""
 
-    def __init__(self, text: str, /) -> None:
+    def __init__(self, text: str = "", /) -> None:
         """Initialise Name."""
         self._text = text
 

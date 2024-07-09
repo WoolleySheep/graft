@@ -55,7 +55,7 @@ def test_update_task_description_success_with_none(
 
     logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
 
-    logic_layer.update_task_description(task=task, description=None)
+    logic_layer.update_task_description(task=task, description=tasks.Description())
 
     data_layer_mock.load_system.assert_called_once_with()
     data_layer_mock.save_system.assert_called_once_with(
@@ -75,7 +75,7 @@ def test_update_task_description_failure_task_does_not_exist(
     logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.TaskDoesNotExistError) as e:
-        logic_layer.update_task_description(task=task, description=None)
+        logic_layer.update_task_description(task=task, description=tasks.Description())
     assert e.value.task == task
 
     data_layer_mock.load_system.assert_called_once_with()

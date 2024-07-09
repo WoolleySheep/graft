@@ -35,12 +35,12 @@ class LogicLayer(abc.ABC):
         """Delete the specified task."""
 
     @abc.abstractmethod
-    def update_task_name(self, task: tasks.UID, name: tasks.Name | None = None) -> None:
+    def update_task_name(self, task: tasks.UID, name: tasks.Name) -> None:
         """Update the specified task's name."""
 
     @abc.abstractmethod
     def update_task_description(
-        self, task: tasks.UID, description: tasks.Description | None = None
+        self, task: tasks.UID, description: tasks.Description
     ) -> None:
         """Update the specified task's description."""
 

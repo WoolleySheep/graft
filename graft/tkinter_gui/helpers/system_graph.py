@@ -74,7 +74,7 @@ def get_edge_colour_fn(
 
 
 class SystemGraph(tk.Frame, abc.ABC):
-    """tkinter frame showing either a Hierarchy or Dependency graph."""
+    """Tkinter frame showing either a Hierarchy or Dependency graph."""
 
     def __init__(
         self,

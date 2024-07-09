@@ -18,9 +18,7 @@ class TaskTreeView(ttk.Treeview):
                 attributes,
             ) in self._logic_layer.get_task_attributes_register_view().items():
                 formatted_uid = str(uid)
-                formatted_name = (
-                    str(attributes.name) if attributes.name is not None else ""
-                )
+                formatted_name = str(attributes.name)
                 self.insert(
                     "",
                     tk.END,

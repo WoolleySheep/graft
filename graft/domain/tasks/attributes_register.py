@@ -1,6 +1,5 @@
 """AttributesRegister and associated classes/exceptions."""
 
-import copy
 from collections.abc import Iterator, Mapping
 from typing import Protocol
 
@@ -45,10 +44,7 @@ class AttributesRegister(Mapping[UID, AttributesView]):
     ) -> None:
         """Initialise Register."""
         self._task_to_attributes_map = (
-            {
-                task: copy.deepcopy(attributes)
-                for task, attributes in task_to_attributes_map.items()
-            }
+            dict(task_to_attributes_map)
             if task_to_attributes_map
             else dict[UID, Attributes]()
         )
@@ -89,7 +85,9 @@ class AttributesRegister(Mapping[UID, AttributesView]):
         if task in self:
             raise TaskAlreadyExistsError(task=task)
 
-        self._task_to_attributes_map[task] = Attributes(name=None, description=None)
+        self._task_to_attributes_map[task] = Attributes(
+            name=Name(), description=Description()
+        )
 
     def remove(self, /, task: UID) -> None:
         """Remove an existing task."""
@@ -98,16 +96,14 @@ class AttributesRegister(Mapping[UID, AttributesView]):
 
         del self._task_to_attributes_map[task]
 
-    def set_name(self, task: UID, name: Name | None = None) -> None:
+    def set_name(self, task: UID, name: Name) -> None:
         """Set name of an existing task."""
         if task not in self:
             raise TaskDoesNotExistError(task=task)
 
         self._task_to_attributes_map[task].name = name
 
-    def set_description(
-        self, task: UID, description: Description | None = None
-    ) -> None:
+    def set_description(self, task: UID, description: Description) -> None:
         """Set description of an existing task."""
         if task not in self:
             raise TaskDoesNotExistError(task=task)

@@ -6,7 +6,7 @@ from graft.tkinter_gui.helpers.system_graph import GraphType, SystemGraph
 
 
 class HierarchyGraph(SystemGraph):
-    """tkinter frame showing a Hierarchy graph."""
+    """Tkinter frame showing a Hierarchy graph."""
 
     def __init__(
         self,

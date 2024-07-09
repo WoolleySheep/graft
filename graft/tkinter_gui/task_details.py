@@ -28,8 +28,7 @@ class TaskDetails(tk.Frame):
         def update_name(self: Self) -> None:
             assert self.task is not None
 
-            formatted_name = self.task_name.get()
-            name = tasks.Name(formatted_name) if formatted_name else None
+            name = tasks.Name(self.task_name.get())
 
             try:
                 logic_layer.update_task_name(task=self.task, name=name)
@@ -224,11 +223,8 @@ class TaskDetails(tk.Frame):
         def update_description(self: Self) -> None:
             assert self.task
 
-            description = (
-                tasks.Description(
-                    self.task_description_scrolled_text.get(1.0, "end-1c")
-                )
-                or None
+            description = tasks.Description(
+                self.task_description_scrolled_text.get(1.0, "end-1c")
             )
 
             try:

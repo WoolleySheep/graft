@@ -66,8 +66,7 @@ class DirectedAcyclicGraph[T: Hashable](simple_digraph.SimpleDiGraph[T]):
         """Initialize DirectedAcyclicGraph."""
         super().__init__(bidict=bidict)
 
-        tmp_simple_digraph = simple_digraph.SimpleDiGraph(bidict=self._bidict)
-        if tmp_simple_digraph.has_cycle():
+        if super().has_cycle():
             raise UnderlyingDictHasCycleError(dictionary=self._bidict)
 
     def add_edge(self, source: T, target: T) -> None:
@@ -125,6 +124,14 @@ class DirectedAcyclicGraph[T: Hashable](simple_digraph.SimpleDiGraph[T]):
         for group, _ in enumerate(group_nodes):
             yield group_nodes[group]
 
-    def has_superfluous_edges(self) -> bool:
-        """Check if has edges that are not required for a reduced DAG."""
-        # TODO
+    def has_redundant_edges(self) -> bool:
+        """Check if graph has edges that are not required for a reduced DAG."""
+        # TODO: Speed up using dynamic programming
+        for source, target in self.edges():
+            for successor in self.successors(source):
+                if successor == target:
+                    continue
+                if self.has_path(source=successor, target=target):
+                    return True
+
+        return False
