@@ -69,10 +69,9 @@ class DirectedAcyclicGraph[T: Hashable](simple_digraph.SimpleDiGraph[T]):
         if super().has_cycle():
             raise UnderlyingDictHasCycleError(dictionary=self._bidict)
 
-    def add_edge(self, source: T, target: T) -> None:
-        """Add edge to graph."""
-        if (source, target) in self.edges():
-            raise simple_digraph.EdgeAlreadyExistsError(source=source, target=target)
+    def validate_edge_can_be_added(self, source: T, target: T) -> None:
+        """Validate that edge can be added to digraph."""
+        super().validate_edge_can_be_added(source, target)
 
         if (target, source) in self.edges():
             raise InverseEdgeAlreadyExistsError(source=target, target=source)
@@ -84,8 +83,6 @@ class DirectedAcyclicGraph[T: Hashable](simple_digraph.SimpleDiGraph[T]):
                 target=target,
                 connecting_subgraph=connecting_subgraph,
             )
-
-        return super().add_edge(source, target)
 
     def has_cycle(self) -> Literal[False]:
         """Check if the graph has a cycle.

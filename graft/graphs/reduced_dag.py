@@ -6,7 +6,7 @@ from collections.abc import Hashable, Mapping, Set
 from typing import Any, Literal
 
 from graft.graphs import bidict as bd
-from graft.graphs import directed_acyclic_graph, simple_digraph
+from graft.graphs import directed_acyclic_graph
 
 
 class UnderlyingDictHasRedundantEdgesError[T: Hashable](Exception):
@@ -18,33 +18,8 @@ class UnderlyingDictHasRedundantEdgesError[T: Hashable](Exception):
         super().__init__(f"underlying dictionary [{dictionary}] has redundant edges")
 
 
-class PathAlreadyExistsError[T: Hashable](Exception):
-    """Path already exists from source to target."""
-
-    def __init__(
-        self,
-        source: T,
-        target: T,
-        connecting_subgraph: ReducedDAG[T],
-        *args: tuple[Any, ...],
-        **kwargs: dict[str, Any],
-    ) -> None:
-        """Initialize PathAlreadyExistsError."""
-        self.source = source
-        self.target = target
-        self.connecting_subgraph = connecting_subgraph
-        super().__init__(
-            f"path already exists between [{source}] and [{target}]",
-            *args,
-            **kwargs,
-        )
-
-
-class TargetAlreadySuccessorOfSourceAncestorsError[T: Hashable](Exception):
-    """Target is already a successor of one or more of source's ancestors.
-
-    The relevant ancestors are the roots of the subgraph.
-    """
+class IntroducesRedundantEdgeError[T: Hashable](Exception):
+    """Adding the edge introduces a redundant edge to the graph."""
 
     def __init__(
         self,
@@ -54,17 +29,12 @@ class TargetAlreadySuccessorOfSourceAncestorsError[T: Hashable](Exception):
         *args: tuple[Any, ...],
         **kwargs: dict[str, Any],
     ) -> None:
-        """Initialize TargetAlreadySuccessorOfSourceAncestorsError."""
+        """Initialize IntroduceReduntantEdgeError."""
         self.source = source
         self.target = target
         self.subgraph = subgraph
         super().__init__(
-            (
-                f"target [{target}] is already a successor of one or more of "
-                f"source [{source}]'s ancestors"
-            ),
-            *args,
-            **kwargs,
+            f"introducing redundant edge from [{source}] to [{target}]", *args, **kwargs
         )
 
 
@@ -81,31 +51,14 @@ class ReducedDAG[T: Hashable](directed_acyclic_graph.DirectedAcyclicGraph[T]):
         if super().has_redundant_edges():
             raise UnderlyingDictHasRedundantEdgesError(dictionary=self._bidict)
 
-    def add_edge(self, source: T, target: T) -> None:
-        """Add edge to minimal digraph."""
-        if (source, target) in self.edges():
-            raise simple_digraph.EdgeAlreadyExistsError(source=source, target=target)
-
-        if (target, source) in self.edges():
-            raise directed_acyclic_graph.InverseEdgeAlreadyExistsError(
-                source=target,
-                target=source,
-            )
-
-        if self.has_path(source=target, target=source):
-            connecting_subgraph = self.connecting_subgraph(source=target, target=source)
-            raise directed_acyclic_graph.IntroducesCycleError(
-                source=source,
-                target=target,
-                connecting_subgraph=connecting_subgraph,
-            )
+    def validate_edge_can_be_added(self, source: T, target: T) -> None:
+        """Validate that edge can be added to digraph."""
+        super().validate_edge_can_be_added(source=source, target=target)
 
         if self.has_path(source=source, target=target):
-            connecting_subgraph = self.connecting_subgraph(source=source, target=target)
-            raise PathAlreadyExistsError(
-                source=source,
-                target=target,
-                connecting_subgraph=connecting_subgraph,
+            subgraph = self.connecting_subgraph(source=source, target=target)
+            raise IntroducesRedundantEdgeError(
+                source=source, target=target, subgraph=subgraph
             )
 
         target_predecessors = self.predecessors(target)
@@ -116,21 +69,43 @@ class ReducedDAG[T: Hashable](directed_acyclic_graph.DirectedAcyclicGraph[T]):
             source_ancestors_subgraph = self.ancestors_subgraph(
                 source, stop_condition=lambda node: node in target_predecessors
             )
-            target_predecessors_in_subgraph = (
+            target_predecessors_in_subgraph = [
                 predecessor
                 for predecessor in target_predecessors
                 if predecessor in source_ancestors_subgraph
-            )
+            ]
             subgraph = source_ancestors_subgraph.descendants_subgraph_multi(
                 target_predecessors_in_subgraph
             )
-            raise TargetAlreadySuccessorOfSourceAncestorsError(
-                source=source,
-                target=target,
-                subgraph=subgraph,
+            subgraph.add_node(target)
+            for target_predecessor in target_predecessors_in_subgraph:
+                subgraph.add_edge(target_predecessor, target)
+            raise IntroducesRedundantEdgeError(
+                source=source, target=target, subgraph=subgraph
             )
 
-        super().add_edge(source=source, target=target)
+        source_successors = self.successors(source)
+        if any(
+            target_descendant in source_successors
+            for target_descendant in self.descendants_bfs(target)
+        ):
+            target_descendants_subgraph = self.descendants_subgraph(
+                target, stop_condition=lambda node: node in source_successors
+            )
+            source_successors_in_subgraph = [
+                successor
+                for successor in source_successors
+                if successor in target_descendants_subgraph
+            ]
+            subgraph = target_descendants_subgraph.ancestors_subgraph_multi(
+                source_successors_in_subgraph
+            )
+            subgraph.add_node(source)
+            for source_successor in source_successors_in_subgraph:
+                subgraph.add_edge(source, source_successor)
+            raise IntroducesRedundantEdgeError(
+                source=source, target=target, subgraph=subgraph
+            )
 
     def has_redundant_edges(self) -> Literal[False]:
         """Check if graph has edges that are not required for a reduced DAG.

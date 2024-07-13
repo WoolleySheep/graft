@@ -177,8 +177,8 @@ class HierarchyIntroducesCycleError(Exception):
         )
 
 
-class HierarchyPathAlreadyExistsError(Exception):
-    """Path already exists from supertask to subtask."""
+class HierarchyIntroducesRedundantHierarchyError(Exception):
+    """Adding the hierarchy introduces a redundant hierarchy to the graph."""
 
     def __init__(
         self,
@@ -188,37 +188,12 @@ class HierarchyPathAlreadyExistsError(Exception):
         *args: tuple[Any, ...],
         **kwargs: dict[str, Any],
     ) -> None:
-        """Initialize HierarchyPathAlreadyExistsError."""
+        """Initialize HierarchyIntroducesRedundantHierarchyError."""
         self.supertask = supertask
         self.subtask = subtask
         self.connecting_subgraph = connecting_subgraph
         super().__init__(
-            f"hierarchy path already exists between supertask [{supertask}] and subtask [{subtask}]",
-            *args,
-            **kwargs,
-        )
-
-
-class SubTaskIsAlreadySubTaskOfSuperiorTaskOfSuperTaskError(Exception):
-    """Subtask is already a sub-task of one or more of the super-task's superior tasks."""
-
-    def __init__(
-        self,
-        supertask: UID,
-        subtask: UID,
-        subgraph: "HierarchyGraph",
-        *args: tuple[Any, ...],
-        **kwargs: dict[str, Any],
-    ) -> None:
-        """Initialize SubTaskIsAlreadySubTaskOfSuperiorTaskOfSuperTaskError."""
-        self.supertask = supertask
-        self.subtask = subtask
-        self.subgraph = subgraph
-        super().__init__(
-            (
-                f"sub-task [{subtask}] is already a sub-task of one or more of "
-                f"supertask [{supertask}]'s superior tasks"
-            ),
+            f"hierarchy between supertask [{supertask}] and subtask [{subtask}] is redundant",
             *args,
             **kwargs,
         )
@@ -533,49 +508,68 @@ class HierarchyGraph:
         except graphs.HasSuccessorsError as e:
             raise HasSubTasksError(task=task, subtasks=e.successors) from e
 
-    def add_hierarchy(self, supertask: UID, subtask: UID, /) -> None:
-        """Add a hierarchy between the specified tasks."""
+    def validate_hierarchy_can_be_added(self, supertask: UID, subtask: UID, /) -> None:
+        """Validate that hierarchy can be added to the graph."""
         try:
-            self._reduced_dag.add_edge(source=supertask, target=subtask)
-        except graphs.LoopError as e:
-            raise HierarchyLoopError(supertask) from e
+            self._reduced_dag.validate_edge_can_be_added(
+                source=supertask, target=subtask
+            )
         except graphs.NodeDoesNotExistError as e:
             raise TaskDoesNotExistError(e.node) from e
+        except graphs.LoopError as e:
+            raise HierarchyLoopError(supertask) from e
         except graphs.EdgeAlreadyExistsError as e:
             raise HierarchyAlreadyExistsError(supertask, subtask) from e
         except graphs.InverseEdgeAlreadyExistsError as e:
             raise InverseHierarchyAlreadyExistsError(supertask, subtask) from e
-
         except graphs.IntroducesCycleError as e:
-            connecting_subgraph = HierarchyGraph(e.connecting_subgraph)
             raise HierarchyIntroducesCycleError(
                 supertask=supertask,
                 subtask=subtask,
-                connecting_subgraph=connecting_subgraph,
+                connecting_subgraph=HierarchyGraph(e.connecting_subgraph),
             ) from e
-
-        except graphs.PathAlreadyExistsError as e:
-            connecting_subgraph = HierarchyGraph(e.connecting_subgraph)
-            raise HierarchyPathAlreadyExistsError(
+        except graphs.IntroducesRedundantEdgeError as e:
+            raise HierarchyIntroducesRedundantHierarchyError(
                 supertask=supertask,
                 subtask=subtask,
-                connecting_subgraph=connecting_subgraph,
+                connecting_subgraph=HierarchyGraph(e.subgraph),
             ) from e
 
-        except graphs.TargetAlreadySuccessorOfSourceAncestorsError as e:
-            subgraph = HierarchyGraph(e.subgraph)
-            raise SubTaskIsAlreadySubTaskOfSuperiorTaskOfSuperTaskError(
-                supertask=supertask, subtask=subtask, subgraph=subgraph
+    def add_hierarchy(self, supertask: UID, subtask: UID, /) -> None:
+        """Add a hierarchy between the specified tasks."""
+        # TODO: Resolve the duplication of these checks between this method &
+        # validate...
+        try:
+            self._reduced_dag.add_edge(source=supertask, target=subtask)
+        except graphs.NodeDoesNotExistError as e:
+            raise TaskDoesNotExistError(e.node) from e
+        except graphs.LoopError as e:
+            raise HierarchyLoopError(supertask) from e
+        except graphs.EdgeAlreadyExistsError as e:
+            raise HierarchyAlreadyExistsError(supertask, subtask) from e
+        except graphs.InverseEdgeAlreadyExistsError as e:
+            raise InverseHierarchyAlreadyExistsError(supertask, subtask) from e
+        except graphs.IntroducesCycleError as e:
+            raise HierarchyIntroducesCycleError(
+                supertask=supertask,
+                subtask=subtask,
+                connecting_subgraph=HierarchyGraph(e.connecting_subgraph),
+            ) from e
+        except graphs.IntroducesRedundantEdgeError as e:
+            raise HierarchyIntroducesRedundantHierarchyError(
+                supertask=supertask,
+                subtask=subtask,
+                connecting_subgraph=HierarchyGraph(e.subgraph),
             ) from e
 
     def remove_hierarchy(self, supertask: UID, subtask: UID, /) -> None:
         """Remove the hierarchy between the specified tasks."""
         try:
             self._reduced_dag.remove_edge(source=supertask, target=subtask)
-        except graphs.LoopError as e:
-            raise HierarchyLoopError(supertask) from e
         except graphs.NodeDoesNotExistError as e:
             raise TaskDoesNotExistError(e.node) from e
+        except graphs.LoopError as e:
+            raise HierarchyLoopError(supertask) from e
         except graphs.EdgeDoesNotExistError as e:
             raise HierarchyDoesNotExistError(supertask, subtask) from e
 

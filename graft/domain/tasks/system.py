@@ -3,7 +3,7 @@
 import collections
 import itertools
 from collections.abc import Generator, Iterable, Iterator
-from typing import Any, Iterable, Self
+from typing import Any, Self
 
 from graft.domain.tasks.attributes_register import (
     AttributesRegister,
@@ -24,14 +24,8 @@ from graft.domain.tasks.helpers import TaskDoesNotExistError
 from graft.domain.tasks.hierarchy_graph import (
     HasSubTasksError,
     HasSuperTasksError,
-    HierarchyAlreadyExistsError,
     HierarchyGraph,
     HierarchyGraphView,
-    HierarchyIntroducesCycleError,
-    HierarchyLoopError,
-    HierarchyPathAlreadyExistsError,
-    InverseHierarchyAlreadyExistsError,
-    SubTaskIsAlreadySubTaskOfSuperiorTaskOfSuperTaskError,
 )
 from graft.domain.tasks.importance import Importance
 from graft.domain.tasks.name import Name
@@ -842,7 +836,7 @@ class System:
 
         return target_task in self._downstream_tasks(source_task)
 
-    def _downstream_subsystem(self, task: UID, /) -> tuple["System", set[UID]]:
+    def downstream_subsystem(self, task: UID, /) -> tuple["System", set[UID]]:
         """Return sub-system of all downstream tasks of task.
 
         Note that the sub-system will contain a few tasks that aren't downstream
@@ -965,7 +959,7 @@ class System:
 
         return System(register, hierarchy_graph, dependency_graph), non_downstream_tasks
 
-    def _upstream_subsystem(self, task: UID, /) -> tuple["System", set[UID]]:
+    def upstream_subsystem(self, task: UID, /) -> tuple["System", set[UID]]:
         """Return sub-system of all upstream tasks of task.
 
         Note that the sub-system will contain a few tasks that aren't upstream
@@ -1096,7 +1090,7 @@ class System:
             if task not in self:
                 raise TaskDoesNotExistError(task=task)
 
-        source_downstream_subsystem, non_downstream_tasks = self._downstream_subsystem(
+        source_downstream_subsystem, non_downstream_tasks = self.downstream_subsystem(
             source_task
         )
 
@@ -1104,7 +1098,7 @@ class System:
             (
                 target_upstream_subsystem,
                 non_upstream_tasks,
-            ) = source_downstream_subsystem._upstream_subsystem(target_task)
+            ) = source_downstream_subsystem.upstream_subsystem(target_task)
         except TaskDoesNotExistError as e:
             raise NoConnectingSubsystemError(
                 source_task=source_task, target_task=target_task
@@ -1369,66 +1363,7 @@ class System:
                 for task in dependency_linked_tasks_of_inferior_tasks_of_subtask
             )
 
-        if supertask == subtask:
-            raise HierarchyLoopError(task=supertask)
-
-        for task in [supertask, subtask]:
-            if task not in self:
-                raise TaskDoesNotExistError(task=task)
-
-        if (supertask, subtask) in self._hierarchy_graph.hierarchies():
-            raise HierarchyAlreadyExistsError(supertask, subtask)
-
-        if (subtask, supertask) in self._hierarchy_graph.hierarchies():
-            raise InverseHierarchyAlreadyExistsError(supertask, subtask)
-
-        if self._hierarchy_graph.has_path(subtask, supertask):
-            connecting_subgraph = self._hierarchy_graph.connecting_subgraph(
-                subtask, supertask
-            )
-            raise HierarchyIntroducesCycleError(
-                supertask=supertask,
-                subtask=subtask,
-                connecting_subgraph=connecting_subgraph,
-            )
-
-        if self._hierarchy_graph.has_path(supertask, subtask):
-            connecting_subgraph = self._hierarchy_graph.connecting_subgraph(
-                supertask, subtask
-            )
-            raise HierarchyPathAlreadyExistsError(
-                supertask=supertask,
-                subtask=subtask,
-                connecting_subgraph=connecting_subgraph,
-            )
-
-        subtask_supertasks = self._hierarchy_graph.supertasks(subtask)
-        if subtask_supertasks and any(
-            supertask_superior_task in subtask_supertasks
-            for supertask_superior_task in self._hierarchy_graph.superior_tasks_bfs(
-                supertask
-            )
-        ):
-            # TODO: Could make more efficient by returning immediately when all
-            # of the supertasks of the subtask have been found - no need to keep
-            # searching once this has been done
-            supertask_superior_tasks_subgraph = (
-                self._hierarchy_graph.superior_tasks_subgraph(
-                    supertask, stop_condition=lambda task: task in subtask_supertasks
-                )
-            )
-            subtask_supertasks_in_subgraph = (
-                supertask
-                for supertask in subtask_supertasks
-                if supertask in supertask_superior_tasks_subgraph
-            )
-            subgraph = supertask_superior_tasks_subgraph.inferior_tasks_subgraph_multi(
-                subtask_supertasks_in_subgraph
-            )
-
-            raise SubTaskIsAlreadySubTaskOfSuperiorTaskOfSuperTaskError(
-                supertask=supertask, subtask=subtask, subgraph=subgraph
-            )
+        self._hierarchy_graph.validate_hierarchy_can_be_added(supertask, subtask)
 
         if self._dependency_graph.has_path(supertask, subtask):
             connecting_subgraph = self._dependency_graph.connecting_subgraph(

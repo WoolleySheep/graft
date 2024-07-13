@@ -1,5 +1,5 @@
 import abc
-import contextlib
+import collections
 from collections.abc import Callable
 from typing import Self, Type
 
@@ -23,19 +23,17 @@ class TaskSelected(Event):
 
 class EventBroker:
     def __init__(self) -> None:
-        self.event_callbacks_map = dict[Type[Event], list[Callable[[Event], None]]]()
+        self.event_callbacks_map = collections.defaultdict[
+            Type[Event], list[Callable[[Event], None]]
+        ](list)
 
     def publish(self, event: Event) -> None:
-        with contextlib.suppress(KeyError):
-            for callback in self.event_callbacks_map[type(event)]:
-                callback(event)
+        for callback in self.event_callbacks_map[type(event)]:
+            callback(event)
 
     def subscribe(
         self, event_type: Type[Event], callback: Callable[[Event], None]
     ) -> None:
-        if event_type not in self.event_callbacks_map:
-            self.event_callbacks_map[event_type] = []
-
         self.event_callbacks_map[event_type].append(callback)
 
 

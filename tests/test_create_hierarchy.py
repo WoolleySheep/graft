@@ -270,7 +270,7 @@ def test_create_hierarchy_failure_path_already_exists_from_supertask_to_subtask(
 
     logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
 
-    with pytest.raises(tasks.HierarchyPathAlreadyExistsError) as exc_info:
+    with pytest.raises(tasks.HierarchyIntroducesRedundantHierarchyError) as exc_info:
         logic_layer.create_task_hierarchy(supertask=task0, subtask=task2)
     assert exc_info.value.supertask == task0
     assert exc_info.value.subtask == task2
@@ -314,7 +314,7 @@ def test_create_hierarchy_failure_path_already_exists_from_supertask_to_subtask_
 
     logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
 
-    with pytest.raises(tasks.HierarchyPathAlreadyExistsError) as exc_info:
+    with pytest.raises(tasks.HierarchyIntroducesRedundantHierarchyError) as exc_info:
         logic_layer.create_task_hierarchy(supertask=task0, subtask=task2)
     assert exc_info.value.supertask == task0
     assert exc_info.value.subtask == task2
@@ -346,19 +346,19 @@ def test_create_hierarchy_failure_subtask_is_already_subtask_of_superior_task_of
     expected_subgraph = tasks.HierarchyGraph()
     expected_subgraph.add_task(task0)
     expected_subgraph.add_task(task1)
+    expected_subgraph.add_task(task2)
     expected_subgraph.add_hierarchy(task0, task1)
+    expected_subgraph.add_hierarchy(task0, task2)
 
     data_layer_mock.load_system.return_value = system
 
     logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
 
-    with pytest.raises(
-        tasks.SubTaskIsAlreadySubTaskOfSuperiorTaskOfSuperTaskError
-    ) as exc_info:
+    with pytest.raises(tasks.HierarchyIntroducesRedundantHierarchyError) as exc_info:
         logic_layer.create_task_hierarchy(supertask=task1, subtask=task2)
     assert exc_info.value.supertask == task1
     assert exc_info.value.subtask == task2
-    assert exc_info.value.subgraph == expected_subgraph
+    assert exc_info.value.connecting_subgraph == expected_subgraph
 
     data_layer_mock.load_system.assert_called_once()
     assert data_layer_mock.save_system.called is False
@@ -390,19 +390,100 @@ def test_create_hierarchy_failure_subtask_is_already_subtask_of_superior_task_of
     expected_subgraph = tasks.HierarchyGraph()
     expected_subgraph.add_task(task0)
     expected_subgraph.add_task(task1)
+    expected_subgraph.add_task(task2)
     expected_subgraph.add_hierarchy(task0, task1)
+    expected_subgraph.add_hierarchy(task0, task2)
 
     data_layer_mock.load_system.return_value = system
 
     logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
 
-    with pytest.raises(
-        tasks.SubTaskIsAlreadySubTaskOfSuperiorTaskOfSuperTaskError
-    ) as exc_info:
+    with pytest.raises(tasks.HierarchyIntroducesRedundantHierarchyError) as exc_info:
         logic_layer.create_task_hierarchy(supertask=task1, subtask=task2)
     assert exc_info.value.supertask == task1
     assert exc_info.value.subtask == task2
-    assert exc_info.value.subgraph == expected_subgraph
+    assert exc_info.value.connecting_subgraph == expected_subgraph
+
+    data_layer_mock.load_system.assert_called_once()
+    assert data_layer_mock.save_system.called is False
+
+
+@mock.patch("graft.architecture.data.DataLayer", autospec=True)
+def test_create_hierarchy_failure_supertask_is_already_supertask_of_inferior_task_of_subtask(
+    data_layer_mock: mock.MagicMock,
+) -> None:
+    """Test the create_hierarchy method fails when the supertask is already a supertask of an inferior task of the subtask."""
+    system = domain.System.empty()
+    task0 = tasks.UID(0)
+    task1 = tasks.UID(1)
+    task2 = tasks.UID(2)
+
+    system.add_task(task0)
+    system.add_task(task1)
+    system.add_task(task2)
+    system.add_task_hierarchy(task0, task2)
+    system.add_task_hierarchy(task1, task2)
+
+    expected_subgraph = tasks.HierarchyGraph()
+    expected_subgraph.add_task(task0)
+    expected_subgraph.add_task(task1)
+    expected_subgraph.add_task(task2)
+    expected_subgraph.add_hierarchy(task0, task2)
+    expected_subgraph.add_hierarchy(task1, task2)
+
+    data_layer_mock.load_system.return_value = system
+
+    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+
+    with pytest.raises(tasks.HierarchyIntroducesRedundantHierarchyError) as exc_info:
+        logic_layer.create_task_hierarchy(supertask=task0, subtask=task1)
+    assert exc_info.value.supertask == task0
+    assert exc_info.value.subtask == task1
+    assert exc_info.value.connecting_subgraph == expected_subgraph
+
+    data_layer_mock.load_system.assert_called_once()
+    assert data_layer_mock.save_system.called is False
+
+
+@mock.patch("graft.architecture.data.DataLayer", autospec=True)
+def test_create_hierarchy_failure_supertask_is_already_supertask_of_inferior_task_of_subtask_and_prunes_subgraph_correctly(
+    data_layer_mock: mock.MagicMock,
+) -> None:
+    """Test the create_hierarchy method fails when the supertask is already a.
+
+    supertask of an inferior task of the subtask and prunes the connecting
+    subgraph of irrelevant tasks.
+    """
+    system = domain.System.empty()
+    task0 = tasks.UID(0)
+    task1 = tasks.UID(1)
+    task2 = tasks.UID(2)
+    task3 = tasks.UID(3)
+
+    system.add_task(task0)
+    system.add_task(task1)
+    system.add_task(task2)
+    system.add_task(task3)
+    system.add_task_hierarchy(task0, task2)
+    system.add_task_hierarchy(task1, task2)
+    system.add_task_hierarchy(task0, task3)
+
+    expected_subgraph = tasks.HierarchyGraph()
+    expected_subgraph.add_task(task0)
+    expected_subgraph.add_task(task1)
+    expected_subgraph.add_task(task2)
+    expected_subgraph.add_hierarchy(task0, task2)
+    expected_subgraph.add_hierarchy(task1, task2)
+
+    data_layer_mock.load_system.return_value = system
+
+    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+
+    with pytest.raises(tasks.HierarchyIntroducesRedundantHierarchyError) as exc_info:
+        logic_layer.create_task_hierarchy(supertask=task0, subtask=task1)
+    assert exc_info.value.supertask == task0
+    assert exc_info.value.subtask == task1
+    assert exc_info.value.connecting_subgraph == expected_subgraph
 
     data_layer_mock.load_system.assert_called_once()
     assert data_layer_mock.save_system.called is False

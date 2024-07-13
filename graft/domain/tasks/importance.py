@@ -11,6 +11,10 @@ class Importance(enum.Enum):
     HIGH = "high"
 
     def __lt__(self, other: object) -> bool:
+        """Check if a task's importance is less than another's.
+
+        LOW < MEDIUM < HIGH
+        """
         if not isinstance(other, Importance):
             raise NotImplementedError
 

@@ -11,6 +11,10 @@ class Progress(enum.Enum):
     COMPLETED = "completed"
 
     def __lt__(self, other: object) -> bool:
+        """Check if a task's progress is less than another's.
+
+        NOT_STARTED < IN_PROGRESS < COMPLETED
+        """
         if not isinstance(other, Progress):
             raise NotImplementedError
 

@@ -7,9 +7,8 @@ from graft.graphs.directed_acyclic_graph import (
     InverseEdgeAlreadyExistsError,
 )
 from graft.graphs.reduced_dag import (
-    PathAlreadyExistsError,
+    IntroducesRedundantEdgeError,
     ReducedDAG,
-    TargetAlreadySuccessorOfSourceAncestorsError,
 )
 from graft.graphs.simple_digraph import (
     EdgeAlreadyExistsError,

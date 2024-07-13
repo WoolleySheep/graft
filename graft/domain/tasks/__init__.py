@@ -30,11 +30,10 @@ from graft.domain.tasks.hierarchy_graph import (
     HierarchyGraph,
     HierarchyGraphView,
     HierarchyIntroducesCycleError,
+    HierarchyIntroducesRedundantHierarchyError,
     HierarchyLoopError,
-    HierarchyPathAlreadyExistsError,
     IHierarchyGraphView,
     InverseHierarchyAlreadyExistsError,
-    SubTaskIsAlreadySubTaskOfSuperiorTaskOfSuperTaskError,
 )
 from graft.domain.tasks.importance import Importance
 from graft.domain.tasks.name import Name

@@ -228,12 +228,12 @@ class EdgesView[T: Hashable](Set[tuple[T, T]]):
 
         source, target = item
 
-        if source == target:
-            raise LoopError(node=source)
-
         for node in [source, target]:
             if node not in self._node_successors_map:
                 raise NodeDoesNotExistError(node)
+
+        if source == target:
+            raise LoopError(node=source)
 
         return target in self._node_successors_map[source]
 
@@ -330,11 +330,14 @@ class SimpleDiGraph[T: Hashable]:
         """Return view of digraph nodes."""
         return NodesView(self._bidict.keys())
 
-    def add_edge(self, source: T, target: T) -> None:
-        """Add edge to digraph."""
+    def validate_edge_can_be_added(self, source: T, target: T) -> None:
+        """Validate that edge can be added to digraph."""
         if (source, target) in self.edges():
             raise EdgeAlreadyExistsError(source=source, target=target)
 
+    def add_edge(self, source: T, target: T) -> None:
+        """Add edge to digraph."""
+        self.validate_edge_can_be_added(source=source, target=target)
         self._bidict.add(key=source, value=target)
 
     def remove_edge(self, source: T, target: T) -> None:
