@@ -10,14 +10,10 @@ from graft.domain.tasks.attributes_register import (
     AttributesRegisterView,
 )
 from graft.domain.tasks.dependency_graph import (
-    DependencyAlreadyExistsError,
     DependencyGraph,
     DependencyGraphView,
-    DependencyIntroducesCycleError,
-    DependencyLoopError,
     HasDependeeTasksError,
     HasDependentTasksError,
-    InverseDependencyAlreadyExistsError,
 )
 from graft.domain.tasks.description import Description
 from graft.domain.tasks.helpers import TaskDoesNotExistError
@@ -1546,28 +1542,9 @@ class System:
                 for task in dependent_task_hierarchical_line
             )
 
-        if dependee_task == dependent_task:
-            raise DependencyLoopError(task=dependee_task)
-
-        for task in [dependee_task, dependent_task]:
-            if task not in self:
-                raise TaskDoesNotExistError(task=task)
-
-        if (dependee_task, dependent_task) in self._dependency_graph.dependencies():
-            raise DependencyAlreadyExistsError(dependee_task, dependent_task)
-
-        if (dependent_task, dependee_task) in self._dependency_graph.dependencies():
-            raise InverseDependencyAlreadyExistsError(dependent_task, dependee_task)
-
-        if self._dependency_graph.has_path(dependent_task, dependee_task):
-            connecting_subgraph = self._dependency_graph.connecting_subgraph(
-                dependent_task, dependee_task
-            )
-            raise DependencyIntroducesCycleError(
-                dependee_task=dependee_task,
-                dependent_task=dependent_task,
-                connecting_subgraph=connecting_subgraph,
-            )
+        self._dependency_graph.validate_dependency_can_be_added(
+            dependee_task, dependent_task
+        )
 
         if self._hierarchy_graph.has_path(dependee_task, dependent_task):
             connecting_subgraph = self._hierarchy_graph.connecting_subgraph(

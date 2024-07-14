@@ -168,8 +168,8 @@ def test_create_dependency_failure_inverse_hierarchy_already_exists(
         logic_layer.create_task_dependency(
             dependee_task=dependent_task, dependent_task=dependee_task
         )
-    assert exc_info.value.dependee_task == dependee_task
-    assert exc_info.value.dependent_task == dependent_task
+    assert exc_info.value.dependee_task == dependent_task
+    assert exc_info.value.dependent_task == dependee_task
 
     data_layer_mock.load_system.assert_called_once()
     assert data_layer_mock.save_system.called is False

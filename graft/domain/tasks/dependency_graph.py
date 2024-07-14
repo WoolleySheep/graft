@@ -1,7 +1,8 @@
 """Task Dependency Graph and associated classes/exceptions."""
 
-from collections.abc import Generator, Iterable, Iterator, Set
-from typing import Any, Protocol, Self
+import functools
+from collections.abc import Callable, Generator, Iterable, Iterator, Set
+from typing import Any, ParamSpec, Protocol, Self, TypeVar
 
 from graft import graphs
 from graft.domain.tasks.helpers import TaskAlreadyExistsError, TaskDoesNotExistError
@@ -108,7 +109,7 @@ class InverseDependencyAlreadyExistsError(Exception):
         self.dependee_task = dependee_task
         self.dependent_task = dependent_task
         super().__init__(
-            f"Inverse dependency between dependee-task [{dependee_task}] and dependent-task [{dependent_task}] already exists",
+            f"Dependency [{dependent_task}] -> [{dependee_task}] already exists, cannot add inverse dependency",
             *args,
             **kwargs,
         )
@@ -175,6 +176,37 @@ class DependencyIntroducesCycleError(Exception):
             *args,
             **kwargs,
         )
+
+
+P = ParamSpec("P")
+R = TypeVar("R")
+
+
+def reraise_graph_exceptions_as_dependency_exceptions(
+    fn: Callable[P, R],
+) -> Callable[P, R]:
+    """Reraise graph exceptions as their corresponding dependency exceptions."""
+
+    @functools.wraps(fn)
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+        try:
+            return fn(*args, **kwargs)
+        except graphs.NodeDoesNotExistError as e:
+            raise TaskDoesNotExistError(e.node) from e
+        except graphs.LoopError as e:
+            raise DependencyLoopError(e.node) from e
+        except graphs.EdgeAlreadyExistsError as e:
+            raise DependencyAlreadyExistsError(e.source, e.target) from e
+        except graphs.InverseEdgeAlreadyExistsError as e:
+            raise InverseDependencyAlreadyExistsError(e.source, e.target) from e
+        except graphs.IntroducesCycleError as e:
+            raise DependencyIntroducesCycleError(
+                dependee_task=e.source,
+                dependent_task=e.target,
+                connecting_subgraph=DependencyGraph(e.connecting_subgraph),
+            ) from e
+
+    return wrapper
 
 
 class DependenciesView(Set[tuple[UID, UID]]):
@@ -318,62 +350,28 @@ class DependencyGraph:
         except graphs.HasSuccessorsError as e:
             raise HasDependentTasksError(task=task, dependent_tasks=e.successors) from e
 
+    @reraise_graph_exceptions_as_dependency_exceptions
     def validate_dependency_can_be_added(
         self, dependee_task: UID, dependent_task: UID, /
     ) -> None:
         """Validate that dependency can be added to the graph."""
-        try:
-            self._dag.validate_edge_can_be_added(
-                source=dependee_task, target=dependent_task
-            )
-        except graphs.NodeDoesNotExistError as e:
-            raise TaskDoesNotExistError(e.node) from e
-        except graphs.LoopError as e:
-            raise DependencyLoopError(e.node) from e
-        except graphs.EdgeAlreadyExistsError as e:
-            raise DependencyAlreadyExistsError(dependee_task, dependent_task) from e
-        except graphs.InverseEdgeAlreadyExistsError as e:
-            raise InverseDependencyAlreadyExistsError(
-                dependee_task, dependent_task
-            ) from e
-        except graphs.IntroducesCycleError[UID, graphs.DirectedAcyclicGraph[UID]] as e:
-            raise DependencyIntroducesCycleError(
-                dependee_task=dependee_task,
-                dependent_task=dependent_task,
-                connecting_subgraph=DependencyGraph(e.connecting_subgraph),
-            ) from e
+        self._dag.validate_edge_can_be_added(
+            source=dependee_task, target=dependent_task
+        )
 
+    @reraise_graph_exceptions_as_dependency_exceptions
     def add_dependency(self, dependee_task: UID, dependent_task: UID) -> None:
         """Add a dependency between two tasks."""
-        # TODO: Resolve the duplication of these checks between this method &
-        # validate...
-        try:
-            self._dag.add_edge(source=dependee_task, target=dependent_task)
-        except graphs.NodeDoesNotExistError as e:
-            raise TaskDoesNotExistError(e.node) from e
-        except graphs.LoopError as e:
-            raise DependencyLoopError(e.node) from e
-        except graphs.EdgeAlreadyExistsError as e:
-            raise DependencyAlreadyExistsError(dependee_task, dependent_task) from e
-        except graphs.InverseEdgeAlreadyExistsError as e:
-            raise InverseDependencyAlreadyExistsError(
-                dependee_task, dependent_task
-            ) from e
-        except graphs.IntroducesCycleError[UID, graphs.DirectedAcyclicGraph[UID]] as e:
-            raise DependencyIntroducesCycleError(
-                dependee_task=dependee_task,
-                dependent_task=dependent_task,
-                connecting_subgraph=DependencyGraph(e.connecting_subgraph),
-            ) from e
+        self._dag.add_edge(source=dependee_task, target=dependent_task)
 
     def remove_dependency(self, dependee_task: UID, dependent_task: UID) -> None:
         """Remove the dependency between the specified tasks."""
         try:
             self._dag.remove_edge(source=dependee_task, target=dependent_task)
-        except graphs.LoopError as e:
-            raise DependencyLoopError(e.node) from e
         except graphs.NodeDoesNotExistError as e:
             raise TaskDoesNotExistError(e.node) from e
+        except graphs.LoopError as e:
+            raise DependencyLoopError(e.node) from e
         except graphs.EdgeDoesNotExistError as e:
             raise DependencyDoesNotExistError(dependee_task, dependent_task) from e
 

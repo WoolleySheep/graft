@@ -31,7 +31,7 @@ class InverseEdgeAlreadyExistsError[T: Hashable](Exception):
         self.source = source
         self.target = target
         super().__init__(
-            f"inverse edge [{target}] -> [{source}] already exists",
+            f"Edge [{target}] -> [{source}] already exists, cannot add inverse edge",
             *args,
             **kwargs,
         )
@@ -74,7 +74,7 @@ class DirectedAcyclicGraph[T: Hashable](simple_digraph.SimpleDiGraph[T]):
         super().validate_edge_can_be_added(source, target)
 
         if (target, source) in self.edges():
-            raise InverseEdgeAlreadyExistsError(source=target, target=source)
+            raise InverseEdgeAlreadyExistsError(source=source, target=target)
 
         if self.has_path(source=target, target=source):
             connecting_subgraph = self.connecting_subgraph(source=target, target=source)
