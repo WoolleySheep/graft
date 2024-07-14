@@ -114,6 +114,23 @@ class HierarchyCreationWindow(tk.Toplevel):
                     additional_hierarchies=[(e.supertask, e.subtask)],
                 )
                 return
+            except tasks.HierarchyIntroducesRedundantHierarchyError as e:
+                system = tasks.System.empty()
+                for task in e.connecting_subgraph:
+                    system.add_task(task)
+                    system.set_name(
+                        task,
+                        self.logic_layer.get_task_attributes_register_view()[task].name,
+                    )
+                for supertask, subtask in e.connecting_subgraph.hierarchies():
+                    system.add_hierarchy(supertask, subtask)
+                helpers.HierarchyGraphOperationFailedWindow(
+                    master=self,
+                    text="Redundant hierarchy",
+                    system=system,
+                    additional_hierarchies=[(e.supertask, e.subtask)],
+                )
+                return
             except Exception as e:
                 helpers.UnknownExceptionOperationFailedWindow(self, exception=e)
                 return
