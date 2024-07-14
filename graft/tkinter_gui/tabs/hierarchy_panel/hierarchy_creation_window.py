@@ -62,8 +62,8 @@ class LabelledOptionMenu(tk.Frame):
 class HierarchyCreationWindow(tk.Toplevel):
     def __init__(self, master: tk.Misc, logic_layer: architecture.LogicLayer) -> None:
         def create_hierarchy_between_selected_tasks_then_destroy_window() -> None:
-            supertask = _parse_task_uid_from_menu_option(self.selected_supertask.get())
-            subtask = _parse_task_uid_from_menu_option(self.selected_subtask.get())
+            supertask = self._get_selected_supertask()
+            subtask = self._get_selected_subtask()
             try:
                 self.logic_layer.create_task_hierarchy(supertask, subtask)
             except tasks.HierarchyLoopError as e:
@@ -95,6 +95,23 @@ class HierarchyCreationWindow(tk.Toplevel):
                     text="Hierarchy already exists",
                     system=system,
                     highlighted_hierarchies={(e.supertask, e.subtask)},
+                )
+                return
+            except tasks.HierarchyIntroducesCycleError as e:
+                system = tasks.System.empty()
+                for task in e.connecting_subgraph:
+                    system.add_task(task)
+                    system.set_name(
+                        task,
+                        self.logic_layer.get_task_attributes_register_view()[task].name,
+                    )
+                for supertask, subtask in e.connecting_subgraph.hierarchies():
+                    system.add_hierarchy(supertask, subtask)
+                helpers.HierarchyGraphOperationFailedWindow(
+                    master=self,
+                    text="Introduces hierarchy cycle",
+                    system=system,
+                    additional_hierarchies=[(e.supertask, e.subtask)],
                 )
                 return
             except Exception as e:
@@ -137,3 +154,9 @@ class HierarchyCreationWindow(tk.Toplevel):
         self.supertask_option_menu.grid(row=0, column=0)
         self.subtask_option_menu.grid(row=1, column=0)
         self.confirm_button.grid(row=2, column=0)
+
+    def _get_selected_supertask(self) -> tasks.UID:
+        return _parse_task_uid_from_menu_option(self.selected_supertask.get())
+
+    def _get_selected_subtask(self) -> tasks.UID:
+        return _parse_task_uid_from_menu_option(self.selected_subtask.get())
