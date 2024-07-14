@@ -95,26 +95,6 @@ class HierarchyDoesNotExistError(Exception):
         )
 
 
-class InverseHierarchyAlreadyExistsError(Exception):
-    """Raised when an inverse hierarchy between specified tasks already exists."""
-
-    def __init__(
-        self,
-        supertask: UID,
-        subtask: UID,
-        *args: tuple[Any, ...],
-        **kwargs: dict[str, Any],
-    ) -> None:
-        """Initialize InverseHierarchyAlreadyExistsError."""
-        self.supertask = supertask
-        self.subtask = subtask
-        super().__init__(
-            f"Hierarchy [{subtask}] -> [{supertask}] already exists, cannot add inverse hierarchy",
-            *args,
-            **kwargs,
-        )
-
-
 class HierarchyLoopError(Exception):
     """Loop error.
 
@@ -219,8 +199,6 @@ def reraise_graph_exceptions_as_hierarchy_exceptions(
             raise HierarchyLoopError(e.node) from e
         except graphs.EdgeAlreadyExistsError as e:
             raise HierarchyAlreadyExistsError(e.source, e.target) from e
-        except graphs.InverseEdgeAlreadyExistsError as e:
-            raise InverseHierarchyAlreadyExistsError(e.source, e.target) from e
         except graphs.IntroducesCycleError as e:
             raise HierarchyIntroducesCycleError(
                 supertask=e.source,

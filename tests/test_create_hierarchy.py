@@ -145,16 +145,22 @@ def test_create_hierarchy_failure_inverse_hierarchy_already_exists(
     system = empty_system
     system.add_task(supertask)
     system.add_task(subtask)
-    system.add_task_hierarchy(supertask=subtask, subtask=supertask)
+    system.add_task_hierarchy(supertask=supertask, subtask=subtask)
+
+    expected_subgraph = tasks.HierarchyGraph()
+    expected_subgraph.add_task(supertask)
+    expected_subgraph.add_task(subtask)
+    expected_subgraph.add_hierarchy(supertask, subtask)
 
     data_layer_mock.load_system.return_value = system
 
     logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
 
-    with pytest.raises(tasks.InverseHierarchyAlreadyExistsError) as exc_info:
-        logic_layer.create_task_hierarchy(supertask=supertask, subtask=subtask)
-    assert exc_info.value.supertask == supertask
-    assert exc_info.value.subtask == subtask
+    with pytest.raises(tasks.HierarchyIntroducesCycleError) as exc_info:
+        logic_layer.create_task_hierarchy(supertask=subtask, subtask=supertask)
+    assert exc_info.value.supertask == subtask
+    assert exc_info.value.subtask == supertask
+    assert exc_info.value.connecting_subgraph == expected_subgraph
 
     data_layer_mock.load_system.assert_called_once()
     assert data_layer_mock.save_system.called is False

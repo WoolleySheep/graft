@@ -160,16 +160,22 @@ def test_create_dependency_failure_inverse_hierarchy_already_exists(
         dependee_task=dependee_task, dependent_task=dependent_task
     )
 
+    expected_subgraph = tasks.DependencyGraph()
+    expected_subgraph.add_task(dependee_task)
+    expected_subgraph.add_task(dependent_task)
+    expected_subgraph.add_dependency(dependee_task, dependent_task)
+
     data_layer_mock.load_system.return_value = system
 
     logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
 
-    with pytest.raises(tasks.InverseDependencyAlreadyExistsError) as exc_info:
+    with pytest.raises(tasks.DependencyIntroducesCycleError) as exc_info:
         logic_layer.create_task_dependency(
             dependee_task=dependent_task, dependent_task=dependee_task
         )
     assert exc_info.value.dependee_task == dependent_task
     assert exc_info.value.dependent_task == dependee_task
+    assert exc_info.value.connecting_subgraph == expected_subgraph
 
     data_layer_mock.load_system.assert_called_once()
     assert data_layer_mock.save_system.called is False

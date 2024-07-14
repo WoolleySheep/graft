@@ -97,23 +97,6 @@ class HierarchyCreationWindow(tk.Toplevel):
                     highlighted_hierarchies={(e.supertask, e.subtask)},
                 )
                 return
-            except tasks.InverseHierarchyAlreadyExistsError as e:
-                system = tasks.System.empty()
-                for task in [e.subtask, e.supertask]:
-                    system.add_task(task)
-                    system.set_name(
-                        task,
-                        self.logic_layer.get_task_attributes_register_view()[task].name,
-                    )
-                system.add_hierarchy(e.subtask, e.supertask)
-                helpers.HierarchyGraphOperationFailedWindow(
-                    master=self,
-                    text="Inverse hierarchy already exists",
-                    system=system,
-                    additional_hierarchies={(e.supertask, e.subtask)},
-                )
-                return
-
             except Exception as e:
                 helpers.UnknownExceptionOperationFailedWindow(self, exception=e)
                 return

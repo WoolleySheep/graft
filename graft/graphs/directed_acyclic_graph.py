@@ -17,26 +17,6 @@ class UnderlyingDictHasCycleError[T: Hashable](Exception):
         super().__init__(f"underlying dictionary [{dictionary}] has a cycle")
 
 
-class InverseEdgeAlreadyExistsError[T: Hashable](Exception):
-    """Inverse edge already exists."""
-
-    def __init__(
-        self,
-        source: T,
-        target: T,
-        *args: tuple[Any, ...],
-        **kwargs: dict[str, Any],
-    ) -> None:
-        """Initialize InverseEdgeAlreadyExistsError."""
-        self.source = source
-        self.target = target
-        super().__init__(
-            f"Edge [{target}] -> [{source}] already exists, cannot add inverse edge",
-            *args,
-            **kwargs,
-        )
-
-
 class IntroducesCycleError[T: Hashable, G: "DirectedAcyclicGraph"](Exception):
     """Adding the edge introduces a cycle to the graph."""
 
@@ -72,9 +52,6 @@ class DirectedAcyclicGraph[T: Hashable](simple_digraph.SimpleDiGraph[T]):
     def validate_edge_can_be_added(self, source: T, target: T) -> None:
         """Validate that edge can be added to digraph."""
         super().validate_edge_can_be_added(source, target)
-
-        if (target, source) in self.edges():
-            raise InverseEdgeAlreadyExistsError(source=source, target=target)
 
         if self.has_path(source=target, target=source):
             connecting_subgraph = self.connecting_subgraph(source=target, target=source)

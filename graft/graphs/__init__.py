@@ -4,7 +4,6 @@ from graft.graphs.bidict import BiDirectionalSetDict, SetView
 from graft.graphs.directed_acyclic_graph import (
     DirectedAcyclicGraph,
     IntroducesCycleError,
-    InverseEdgeAlreadyExistsError,
 )
 from graft.graphs.reduced_dag import (
     IntroducesRedundantEdgeError,

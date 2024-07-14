@@ -95,26 +95,6 @@ class DependencyDoesNotExistError(Exception):
         )
 
 
-class InverseDependencyAlreadyExistsError(Exception):
-    """Raised when an inverse dependency between specified tasks already exists."""
-
-    def __init__(
-        self,
-        dependee_task: UID,
-        dependent_task: UID,
-        *args: tuple[Any, ...],
-        **kwargs: dict[str, Any],
-    ) -> None:
-        """Initialise InverseDependencyAlreadyExistsError."""
-        self.dependee_task = dependee_task
-        self.dependent_task = dependent_task
-        super().__init__(
-            f"Dependency [{dependent_task}] -> [{dependee_task}] already exists, cannot add inverse dependency",
-            *args,
-            **kwargs,
-        )
-
-
 class DependencyLoopError(Exception):
     """Loop error.
 
@@ -197,8 +177,6 @@ def reraise_graph_exceptions_as_dependency_exceptions(
             raise DependencyLoopError(e.node) from e
         except graphs.EdgeAlreadyExistsError as e:
             raise DependencyAlreadyExistsError(e.source, e.target) from e
-        except graphs.InverseEdgeAlreadyExistsError as e:
-            raise InverseDependencyAlreadyExistsError(e.source, e.target) from e
         except graphs.IntroducesCycleError as e:
             raise DependencyIntroducesCycleError(
                 dependee_task=e.source,
