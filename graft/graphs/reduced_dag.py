@@ -177,3 +177,22 @@ class ReducedDAG[T: Hashable](directed_acyclic_graph.DirectedAcyclicGraph[T]):
             graph=subgraph, nodes=nodes, stop_condition=stop_condition
         )
         return subgraph
+
+    @override
+    def connecting_subgraph(self, source: T, target: T) -> ReducedDAG[T]:
+        """Return connecting subgraph from source to target."""
+        return self.connecting_subgraph_multi([source], [target])
+
+    @override
+    def connecting_subgraph_multi(
+        self, sources: Iterable[T], targets: Iterable[T]
+    ) -> ReducedDAG[T]:
+        """Return connecting subgraph from sources to targets.
+
+        Every target must be reachable by one or more sources.
+        """
+        subgraph = ReducedDAG[T]()
+        self._populate_graph_with_connecting(
+            graph=subgraph, sources=sources, targets=targets
+        )
+        return subgraph

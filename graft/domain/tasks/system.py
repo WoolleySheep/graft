@@ -1,5 +1,7 @@
 """System and associated classes/exceptions."""
 
+from __future__ import annotations
+
 import collections
 import itertools
 from collections.abc import Generator, Iterable, Iterator
@@ -677,7 +679,7 @@ class System:
     """System of task information."""
 
     @classmethod
-    def empty(cls) -> Self:
+    def empty(cls) -> System:
         """Create an empty System."""
         return cls(
             attributes_register=AttributesRegister(),
@@ -832,7 +834,7 @@ class System:
 
         return target_task in self._downstream_tasks(source_task)
 
-    def downstream_subsystem(self, task: UID, /) -> tuple["System", set[UID]]:
+    def downstream_subsystem(self, task: UID, /) -> tuple[System, set[UID]]:
         """Return sub-system of all downstream tasks of task.
 
         Note that the sub-system will contain a few tasks that aren't downstream
@@ -955,7 +957,7 @@ class System:
 
         return System(register, hierarchy_graph, dependency_graph), non_downstream_tasks
 
-    def upstream_subsystem(self, task: UID, /) -> tuple["System", set[UID]]:
+    def upstream_subsystem(self, task: UID, /) -> tuple[System, set[UID]]:
         """Return sub-system of all upstream tasks of task.
 
         Note that the sub-system will contain a few tasks that aren't upstream
@@ -1080,7 +1082,7 @@ class System:
 
     def connecting_subsystem(
         self, source_task: UID, target_task: UID, /
-    ) -> tuple["System", set[UID]]:
+    ) -> tuple[System, set[UID]]:
         """Return subsystem of tasks between source and target tasks."""
         for task in [source_task, target_task]:
             if task not in self:

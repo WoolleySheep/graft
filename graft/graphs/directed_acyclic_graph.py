@@ -175,3 +175,22 @@ class DirectedAcyclicGraph[T: Hashable](simple_digraph.SimpleDiGraph[T]):
             graph=subgraph, nodes=nodes, stop_condition=stop_condition
         )
         return subgraph
+
+    @override
+    def connecting_subgraph(self, source: T, target: T) -> DirectedAcyclicGraph[T]:
+        """Return connecting subgraph from source to target."""
+        return self.connecting_subgraph_multi([source], [target])
+
+    @override
+    def connecting_subgraph_multi(
+        self, sources: Iterable[T], targets: Iterable[T]
+    ) -> DirectedAcyclicGraph[T]:
+        """Return connecting subgraph from sources to targets.
+
+        Every target must be reachable by one or more sources.
+        """
+        subgraph = DirectedAcyclicGraph[T]()
+        self._populate_graph_with_connecting(
+            graph=subgraph, sources=sources, targets=targets
+        )
+        return subgraph

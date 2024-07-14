@@ -13,7 +13,7 @@ from collections.abc import (
     Mapping,
     Set,
 )
-from typing import Any, Self, TypeGuard
+from typing import Any, TypeGuard
 
 from graft.graphs import bidict as bd
 
@@ -571,28 +571,34 @@ class SimpleDiGraph[T: Hashable]:
 
         return target in self.descendants_bfs(source)
 
-    def connecting_subgraph(self, source: T, target: T) -> Self:
+    def connecting_subgraph(self, source: T, target: T) -> SimpleDiGraph[T]:
         """Return connecting subgraph from source to target."""
-        # TODO: Add appropriate subclass overrides as you did for
-        # ancestor_subgraph and descendant_subgraph
-        for node in [source, target]:
-            if node not in self:
-                raise NodeDoesNotExistError(node=node)
-
-        source_descendants_subgraph = self.descendants_subgraph(
-            source, lambda node: node == target
-        )
-        try:
-            return source_descendants_subgraph.ancestors_subgraph(target)
-        except NodeDoesNotExistError as e:
-            raise NoConnectingSubgraphError(sources=[source], targets=[target]) from e
+        return self.connecting_subgraph_multi([source], [target])
 
     def connecting_subgraph_multi(
         self, sources: Iterable[T], targets: Iterable[T]
-    ) -> Self:
+    ) -> SimpleDiGraph[T]:
         """Return connecting subgraph from sources to targets.
 
         Every target must be reachable by one or more sources.
+        """
+        subgraph = SimpleDiGraph[T]()
+        self._populate_graph_with_connecting(
+            graph=subgraph, sources=sources, targets=targets
+        )
+        return subgraph
+
+    def _populate_graph_with_connecting(
+        self,
+        graph: SimpleDiGraph[T],
+        sources: Iterable[T],
+        targets: Iterable[T],
+    ) -> None:
+        """Populate a graph with the subgraph connecting sources to targets.
+
+        Only meant to be called by connecting_subgraph and
+        connecting_subgraph_multi to facilitate easy subclassing. Be aware that
+        if an exception is raised, the graph may be partially populated.
         """
         sources_set = list(sources)
         targets_set = list(targets)
@@ -603,11 +609,20 @@ class SimpleDiGraph[T: Hashable]:
 
         sources_descendants_subgraph = self.descendants_subgraph_multi(sources_set)
         try:
-            return sources_descendants_subgraph.ancestors_subgraph_multi(targets_set)
+            connecting_subgraph = sources_descendants_subgraph.ancestors_subgraph_multi(
+                targets_set
+            )
         except NodeDoesNotExistError as e:
             raise NoConnectingSubgraphError(
                 sources=sources_set, targets=targets_set
             ) from e
+
+        for node in connecting_subgraph:
+            if node not in graph:
+                graph.add_node(node)
+        for source, target in connecting_subgraph.edges():
+            if (source, target) not in graph.edges():
+                graph.add_edge(source, target)
 
     def is_root(self, node: T, /) -> bool:
         """Check if node is a root of the graph."""
