@@ -600,22 +600,20 @@ class SimpleDiGraph[T: Hashable]:
         connecting_subgraph_multi to facilitate easy subclassing. Be aware that
         if an exception is raised, the graph may be partially populated.
         """
-        sources_set = list(sources)
-        targets_set = list(targets)
+        sources2 = list(sources)
+        targets2 = list(targets)
 
-        for node in itertools.chain(sources_set, targets_set):
+        for node in itertools.chain(sources2, targets2):
             if node not in self:
                 raise NodeDoesNotExistError(node=node)
 
-        sources_descendants_subgraph = self.descendants_subgraph_multi(sources_set)
+        sources_descendants_subgraph = self.descendants_subgraph_multi(sources2)
         try:
             connecting_subgraph = sources_descendants_subgraph.ancestors_subgraph_multi(
-                targets_set
+                targets2
             )
         except NodeDoesNotExistError as e:
-            raise NoConnectingSubgraphError(
-                sources=sources_set, targets=targets_set
-            ) from e
+            raise NoConnectingSubgraphError(sources=sources2, targets=targets2) from e
 
         for node in connecting_subgraph:
             if node not in graph:

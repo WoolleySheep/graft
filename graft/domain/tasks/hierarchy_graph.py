@@ -7,6 +7,7 @@ from collections.abc import Callable, Generator, Iterable, Iterator, Set
 from typing import Any, ParamSpec, Protocol, TypeVar
 
 from graft import graphs
+from graft.domain.tasks import helpers
 from graft.domain.tasks.helpers import TaskAlreadyExistsError, TaskDoesNotExistError
 from graft.domain.tasks.uid import (
     UID,
@@ -236,7 +237,7 @@ class HierarchiesView(Set[tuple[UID, UID]]):
         # TODO: Doesn't make sense to catch this error for generic self._heirarchies
         try:
             return item in self._hierarchies
-        except graphs.NodeDoesNotExistError[UID] as e:
+        except graphs.NodeDoesNotExistError as e:
             raise TaskDoesNotExistError(e.node) from e
 
     def __iter__(self) -> Iterator[tuple[UID, UID]]:
@@ -361,49 +362,35 @@ class HierarchyGraph:
 
     def supertasks(self, task: UID, /) -> UIDsView:
         """Return view of supertasks of task."""
-        try:
+        with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
             supertasks = self._reduced_dag.predecessors(task)
-        except graphs.NodeDoesNotExistError as e:
-            raise TaskDoesNotExistError(task=task) from e
-
         return UIDsView(supertasks)
 
     def subtasks(self, task: UID, /) -> UIDsView:
         """Return view of subtasks of task."""
-        try:
+        with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
             subtasks = self._reduced_dag.successors(task)
-        except graphs.NodeDoesNotExistError as e:
-            raise TaskDoesNotExistError(task=task) from e
-
         return UIDsView(subtasks)
 
     def inferior_tasks_bfs(self, task: UID, /) -> Generator[UID, None, None]:
         """Return breadth-first search of inferior tasks of task."""
-        try:
+        with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
             return self._reduced_dag.descendants_bfs(task)
-        except graphs.NodeDoesNotExistError as e:
-            raise TaskDoesNotExistError(task=task) from e
 
     def inferior_tasks_dfs(self, task: UID, /) -> Generator[UID, None, None]:
         """Return depth-first search of inferior tasks of task."""
-        try:
+        with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
             return self._reduced_dag.descendants_dfs(task)
-        except graphs.NodeDoesNotExistError as e:
-            raise TaskDoesNotExistError(task=task) from e
 
     def superior_tasks_bfs(self, task: UID, /) -> Generator[UID, None, None]:
         """Return breadth-first search of superior tasks of task."""
-        try:
+        with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
             return self._reduced_dag.ancestors_bfs(task)
-        except graphs.NodeDoesNotExistError as e:
-            raise TaskDoesNotExistError(task=task) from e
 
     def superior_tasks_dfs(self, task: UID, /) -> Generator[UID, None, None]:
         """Return depth-first search of superior tasks of task."""
-        try:
+        with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
             return self._reduced_dag.ancestors_dfs(task)
-        except graphs.NodeDoesNotExistError as e:
-            raise TaskDoesNotExistError(task=task) from e
 
     def inferior_tasks_subgraph(
         self, task: UID, /, stop_condition: Callable[[UID], bool] | None = None
@@ -413,12 +400,10 @@ class HierarchyGraph:
         Stop searching beyond a specific task if the stop condition is met. If
         the starting task meets the stop condition, this will be ignored.
         """
-        try:
+        with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
             inferior_tasks_subgraph = self._reduced_dag.descendants_subgraph(
                 task, stop_condition=stop_condition
             )
-        except graphs.NodeDoesNotExistError as e:
-            raise TaskDoesNotExistError(task=task) from e
         return HierarchyGraph(reduced_dag=inferior_tasks_subgraph)
 
     def superior_tasks_subgraph(
@@ -429,12 +414,10 @@ class HierarchyGraph:
         Stop searching beyond a specific task if the stop condition is met. If
         the starting task meets the stop condition, this will be ignored.
         """
-        try:
+        with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
             superior_tasks_subgraph = self._reduced_dag.ancestors_subgraph(
                 task, stop_condition=stop_condition
             )
-        except graphs.NodeDoesNotExistError as e:
-            raise TaskDoesNotExistError(task=task) from e
         return HierarchyGraph(reduced_dag=superior_tasks_subgraph)
 
     def inferior_tasks_subgraph_multi(
@@ -453,12 +436,10 @@ class HierarchyGraph:
         Stop searching beyond a specific task if the stop condition is met. If
         the starting task meets the stop condition, this will be ignored.
         """
-        try:
+        with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
             inferior_tasks_subgraph = self._reduced_dag.descendants_subgraph_multi(
                 tasks, stop_condition=stop_condition
             )
-        except graphs.NodeDoesNotExistError as e:
-            raise TaskDoesNotExistError(task=e.node) from e
         return HierarchyGraph(reduced_dag=inferior_tasks_subgraph)
 
     def superior_tasks_subgraph_multi(
@@ -477,20 +458,16 @@ class HierarchyGraph:
         Stop searching beyond a specific task if the stop condition is met. If
         the starting task meets the stop condition, this will be ignored.
         """
-        try:
+        with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
             superior_tasks_subgraph = self._reduced_dag.ancestors_subgraph_multi(
                 tasks, stop_condition=stop_condition
             )
-        except graphs.NodeDoesNotExistError as e:
-            raise TaskDoesNotExistError(task=e.node) from e
         return HierarchyGraph(reduced_dag=superior_tasks_subgraph)
 
     def has_path(self, source_task: UID, target_task: UID, /) -> bool:
         """Check if there is a path from source to target tasks."""
-        try:
+        with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
             return self._reduced_dag.has_path(source=source_task, target=target_task)
-        except graphs.NodeDoesNotExistError as e:
-            raise TaskDoesNotExistError(task=e.node) from e
 
     def connecting_subgraph(
         self, source_task: UID, target_task: UID, /
@@ -553,10 +530,8 @@ class HierarchyGraph:
 
         Concrete tasks have no sub-tasks.
         """
-        try:
+        with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
             return self._reduced_dag.is_leaf(task)
-        except graphs.NodeDoesNotExistError as e:
-            raise TaskDoesNotExistError(task) from e
 
     def concrete_tasks(self) -> Generator[UID, None, None]:
         """Return generator over concrete tasks."""
@@ -567,10 +542,8 @@ class HierarchyGraph:
 
         Top-level tasks have no super-tasks.
         """
-        try:
+        with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
             return self._reduced_dag.is_root(task)
-        except graphs.NodeDoesNotExistError as e:
-            raise TaskDoesNotExistError(task) from e
 
     def top_level_tasks(self) -> Generator[UID, None, None]:
         """Return generator over top-level tasks."""
@@ -578,10 +551,8 @@ class HierarchyGraph:
 
     def is_isolated(self, task: UID, /) -> bool:
         """Check if task has no super-tasks nor sub-tasks."""
-        try:
+        with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
             return self._reduced_dag.is_isolated(task)
-        except graphs.NodeDoesNotExistError as e:
-            raise TaskDoesNotExistError(task) from e
 
     def isolated_tasks(self) -> Generator[UID, None, None]:
         """Return generator over isolated tasks."""

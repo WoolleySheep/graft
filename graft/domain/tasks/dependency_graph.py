@@ -7,6 +7,7 @@ from collections.abc import Callable, Generator, Iterable, Iterator, Set
 from typing import Any, ParamSpec, Protocol, TypeVar
 
 from graft import graphs
+from graft.domain.tasks import helpers
 from graft.domain.tasks.helpers import TaskAlreadyExistsError, TaskDoesNotExistError
 from graft.domain.tasks.uid import UID, UIDsView
 
@@ -365,68 +366,52 @@ class DependencyGraph:
 
     def dependee_tasks(self, task: UID, /) -> UIDsView:
         """Return a view of the dependee-tasks of a task."""
-        try:
-            return UIDsView(self._dag.predecessors(task))
-        except graphs.NodeDoesNotExistError as e:
-            raise TaskDoesNotExistError(task) from e
+        with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
+            dependee_tasks = self._dag.predecessors(task)
+        return UIDsView(dependee_tasks)
 
     def dependent_tasks(self, task: UID, /) -> UIDsView:
         """Return a view of the dependent-tasks of a task."""
-        try:
-            return UIDsView(self._dag.successors(task))
-        except graphs.NodeDoesNotExistError as e:
-            raise TaskDoesNotExistError(task) from e
+        with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
+            dependent_tasks = self._dag.successors(task)
+        return UIDsView(dependent_tasks)
 
     def following_tasks_bfs(self, task: UID, /) -> Generator[UID, None, None]:
         """Return breadth-first search of following tasks of task."""
-        try:
+        with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
             return self._dag.descendants_bfs(task)
-        except graphs.NodeDoesNotExistError as e:
-            raise TaskDoesNotExistError(task=task) from e
 
     def following_tasks_dfs(self, task: UID, /) -> Generator[UID, None, None]:
         """Return depth-first search of following tasks of task."""
-        try:
+        with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
             return self._dag.descendants_dfs(task)
-        except graphs.NodeDoesNotExistError as e:
-            raise TaskDoesNotExistError(task=task) from e
 
     def proceeding_tasks_bfs(self, task: UID, /) -> Generator[UID, None, None]:
         """Return breadth-first search of proceeding tasks of task."""
-        try:
+        with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
             return self._dag.ancestors_bfs(task)
-        except graphs.NodeDoesNotExistError as e:
-            raise TaskDoesNotExistError(task=task) from e
 
     def proceeding_tasks_dfs(self, task: UID, /) -> Generator[UID, None, None]:
         """Return depth-first search of proceeding tasks of task."""
-        try:
+        with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
             return self._dag.ancestors_dfs(task)
-        except graphs.NodeDoesNotExistError as e:
-            raise TaskDoesNotExistError(task=task) from e
 
     def following_tasks_subgraph(self, task: UID, /) -> DependencyGraph:
         """Return subgraph of following tasks of task."""
-        try:
+        with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
             following_tasks_subgraph = self._dag.descendants_subgraph(task)
-        except graphs.NodeDoesNotExistError as e:
-            raise TaskDoesNotExistError(task=task) from e
         return DependencyGraph(dag=following_tasks_subgraph)
 
     def proceeding_tasks_subgraph(self, task: UID, /) -> DependencyGraph:
         """Return subgraph of proceeding tasks of task."""
-        try:
+        with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
             proceeding_tasks_subgraph = self._dag.ancestors_subgraph(task)
-        except graphs.NodeDoesNotExistError as e:
-            raise TaskDoesNotExistError(task=task) from e
         return DependencyGraph(dag=proceeding_tasks_subgraph)
 
     def has_path(self, source_task: UID, target_task: UID, /) -> bool:
         """Check if there is a path from source to target tasks."""
-        try:
+        with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
             return self._dag.has_path(source=source_task, target=target_task)
-        except graphs.NodeDoesNotExistError as e:
-            raise TaskDoesNotExistError(task=e.node) from e
 
     def connecting_subgraph(
         self, source_task: UID, target_task: UID, /
@@ -447,10 +432,8 @@ class DependencyGraph:
 
     def is_first(self, task: UID, /) -> bool:
         """Check if task has no dependees."""
-        try:
+        with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
             return self._dag.is_root(task)
-        except graphs.NodeDoesNotExistError as e:
-            raise TaskDoesNotExistError(task=task) from e
 
     def first_tasks(self) -> Generator[UID, None, None]:
         """Return generator of first tasks."""
@@ -458,10 +441,8 @@ class DependencyGraph:
 
     def is_last(self, task: UID, /) -> bool:
         """Check if task has no dependents."""
-        try:
+        with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
             return self._dag.is_leaf(task)
-        except graphs.NodeDoesNotExistError as e:
-            raise TaskDoesNotExistError(task=task) from e
 
     def last_tasks(self) -> Generator[UID, None, None]:
         """Return generator of last tasks."""
@@ -469,10 +450,8 @@ class DependencyGraph:
 
     def is_isolated(self, task: UID, /) -> bool:
         """Check if task has no dependents nor dependees."""
-        try:
+        with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
             return self._dag.is_isolated(task)
-        except graphs.NodeDoesNotExistError as e:
-            raise TaskDoesNotExistError(task=task) from e
 
     def isolated_tasks(self) -> Generator[UID, None, None]:
         """Return generator of isolated tasks."""

@@ -1,7 +1,10 @@
 """Exceptions that don't logically live anywhere else."""
 
+import contextlib
+from collections.abc import Generator
 from typing import Any
 
+from graft import graphs
 from graft.domain.tasks.uid import UID
 
 
@@ -31,3 +34,12 @@ class TaskDoesNotExistError(Exception):
         """Initialize UIDDoesNotExistError."""
         self.task = task
         super().__init__(f"task with UID [{task}] does not exist", *args, **kwargs)
+
+
+@contextlib.contextmanager
+def reraise_node_does_not_exist_as_task_does_not_exist() -> Generator[None, None, None]:
+    """Reraise NodeDoesNotExistError as TaskDoesNotExistError."""
+    try:
+        yield
+    except graphs.NodeDoesNotExistError as e:
+        raise TaskDoesNotExistError(e.node) from e
