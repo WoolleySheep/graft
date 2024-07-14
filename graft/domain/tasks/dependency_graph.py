@@ -1,8 +1,10 @@
 """Task Dependency Graph and associated classes/exceptions."""
 
+from __future__ import annotations
+
 import functools
 from collections.abc import Callable, Generator, Iterable, Iterator, Set
-from typing import Any, ParamSpec, Protocol, Self, TypeVar
+from typing import Any, ParamSpec, Protocol, TypeVar
 
 from graft import graphs
 from graft.domain.tasks.helpers import TaskAlreadyExistsError, TaskDoesNotExistError
@@ -143,7 +145,7 @@ class DependencyIntroducesCycleError(Exception):
         self,
         dependee_task: UID,
         dependent_task: UID,
-        connecting_subgraph: "DependencyGraph",
+        connecting_subgraph: DependencyGraph,
         *args: tuple[Any, ...],
         **kwargs: dict[str, Any],
     ) -> None:
@@ -403,21 +405,21 @@ class DependencyGraph:
         except graphs.NodeDoesNotExistError as e:
             raise TaskDoesNotExistError(task=task) from e
 
-    def following_tasks_subgraph(self, task: UID, /) -> Self:
+    def following_tasks_subgraph(self, task: UID, /) -> DependencyGraph:
         """Return subgraph of following tasks of task."""
         try:
             following_tasks_subgraph = self._dag.descendants_subgraph(task)
         except graphs.NodeDoesNotExistError as e:
             raise TaskDoesNotExistError(task=task) from e
-        return type(self)(following_tasks_subgraph)
+        return DependencyGraph(dag=following_tasks_subgraph)
 
-    def proceeding_tasks_subgraph(self, task: UID, /) -> Self:
+    def proceeding_tasks_subgraph(self, task: UID, /) -> DependencyGraph:
         """Return subgraph of proceeding tasks of task."""
         try:
             proceeding_tasks_subgraph = self._dag.ancestors_subgraph(task)
         except graphs.NodeDoesNotExistError as e:
             raise TaskDoesNotExistError(task=task) from e
-        return type(self)(proceeding_tasks_subgraph)
+        return DependencyGraph(dag=proceeding_tasks_subgraph)
 
     def has_path(self, source_task: UID, target_task: UID, /) -> bool:
         """Check if there is a path from source to target tasks."""
@@ -426,7 +428,9 @@ class DependencyGraph:
         except graphs.NodeDoesNotExistError as e:
             raise TaskDoesNotExistError(task=e.node) from e
 
-    def connecting_subgraph(self, source_task: UID, target_task: UID, /) -> Self:
+    def connecting_subgraph(
+        self, source_task: UID, target_task: UID, /
+    ) -> DependencyGraph:
         """Return subgraph of tasks between source and target tasks."""
         try:
             connecting_subgraph = self._dag.connecting_subgraph(
@@ -439,7 +443,7 @@ class DependencyGraph:
                 sources=[source_task], targets=[target_task]
             ) from e
 
-        return type(self)(connecting_subgraph)
+        return DependencyGraph(dag=connecting_subgraph)
 
     def is_first(self, task: UID, /) -> bool:
         """Check if task has no dependees."""

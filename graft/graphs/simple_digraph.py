@@ -1,5 +1,7 @@
 """Simple DiGraph and associated Exceptions."""
 
+from __future__ import annotations
+
 import collections
 import itertools
 from collections.abc import (
@@ -399,39 +401,18 @@ class SimpleDiGraph[T: Hashable]:
 
     def descendants_subgraph(
         self, node: T, /, stop_condition: Callable[[T], bool] | None = None
-    ) -> Self:
+    ) -> SimpleDiGraph[T]:
         """Return a subgraph of the descendants of node.
 
         The original node is part of the subgraph.
 
         Stop searching beyond a specific node if the stop condition is met.
         """
-        if node not in self:
-            raise NodeDoesNotExistError(node=node)
-
-        # TODO: Fix the typing of this function - should not use type(self)
-        subgraph = type(self)()
-        subgraph.add_node(node)
-
-        visited = set[T]()
-        queue = collections.deque[T]([node])
-
-        while queue:
-            node2 = queue.popleft()
-            if node2 in visited or (stop_condition and stop_condition(node2)):
-                continue
-            visited.add(node2)
-            for successor in self.successors(node2):
-                if successor not in subgraph:
-                    subgraph.add_node(successor)
-                subgraph.add_edge(node2, successor)
-                queue.append(successor)
-
-        return subgraph
+        return self.descendants_subgraph_multi([node], stop_condition=stop_condition)
 
     def descendants_subgraph_multi(
-        self, nodes: Iterable[T], stop_condition: Callable[[T], bool] | None = None
-    ) -> Self:
+        self, nodes: Iterable[T], /, stop_condition: Callable[[T], bool] | None = None
+    ) -> SimpleDiGraph[T]:
         """Return a subgraph of the descendants of multiple nodes.
 
         This effectively OR's together the descendant subgraphs of several
@@ -441,14 +422,33 @@ class SimpleDiGraph[T: Hashable]:
 
         Stop searching beyond a specific node if the stop condition is met.
         """
-        subgraph = type(self)()
+        subgraph = SimpleDiGraph[T]()
+        self._populate_graph_with_descendants(
+            graph=subgraph, nodes=nodes, stop_condition=stop_condition
+        )
+        return subgraph
+
+    def _populate_graph_with_descendants(
+        self,
+        graph: SimpleDiGraph[T],
+        nodes: Iterable[T],
+        stop_condition: Callable[[T], bool] | None = None,
+    ) -> None:
+        """Populate a graph with the descendants of the nodes.
+
+        Only meant to be called by descendants_subgraph and
+        descendants_subgraph_multi to faciliate easy subclassing. Be aware
+        that if an exception is raised, the graph may be partially populated.
+        """
         for node in nodes:
             if node not in self:
                 raise NodeDoesNotExistError(node=node)
-            subgraph.add_node(node)
+            if node in graph:
+                continue
+            graph.add_node(node)
 
         visited = set[T]()
-        queue = collections.deque[T](subgraph)
+        queue = collections.deque[T](graph)
 
         while queue:
             node2 = queue.popleft()
@@ -456,12 +456,11 @@ class SimpleDiGraph[T: Hashable]:
                 continue
             visited.add(node2)
             for successor in self.successors(node2):
-                if successor not in subgraph:
-                    subgraph.add_node(successor)
-                subgraph.add_edge(node2, successor)
+                if successor not in graph:
+                    graph.add_node(successor)
+                if (node2, successor) not in graph.edges():
+                    graph.add_edge(node2, successor)
                 queue.append(successor)
-
-        return subgraph
 
     def ancestors_bfs(self, node: T, /) -> Generator[T, None, None]:
         """Return breadth-first search of ancestors of node.
@@ -497,37 +496,18 @@ class SimpleDiGraph[T: Hashable]:
 
     def ancestors_subgraph(
         self, node: T, /, stop_condition: Callable[[T], bool] | None = None
-    ) -> Self:
+    ) -> SimpleDiGraph[T]:
         """Return a subgraph of the ancestors of node.
 
-        Stop searching beyond a specific node if the stop condition is met. If
-        the starting node meets the stop condition, this will be ignored.
+        The original node is part of the subgraph.
+
+        Stop searching beyond a specific node if the stop condition is met.
         """
-        if node not in self:
-            raise NodeDoesNotExistError(node=node)
-
-        subgraph = type(self)()
-        subgraph.add_node(node)
-
-        visited = set[T]()
-        queue = collections.deque[T]([node])
-
-        while queue:
-            node2 = queue.popleft()
-            if node2 in visited or (stop_condition and stop_condition(node2)):
-                continue
-            visited.add(node2)
-            for predecessor in self.predecessors(node2):
-                if predecessor not in subgraph:
-                    subgraph.add_node(predecessor)
-                subgraph.add_edge(predecessor, node2)
-                queue.append(predecessor)
-
-        return subgraph
+        return self.ancestors_subgraph_multi([node], stop_condition=stop_condition)
 
     def ancestors_subgraph_multi(
         self, nodes: Iterable[T], /, stop_condition: Callable[[T], bool] | None = None
-    ) -> Self:
+    ) -> SimpleDiGraph[T]:
         """Return a subgraph of the ancestors of multiple nodes.
 
         This effectively OR's together the ancestor subgraphs of several
@@ -535,19 +515,35 @@ class SimpleDiGraph[T: Hashable]:
 
         The original nodes are part of the subgraph.
 
-        Stop searching beyond a specific node if the stop condition is met. If
-        a starting node meets the stop condition, this will be ignored.
+        Stop searching beyond a specific node if the stop condition is met.
         """
-        subgraph = type(self)()
+        subgraph = SimpleDiGraph[T]()
+        self._populate_graph_with_ancestors(
+            graph=subgraph, nodes=nodes, stop_condition=stop_condition
+        )
+        return subgraph
+
+    def _populate_graph_with_ancestors(
+        self,
+        graph: SimpleDiGraph[T],
+        nodes: Iterable[T],
+        stop_condition: Callable[[T], bool] | None = None,
+    ) -> None:
+        """Populate a graph with the ancestors of the nodes.
+
+        Only meant to be called by ancestors_subgraph and
+        ancestors_subgraph_multi to faciliate easy subclassing. Be aware
+        that if an exception is raised, the graph may be partially populated.
+        """
         for node in nodes:
-            if node in subgraph:
-                continue
             if node not in self:
                 raise NodeDoesNotExistError(node=node)
-            subgraph.add_node(node)
+            if node in graph:
+                continue
+            graph.add_node(node)
 
         visited = set[T]()
-        queue = collections.deque[T](subgraph)
+        queue = collections.deque[T](graph)
 
         while queue:
             node2 = queue.popleft()
@@ -555,12 +551,11 @@ class SimpleDiGraph[T: Hashable]:
                 continue
             visited.add(node2)
             for predecessor in self.predecessors(node2):
-                if predecessor not in subgraph:
-                    subgraph.add_node(predecessor)
-                subgraph.add_edge(predecessor, node2)
+                if predecessor not in graph:
+                    graph.add_node(predecessor)
+                if (predecessor, node2) not in graph.edges():
+                    graph.add_edge(predecessor, node2)
                 queue.append(predecessor)
-
-        return subgraph
 
     def has_path(self, source: T, target: T) -> bool:
         """Check if there's a connecting subgraph/path from source to target.
@@ -578,6 +573,8 @@ class SimpleDiGraph[T: Hashable]:
 
     def connecting_subgraph(self, source: T, target: T) -> Self:
         """Return connecting subgraph from source to target."""
+        # TODO: Add appropriate subclass overrides as you did for
+        # ancestor_subgraph and descendant_subgraph
         for node in [source, target]:
             if node not in self:
                 raise NodeDoesNotExistError(node=node)

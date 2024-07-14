@@ -126,7 +126,7 @@ class HierarchyCreationWindow(tk.Toplevel):
                     system.add_hierarchy(supertask, subtask)
                 helpers.HierarchyGraphOperationFailedWindow(
                     master=self,
-                    text="Redundant hierarchy",
+                    text="Introduces redundant hierarchy",
                     system=system,
                     additional_hierarchies=[(e.supertask, e.subtask)],
                 )

@@ -1,9 +1,10 @@
 """Hierarchy Graph and associated classes/exceptions."""
 
+from __future__ import annotations
 
 import functools
 from collections.abc import Callable, Generator, Iterable, Iterator, Set
-from typing import Any, ParamSpec, Protocol, Self, TypeVar
+from typing import Any, ParamSpec, Protocol, TypeVar
 
 from graft import graphs
 from graft.domain.tasks.helpers import TaskAlreadyExistsError, TaskDoesNotExistError
@@ -143,7 +144,7 @@ class HierarchyIntroducesCycleError(Exception):
         self,
         supertask: UID,
         subtask: UID,
-        connecting_subgraph: "HierarchyGraph",
+        connecting_subgraph: HierarchyGraph,
         *args: tuple[Any, ...],
         **kwargs: dict[str, Any],
     ) -> None:
@@ -165,7 +166,7 @@ class HierarchyIntroducesRedundantHierarchyError(Exception):
         self,
         supertask: UID,
         subtask: UID,
-        connecting_subgraph: "HierarchyGraph",
+        connecting_subgraph: HierarchyGraph,
         *args: tuple[Any, ...],
         **kwargs: dict[str, Any],
     ) -> None:
@@ -406,7 +407,7 @@ class HierarchyGraph:
 
     def inferior_tasks_subgraph(
         self, task: UID, /, stop_condition: Callable[[UID], bool] | None = None
-    ) -> Self:
+    ) -> HierarchyGraph:
         """Return subgraph of inferior tasks of task.
 
         Stop searching beyond a specific task if the stop condition is met. If
@@ -418,11 +419,11 @@ class HierarchyGraph:
             )
         except graphs.NodeDoesNotExistError as e:
             raise TaskDoesNotExistError(task=task) from e
-        return type(self)(inferior_tasks_subgraph)
+        return HierarchyGraph(reduced_dag=inferior_tasks_subgraph)
 
     def superior_tasks_subgraph(
         self, task: UID, /, stop_condition: Callable[[UID], bool] | None = None
-    ) -> Self:
+    ) -> HierarchyGraph:
         """Return subgraph of superior tasks of task.
 
         Stop searching beyond a specific task if the stop condition is met. If
@@ -434,14 +435,14 @@ class HierarchyGraph:
             )
         except graphs.NodeDoesNotExistError as e:
             raise TaskDoesNotExistError(task=task) from e
-        return type(self)(superior_tasks_subgraph)
+        return HierarchyGraph(reduced_dag=superior_tasks_subgraph)
 
     def inferior_tasks_subgraph_multi(
         self,
         tasks: Iterable[UID],
         /,
         stop_condition: Callable[[UID], bool] | None = None,
-    ) -> Self:
+    ) -> HierarchyGraph:
         """Return subgraph of inferior tasks of multiple tasks.
 
         This effectively OR's together the superior-task subgraphs of several
@@ -458,14 +459,14 @@ class HierarchyGraph:
             )
         except graphs.NodeDoesNotExistError as e:
             raise TaskDoesNotExistError(task=e.node) from e
-        return type(self)(inferior_tasks_subgraph)
+        return HierarchyGraph(reduced_dag=inferior_tasks_subgraph)
 
     def superior_tasks_subgraph_multi(
         self,
         tasks: Iterable[UID],
         /,
         stop_condition: Callable[[UID], bool] | None = None,
-    ) -> Self:
+    ) -> HierarchyGraph:
         """Return subgraph of superior tasks of multiple tasks.
 
         This effectively OR's together the inferior-task subgraphs of several
@@ -482,7 +483,7 @@ class HierarchyGraph:
             )
         except graphs.NodeDoesNotExistError as e:
             raise TaskDoesNotExistError(task=e.node) from e
-        return type(self)(superior_tasks_subgraph)
+        return HierarchyGraph(reduced_dag=superior_tasks_subgraph)
 
     def has_path(self, source_task: UID, target_task: UID, /) -> bool:
         """Check if there is a path from source to target tasks."""
@@ -491,7 +492,9 @@ class HierarchyGraph:
         except graphs.NodeDoesNotExistError as e:
             raise TaskDoesNotExistError(task=e.node) from e
 
-    def connecting_subgraph(self, source_task: UID, target_task: UID, /) -> Self:
+    def connecting_subgraph(
+        self, source_task: UID, target_task: UID, /
+    ) -> HierarchyGraph:
         """Return subgraph of tasks between source and target tasks."""
         try:
             connecting_subgraph = self._reduced_dag.connecting_subgraph(
@@ -504,7 +507,7 @@ class HierarchyGraph:
                 sources=[source_task], targets=[target_task]
             ) from e
 
-        return type(self)(connecting_subgraph)
+        return HierarchyGraph(reduced_dag=connecting_subgraph)
 
     def add_task(self, task: UID, /) -> None:
         """Add a task."""

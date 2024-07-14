@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Hashable, Mapping, Set
-from typing import Any, Literal
+from collections.abc import Callable, Hashable, Iterable, Mapping, Set
+from typing import Any, Literal, override
 
 from graft.graphs import bidict as bd
 from graft.graphs import directed_acyclic_graph
@@ -51,6 +51,7 @@ class ReducedDAG[T: Hashable](directed_acyclic_graph.DirectedAcyclicGraph[T]):
         if super().has_redundant_edges():
             raise UnderlyingDictHasRedundantEdgesError(dictionary=self._bidict)
 
+    @override
     def validate_edge_can_be_added(self, source: T, target: T) -> None:
         """Validate that edge can be added to digraph."""
         super().validate_edge_can_be_added(source=source, target=target)
@@ -107,9 +108,72 @@ class ReducedDAG[T: Hashable](directed_acyclic_graph.DirectedAcyclicGraph[T]):
                 source=source, target=target, subgraph=subgraph
             )
 
+    @override
     def has_redundant_edges(self) -> Literal[False]:
         """Check if graph has edges that are not required for a reduced DAG.
 
         Will always return False for a reduced DAG.
         """
         return False
+
+    @override
+    def descendants_subgraph(
+        self, node: T, /, stop_condition: Callable[[T], bool] | None = None
+    ) -> ReducedDAG[T]:
+        """Return a subgraph of the descendants of node.
+
+        The original node is part of the subgraph.
+
+        Stop searching beyond a specific node if the stop condition is met.
+        """
+        return self.descendants_subgraph_multi([node], stop_condition=stop_condition)
+
+    @override
+    def descendants_subgraph_multi(
+        self, nodes: Iterable[T], /, stop_condition: Callable[[T], bool] | None = None
+    ) -> ReducedDAG[T]:
+        """Return a subgraph of the descendants of multiple nodes.
+
+        This effectively OR's together the descendant subgraphs of several
+        nodes.
+
+        The original nodes are part of the subgraph.
+
+        Stop searching beyond a specific node if the stop condition is met.
+        """
+        subgraph = ReducedDAG[T]()
+        self._populate_graph_with_descendants(
+            graph=subgraph, nodes=nodes, stop_condition=stop_condition
+        )
+        return subgraph
+
+    @override
+    def ancestors_subgraph(
+        self, node: T, /, stop_condition: Callable[[T], bool] | None = None
+    ) -> ReducedDAG[T]:
+        """Return a subgraph of the ancestors of node.
+
+        The original node is part of the subgraph.
+
+        Stop searching beyond a specific node if the stop condition is met.
+        """
+        return self.ancestors_subgraph_multi([node], stop_condition=stop_condition)
+
+    @override
+    def ancestors_subgraph_multi(
+        self, nodes: Iterable[T], /, stop_condition: Callable[[T], bool] | None = None
+    ) -> ReducedDAG[T]:
+        """Return a subgraph of the ancestors of multiple nodes.
+
+        This effectively OR's together the ancestor subgraphs of several
+        nodes.
+
+        The original nodes are part of the subgraph.
+
+        Stop searching beyond a specific node if the stop condition is met.
+        """
+        subgraph = ReducedDAG[T]()
+        self._populate_graph_with_ancestors(
+            graph=subgraph, nodes=nodes, stop_condition=stop_condition
+        )
+        return subgraph

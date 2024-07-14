@@ -1,7 +1,8 @@
 """System and associated classes/exceptions."""
 
+from __future__ import annotations
+
 from collections.abc import Generator
-from typing import Self
 
 from graft.domain import tasks
 
@@ -13,7 +14,7 @@ class System:
     """
 
     @classmethod
-    def empty(cls) -> Self:
+    def empty(cls) -> System:
         """Create an empty system."""
         return cls(task_system=tasks.System.empty())
 
