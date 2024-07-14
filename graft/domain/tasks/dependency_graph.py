@@ -396,16 +396,50 @@ class DependencyGraph:
         with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
             return self._dag.ancestors_dfs(task)
 
-    def following_tasks_subgraph(self, task: UID, /) -> DependencyGraph:
+    def following_tasks_subgraph(
+        self, task: UID, /, stop_condition: Callable[[UID], bool] | None = None
+    ) -> DependencyGraph:
         """Return subgraph of following tasks of task."""
         with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
-            following_tasks_subgraph = self._dag.descendants_subgraph(task)
+            following_tasks_subgraph = self._dag.descendants_subgraph(
+                task, stop_condition=stop_condition
+            )
         return DependencyGraph(dag=following_tasks_subgraph)
 
-    def proceeding_tasks_subgraph(self, task: UID, /) -> DependencyGraph:
+    def following_tasks_subgraph_multi(
+        self,
+        tasks: Iterable[UID],
+        /,
+        stop_condition: Callable[[UID], bool] | None = None,
+    ) -> DependencyGraph:
+        """Return subgraph of following tasks of multiple tasks."""
+        with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
+            following_tasks_subgraph = self._dag.descendants_subgraph_multi(
+                tasks, stop_condition=stop_condition
+            )
+        return DependencyGraph(dag=following_tasks_subgraph)
+
+    def proceeding_tasks_subgraph(
+        self, task: UID, /, stop_condition: Callable[[UID], bool] | None = None
+    ) -> DependencyGraph:
         """Return subgraph of proceeding tasks of task."""
         with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
-            proceeding_tasks_subgraph = self._dag.ancestors_subgraph(task)
+            proceeding_tasks_subgraph = self._dag.ancestors_subgraph(
+                task, stop_condition=stop_condition
+            )
+        return DependencyGraph(dag=proceeding_tasks_subgraph)
+
+    def proceeding_tasks_subgraph_multi(
+        self,
+        tasks: Iterable[UID],
+        /,
+        stop_condition: Callable[[UID], bool] | None = None,
+    ) -> DependencyGraph:
+        """Return subgraph of proceeding tasks of multiple tasks."""
+        with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
+            proceeding_tasks_subgraph = self._dag.ancestors_subgraph_multi(
+                tasks, stop_condition=stop_condition
+            )
         return DependencyGraph(dag=proceeding_tasks_subgraph)
 
     def has_path(self, source_task: UID, target_task: UID, /) -> bool:
