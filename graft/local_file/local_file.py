@@ -4,21 +4,21 @@ import enum
 import json
 import pathlib
 import shutil
+import tempfile
 from collections.abc import Callable, Generator, Iterable
 from typing import Any, Final, TypedDict, override
 
 from graft import architecture, domain, graphs
 from graft.domain import tasks
-from graft.domain.tasks.system import SystemView
 
-_STARTING_TASK_ID_NUMBER = 0
+_FIRST_TASK: Final = tasks.UID(1)
 
 _DATA_DIRECTORY_NAME: Final = "data"
 
 _TASK_HIERARCHY_GRAPH_FILENAME: Final = "task_hierarchy_graph.json"
 _TASK_DEPENDENCY_GRAPH_FILENAME: Final = "task_dependency_graph.json"
 _TASK_ATTRIBUTES_REGISTER_FILENAME: Final = "task_attributes_register.json"
-_TASK_NEXT_UID_FILENAME: Final = "task_next_uid.txt"
+_UNUSED_TASK_FILENAME: Final = "task_next_uid.txt"
 
 _DATA_DIRECTORY_PATH = pathlib.Path.cwd() / _DATA_DIRECTORY_NAME
 
@@ -31,7 +31,7 @@ _TASK_DEPENDENCY_GRAPH_FILEPATH: Final = (
 _TASK_ATTRIBUTES_REGISTER_FILEPATH: Final = (
     _DATA_DIRECTORY_PATH / _TASK_ATTRIBUTES_REGISTER_FILENAME
 )
-_TASK_NEXT_UNUSED_UID_FILEPATH: Final = _DATA_DIRECTORY_PATH / _TASK_NEXT_UID_FILENAME
+_UNUSED_TASK_FILEPATH: Final = _DATA_DIRECTORY_PATH / _UNUSED_TASK_FILENAME
 
 
 class PartiallyInitialisedError(Exception):
@@ -47,6 +47,31 @@ class TaskAttributesJSONDict(TypedDict):
     importance: str | None
 
 
+def _save_file_group_atomically(
+    files_with_text: Iterable[tuple[pathlib.Path, str]],
+) -> None:
+    """Write to a group of files atomically, changing no files if any fail.
+
+    Will break if a file is included twice.
+    """
+    file_pairs = list[tuple[pathlib.Path, pathlib.Path]]()
+    try:
+        for file, contents in files_with_text:
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=file.suffix, dir=file.parent, delete=False
+            ) as temp_file:
+                file_pairs.append((file, pathlib.Path(temp_file.name)))
+                temp_file.write(contents)
+    except:
+        for _, temp_file in file_pairs:
+            pathlib.Path(temp_file).unlink()
+
+    # Replace command is an atomic operation that cannot fail, given the
+    # files are in the same directory
+    for file, temp_file in file_pairs:
+        temp_file.replace(file)
+
+
 def _encode_task_uid(uid: tasks.UID) -> str:
     """Encode task UID."""
     return str(uid)
@@ -55,6 +80,17 @@ def _encode_task_uid(uid: tasks.UID) -> str:
 def _decode_task_uid(number: str) -> tasks.UID:
     """Decode task UID."""
     return tasks.UID(int(number))
+
+
+def _next_task_uid(uid: tasks.UID) -> tasks.UID:
+    """Get the next task UID."""
+    return tasks.UID(int(uid) + 1)
+
+
+def _generate_new_unused_task(
+    current_unused_task: tasks.UID, system: domain.System
+) -> tasks.UID:
+    return _next_task_uid(uid=current_unused_task)
 
 
 def _encode_task_attributes_register(
@@ -188,7 +224,7 @@ class LocalFileDataLayer(architecture.DataLayer):
                     _TASK_HIERARCHY_GRAPH_FILEPATH.exists()
                     and _TASK_DEPENDENCY_GRAPH_FILEPATH.exists()
                     and _TASK_ATTRIBUTES_REGISTER_FILEPATH.exists()
-                    and _TASK_NEXT_UNUSED_UID_FILEPATH.exists()
+                    and _UNUSED_TASK_FILEPATH.exists()
                 )
                 else InitialisationStatus.PARTIALLY_INITIALISED
             )
@@ -202,14 +238,21 @@ class LocalFileDataLayer(architecture.DataLayer):
                 pass
 
     @override
-    def get_next_unused_task_uid(self) -> tasks.UID:
-        """Return the next unused task UID."""
-        return _get_next_unused_task_uid()
+    def get_unused_task_uid(self) -> tasks.UID:
+        """Get an unused task UID.
+
+        "Unused" means that the UID has never been used in the system before,
+        regardless of whether the task had subsequently been deleted.
+
+        Loading an unused task UID will not add it to the system, and will
+        return the same value if called multiple times. The returned value will
+        only change once a system containing the task uid is saved.
+        """
+        return _load_unused_task()
 
     @override
     def load_system(self) -> domain.System:
-        task_system = _load_task_system()
-        return domain.System(task_system=task_system)
+        return _load_system()
 
     @override
     def erase(self) -> None:
@@ -217,30 +260,56 @@ class LocalFileDataLayer(architecture.DataLayer):
 
     @override
     def save_system(self, system: domain.System) -> None:
-        """Save the system to file.
+        _save_data(system=system)
 
-        If the next unused task UID is present in the system, the counter will
-        be incremented so th next call to _get_next_unused_task_uid produces a
-        UID not in the system.
-        """
-        next_task = _get_next_unused_task_uid()
-        max_system_task = max(system.task_system_view())
+    @override
+    def save_system_and_indicate_task_used(
+        self, system: domain.System, used_task: tasks.UID
+    ) -> None:
+        current_unused_task = _load_unused_task()
 
-        if max_system_task > next_task:
-            # TODO: Better exception
-            raise ValueError("Cannot save system with future task UIDs")
+        if used_task != current_unused_task:
+            # TODO: Add better Exception
+            raise ValueError("Cannot save system with a different unused task UID")
 
-        if max_system_task == next_task:
-            _increment_next_task_uid_counter()
+        new_unused_task = _generate_new_unused_task(
+            current_unused_task=current_unused_task, system=system
+        )
 
-        _save_system(system=system)
+        _save_data(system=system, unused_task=new_unused_task)
+
+
+def _save_data(system: domain.System, unused_task: tasks.UID | None = None) -> None:
+    """Save the system and update the unused task file if necessary."""
+    formatted_task_hierarchy_graph = json.dumps(
+        obj=system.task_system_view().hierarchy_graph_view().task_subtasks_pairs(),
+        default=_encode_task_relationships,
+    )
+    formatted_task_dependency_graph = json.dumps(
+        obj=system.task_system_view().dependency_graph_view().task_dependents_pairs(),
+        default=_encode_task_relationships,
+    )
+    formatted_task_attributes_register = json.dumps(
+        obj=system.task_system_view().attributes_register_view(),
+        default=_encode_task_attributes_register,
+    )
+
+    files_with_text = [
+        (_TASK_HIERARCHY_GRAPH_FILEPATH, formatted_task_hierarchy_graph),
+        (_TASK_DEPENDENCY_GRAPH_FILEPATH, formatted_task_dependency_graph),
+        (_TASK_ATTRIBUTES_REGISTER_FILEPATH, formatted_task_attributes_register),
+    ]
+
+    if unused_task:
+        files_with_text.append((_UNUSED_TASK_FILEPATH, _encode_task_uid(unused_task)))
+
+    _save_file_group_atomically(files_with_text=files_with_text)
 
 
 def _initialise() -> None:
     """Initialise the local file data-layer."""
     _DATA_DIRECTORY_PATH.mkdir()
-    _save_task_system(system_view=SystemView(system=tasks.System.empty()))
-    _TASK_NEXT_UNUSED_UID_FILEPATH.write_text(str(_STARTING_TASK_ID_NUMBER))
+    _save_data(system=domain.System.empty(), unused_task=_FIRST_TASK)
 
 
 def _erase() -> None:
@@ -249,55 +318,16 @@ def _erase() -> None:
     _initialise()
 
 
-def _get_next_unused_task_uid() -> tasks.UID:
-    number = int(_TASK_NEXT_UNUSED_UID_FILEPATH.read_text())
+def _load_unused_task() -> tasks.UID:
+    formatted_number = _UNUSED_TASK_FILEPATH.read_text()
+    number = int(formatted_number)
     return tasks.UID(number)
-
-
-def _increment_next_task_uid_counter() -> None:
-    number = int(_TASK_NEXT_UNUSED_UID_FILEPATH.read_text())
-    number += 1
-    _TASK_NEXT_UNUSED_UID_FILEPATH.write_text(str(number))
-
-
-def _save_system(system: domain.System) -> None:
-    """Save the state of the system."""
-    _save_task_system(system_view=system.task_system_view())
-
-
-def _save_task_attributes_register(register: tasks.AttributesRegisterView) -> None:
-    """Save the task attributes register."""
-    with _TASK_ATTRIBUTES_REGISTER_FILEPATH.open("w") as fp:
-        json.dump(obj=register, fp=fp, default=_encode_task_attributes_register)
 
 
 def _load_task_attributes_register() -> tasks.AttributesRegister:
     """Load the task attributes register."""
     with _TASK_ATTRIBUTES_REGISTER_FILEPATH.open("r") as fp:
         return json.load(fp=fp, object_hook=_decode_task_attributes_register)
-
-
-def _save_task_hierarchy_graph(graph: tasks.IHierarchyGraphView) -> None:
-    """Save the task hierarchy graph."""
-    with _TASK_HIERARCHY_GRAPH_FILEPATH.open("w") as fp:
-        json.dump(
-            obj=graph.task_subtasks_pairs(), fp=fp, default=_encode_task_relationships
-        )
-
-
-def _save_task_dependency_graph(graph: tasks.IDependencyGraphView) -> None:
-    """Save the task dependency graph."""
-    with _TASK_DEPENDENCY_GRAPH_FILEPATH.open("w") as fp:
-        json.dump(
-            obj=graph.task_dependents_pairs(), fp=fp, default=_encode_task_relationships
-        )
-
-
-def _save_task_system(system_view: tasks.SystemView) -> None:
-    """Save the task system."""
-    _save_task_attributes_register(register=system_view.attributes_register_view())
-    _save_task_hierarchy_graph(graph=system_view.hierarchy_graph_view())
-    _save_task_dependency_graph(graph=system_view.dependency_graph_view())
 
 
 def _load_task_system() -> tasks.System:
@@ -336,3 +366,9 @@ def _load_task_dependency_graph() -> tasks.DependencyGraph:
             bidict=graphs.BiDirectionalSetDict(forward=dependency_relationships)
         )
     )
+
+
+def _load_system() -> domain.System:
+    """Load the system."""
+    task_system = _load_task_system()
+    return domain.System(task_system=task_system)
