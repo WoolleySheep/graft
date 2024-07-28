@@ -75,7 +75,7 @@ class DependencyGraph(tk.Frame):
 
                 task = tasks_in_path_order[details["ind"][0]]
 
-                register = self.logic_layer.get_task_attributes_register_view()
+                register = self.logic_layer.get_task_system().attributes_register()
                 attributes = register[task]
 
                 if attributes.name is None:
@@ -101,7 +101,7 @@ class DependencyGraph(tk.Frame):
             )
             annotation.set_visible(False)
 
-            dependency_graph = self.logic_layer.get_task_dependency_graph_view()
+            dependency_graph = self.logic_layer.get_task_system().dependency_graph()
             digraph = graph_conversion.convert_dependency_to_dag(graph=dependency_graph)
             networkx_graph = graph_conversion.convert_simple_digraph_to_nx_digraph(
                 digraph

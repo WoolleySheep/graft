@@ -678,7 +678,6 @@ class InferiorTaskHasImportanceError(Exception):
 class ISystemView(Protocol):
     """Interface for a view of a task system."""
 
-
     def __bool__(self) -> bool:
         """Check if there are any tasks in the system."""
         ...

@@ -75,21 +75,7 @@ class StandardLogicLayer(architecture.LogicLayer):
         self._data_layer.save_system(system=self._system)
 
     @override
-    def get_task_attributes_register_view(self) -> tasks.AttributesRegisterView:
-        """Return a view of the task attributes register."""
-        return self._system.task_system().attributes_register()
-
-    @override
-    def get_task_hierarchy_graph_view(self) -> tasks.HierarchyGraphView:
-        """Return a view of the hierarchy graph."""
-        return self._system.task_system().hierarchy_graph()
-
-    @override
-    def get_task_dependency_graph_view(self) -> tasks.DependencyGraphView:
-        return self._system.task_system().dependency_graph()
-
-    @override
-    def get_task_system_view(self) -> tasks.SystemView:
+    def get_task_system(self) -> tasks.SystemView:
         return self._system.task_system()
 
     @override

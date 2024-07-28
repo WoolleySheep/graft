@@ -14,8 +14,10 @@ def _get_hierarchies_with_names(
     None,
     None,
 ]:
-    attributes_register = logic_layer.get_task_attributes_register_view()
-    for supertask, subtask in logic_layer.get_task_hierarchy_graph_view().hierarchies():
+    attributes_register = logic_layer.get_task_system().attributes_register()
+    for supertask, subtask in (
+        logic_layer.get_task_system().hierarchy_graph().hierarchies()
+    ):
         yield (
             (supertask, attributes_register[supertask].name),
             (subtask, attributes_register[subtask].name),

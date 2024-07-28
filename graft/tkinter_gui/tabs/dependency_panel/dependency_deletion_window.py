@@ -14,11 +14,11 @@ def _get_dependencies_with_names(
     None,
     None,
 ]:
-    attributes_register = logic_layer.get_task_attributes_register_view()
+    attributes_register = logic_layer.get_task_system().attributes_register()
     for (
         dependee_task,
         dependent_task,
-    ) in logic_layer.get_task_dependency_graph_view().dependencies():
+    ) in logic_layer.get_task_system().dependency_graph().dependencies():
         yield (
             (dependee_task, attributes_register[dependee_task].name),
             (dependent_task, attributes_register[dependent_task].name),

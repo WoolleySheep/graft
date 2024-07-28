@@ -942,9 +942,7 @@ def test_create_hierarchy_success_concrete_supertask(
     system_with_hierarchy.add_task_hierarchy(supertask=supertask, subtask=subtask)
 
     assert (
-        system_with_hierarchy.task_system()
-        .attributes_register()[supertask]
-        .progress
+        system_with_hierarchy.task_system().attributes_register()[supertask].progress
         is None
     )
 

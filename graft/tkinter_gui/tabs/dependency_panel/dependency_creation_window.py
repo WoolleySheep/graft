@@ -11,7 +11,7 @@ def _get_task_uids_names(
     logic_layer: architecture.LogicLayer,
 ) -> Generator[tuple[tasks.UID, tasks.Name | None], None, None]:
     """Yield pairs of task UIDs and task names."""
-    for uid, attributes in logic_layer.get_task_attributes_register_view().items():
+    for uid, attributes in logic_layer.get_task_system().attributes_register().items():
         yield uid, attributes.name
 
 

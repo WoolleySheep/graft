@@ -55,20 +55,8 @@ class LogicLayer(abc.ABC):
         """Update the specified task's importance."""
 
     @abc.abstractmethod
-    def get_task_attributes_register_view(self) -> tasks.AttributesRegisterView:
-        """Return the task attributes register."""
-
-    @abc.abstractmethod
-    def get_task_hierarchy_graph_view(self) -> tasks.HierarchyGraphView:
-        """Return the hierarchy graph."""
-
-    @abc.abstractmethod
-    def get_task_dependency_graph_view(self) -> tasks.DependencyGraphView:
-        """Return the dependency graph."""
-
-    @abc.abstractmethod
-    def get_task_system_view(self) -> tasks.SystemView:
-        """Return the task system."""
+    def get_task_system(self) -> tasks.SystemView:
+        """Return a view of the task system."""
 
     @abc.abstractmethod
     def create_task_hierarchy(self, supertask: tasks.UID, subtask: tasks.UID) -> None:

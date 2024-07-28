@@ -77,7 +77,7 @@ class HierarchyGraph(tk.Frame):
 
                 task = tasks_in_path_order[details["ind"][0]]
 
-                register = self.logic_layer.get_task_attributes_register_view()
+                register = self.logic_layer.get_task_system().attributes_register()
                 attributes = register[task]
 
                 if attributes.name is None:
@@ -103,7 +103,7 @@ class HierarchyGraph(tk.Frame):
             )
             annotation.set_visible(False)
 
-            hierarchy_graph = self.logic_layer.get_task_hierarchy_graph_view()
+            hierarchy_graph = self.logic_layer.get_task_system().hierarchy_graph()
             digraph = graph_conversion.convert_hierarchy_to_reduced_dag(
                 graph=hierarchy_graph
             )

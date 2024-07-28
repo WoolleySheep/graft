@@ -11,7 +11,7 @@ def _get_task_uids_names(
     logic_layer: architecture.LogicLayer,
 ) -> Generator[tuple[tasks.UID, tasks.Name | None], None, None]:
     """Yield pairs of task UIDs and task names."""
-    for uid, attributes in logic_layer.get_task_attributes_register_view().items():
+    for uid, attributes in logic_layer.get_task_system().attributes_register().items():
         yield uid, attributes.name
 
 
@@ -71,7 +71,9 @@ class HierarchyCreationWindow(tk.Toplevel):
                 system.add_task(e.task)
                 system.set_name(
                     e.task,
-                    self.logic_layer.get_task_attributes_register_view()[e.task].name,
+                    self.logic_layer.get_task_system()
+                    .attributes_register()[e.task]
+                    .name,
                 )
                 helpers.HierarchyGraphOperationFailedWindow(
                     master=self,
@@ -87,7 +89,9 @@ class HierarchyCreationWindow(tk.Toplevel):
                     system.add_task(task)
                     system.set_name(
                         task,
-                        self.logic_layer.get_task_attributes_register_view()[task].name,
+                        self.logic_layer.get_task_system()
+                        .attributes_register()[task]
+                        .name,
                     )
                 system.add_hierarchy(e.supertask, e.subtask)
                 helpers.HierarchyGraphOperationFailedWindow(
@@ -103,7 +107,9 @@ class HierarchyCreationWindow(tk.Toplevel):
                     system.add_task(task)
                     system.set_name(
                         task,
-                        self.logic_layer.get_task_attributes_register_view()[task].name,
+                        self.logic_layer.get_task_system()
+                        .attributes_register()[task]
+                        .name,
                     )
                 for supertask, subtask in e.connecting_subgraph.hierarchies():
                     system.add_hierarchy(supertask, subtask)
@@ -120,7 +126,9 @@ class HierarchyCreationWindow(tk.Toplevel):
                     system.add_task(task)
                     system.set_name(
                         task,
-                        self.logic_layer.get_task_attributes_register_view()[task].name,
+                        self.logic_layer.get_task_system()
+                        .attributes_register()[task]
+                        .name,
                     )
                 for supertask, subtask in e.connecting_subgraph.hierarchies():
                     system.add_hierarchy(supertask, subtask)

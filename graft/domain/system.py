@@ -27,10 +27,7 @@ class System:
 
     def __eq__(self, other: object) -> bool:
         """Check if two systems are equal."""
-        return (
-            isinstance(other, System)
-            and self.task_system() == other.task_system()
-        )
+        return isinstance(other, System) and self.task_system() == other.task_system()
 
     def task_system(self) -> tasks.SystemView:
         """Return a view of the task system."""

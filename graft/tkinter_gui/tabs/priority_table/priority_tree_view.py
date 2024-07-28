@@ -17,11 +17,13 @@ class PriorityTreeView(ttk.Treeview):
                 self._logic_layer.get_active_concrete_tasks_in_order_of_descending_priority(),
                 start=1,
             ):
-                name = self._logic_layer.get_task_attributes_register_view()[uid].name
-                progress = self._logic_layer.get_task_system_view().get_progress(uid)
+                name = (
+                    self._logic_layer.get_task_system().attributes_register()[uid].name
+                )
+                progress = self._logic_layer.get_task_system().get_progress(uid)
                 formatted_rank = str(rank)
                 formatted_uid = str(uid)
-                formatted_name = str(name) if name is not None else ""
+                formatted_name = str(name)
                 formatted_importance = (
                     importance.value if importance is not None else ""
                 )

@@ -34,9 +34,7 @@ def _get_dag_from_dependency(
     system: tasks.System,
 ) -> graphs.DirectedAcyclicGraph[tasks.UID]:
     """Return a DAG from the system's dependency graph."""
-    return graph_conversion.convert_dependency_to_dag(
-        graph=system.dependency_graph()
-    )
+    return graph_conversion.convert_dependency_to_dag(graph=system.dependency_graph())
 
 
 class GraphType(enum.Enum):

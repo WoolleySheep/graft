@@ -62,15 +62,13 @@ class TaskDetails(tk.Frame):
 
             self.task_id.config(text=str(self.task))
 
-            register = self.logic_layer.get_task_attributes_register_view()
+            register = self.logic_layer.get_task_system().attributes_register()
             attributes = register[self.task]
 
-            self.task_name.set(
-                str(attributes.name) if attributes.name is not None else ""
-            )
+            self.task_name.set(str(attributes.name))
             self.task_name_entry.config(state=tk.NORMAL)
 
-            system: tasks.SystemView = self.logic_layer.get_task_system_view()
+            system: tasks.SystemView = self.logic_layer.get_task_system()
 
             importance = system.get_importance(self.task)
             if importance is None or not isinstance(importance, set):
@@ -88,7 +86,7 @@ class TaskDetails(tk.Frame):
             progress = system.get_progress(self.task)
             self.task_progress.config(text=progress.value)
 
-            if logic_layer.get_task_hierarchy_graph_view().is_concrete(self.task):
+            if logic_layer.get_task_system().hierarchy_graph().is_concrete(self.task):
                 self.decrement_task_progress_button.grid()
                 button_state = (
                     tk.DISABLED if progress is tasks.Progress.NOT_STARTED else tk.NORMAL
@@ -107,13 +105,11 @@ class TaskDetails(tk.Frame):
             self.task_description_scrolled_text.delete(1.0, tk.END)
             self.task_description_scrolled_text.insert(
                 1.0,
-                str(attributes.description)
-                if attributes.description is not None
-                else "",
+                str(attributes.description),
             )
             self.task_description_scrolled_text.config(state=tk.NORMAL)
 
-            hierarchy_graph = self.logic_layer.get_task_hierarchy_graph_view()
+            hierarchy_graph = self.logic_layer.get_task_system().hierarchy_graph()
 
             formatted_subtasks = (
                 f"{subtask}: {register[subtask].name or ""}"
@@ -127,7 +123,7 @@ class TaskDetails(tk.Frame):
             )
             self.supertasks_list.config(text="\n".join(formatted_supertasks))
 
-            dependency_graph = self.logic_layer.get_task_dependency_graph_view()
+            dependency_graph = self.logic_layer.get_task_system().dependency_graph()
 
             formatted_dependee_tasks = (
                 f"{supertask}: {register[supertask].name or ""}"
@@ -167,7 +163,7 @@ class TaskDetails(tk.Frame):
                 return
 
             if isinstance(event, event_broker.SystemModified) and self.task:
-                if self.task not in self.logic_layer.get_task_system_view():
+                if self.task not in self.logic_layer.get_task_system():
                     self.task = None
                     update_no_task(self)
                     return
@@ -177,7 +173,7 @@ class TaskDetails(tk.Frame):
         def increment_progress(self: Self) -> None:
             assert self.task
 
-            current_progress = self.logic_layer.get_task_system_view().get_progress(
+            current_progress = self.logic_layer.get_task_system().get_progress(
                 self.task
             )
             match current_progress:
@@ -200,7 +196,7 @@ class TaskDetails(tk.Frame):
         def decrement_progress(self: Self) -> None:
             assert self.task
 
-            current_progress = self.logic_layer.get_task_system_view().get_progress(
+            current_progress = self.logic_layer.get_task_system().get_progress(
                 self.task
             )
             match current_progress:

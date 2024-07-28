@@ -11,7 +11,7 @@ def _get_task_uids_with_names(
     logic_layer: architecture.LogicLayer,
 ) -> Generator[tuple[tasks.UID, tasks.Name | None], None, None]:
     """Yield pairs of task UIDs and task names."""
-    for uid, attributes in logic_layer.get_task_attributes_register_view().items():
+    for uid, attributes in logic_layer.get_task_system().attributes_register().items():
         yield uid, attributes.name
 
 
@@ -48,13 +48,15 @@ class TaskDeletionWindow(tk.Toplevel):
                 system.add_task(e.task)
                 system.set_name(
                     e.task,
-                    logic_layer.get_task_attributes_register_view()[e.task].name,
+                    logic_layer.get_task_system().attributes_register()[e.task].name,
                 )
                 for supertask in e.supertasks:
                     system.add_task(supertask)
                     system.set_name(
                         supertask,
-                        logic_layer.get_task_attributes_register_view()[supertask].name,
+                        logic_layer.get_task_system()
+                        .attributes_register()[supertask]
+                        .name,
                     )
                     system.add_hierarchy(supertask, e.task)
 
@@ -70,13 +72,15 @@ class TaskDeletionWindow(tk.Toplevel):
                 system.add_task(e.task)
                 system.set_name(
                     e.task,
-                    logic_layer.get_task_attributes_register_view()[e.task].name,
+                    logic_layer.get_task_system().attributes_register()[e.task].name,
                 )
                 for subtask in e.subtasks:
                     system.add_task(subtask)
                     system.set_name(
                         subtask,
-                        logic_layer.get_task_attributes_register_view()[subtask].name,
+                        logic_layer.get_task_system()
+                        .attributes_register()[subtask]
+                        .name,
                     )
                     system.add_hierarchy(e.task, subtask)
 
@@ -91,15 +95,16 @@ class TaskDeletionWindow(tk.Toplevel):
                 system = tasks.System.empty()
                 system.add_task(e.task)
                 system.set_name(
-                    uid, logic_layer.get_task_attributes_register_view()[e.task].name
+                    uid,
+                    logic_layer.get_task_system().attributes_register()[e.task].name,
                 )
                 for dependee_task in e.dependee_tasks:
                     system.add_task(dependee_task)
                     system.set_name(
                         dependee_task,
-                        logic_layer.get_task_attributes_register_view()[
-                            dependee_task
-                        ].name,
+                        logic_layer.get_task_system()
+                        .attributes_register()[dependee_task]
+                        .name,
                     )
                     system.add_dependency(dependee_task, e.task)
 
@@ -115,15 +120,15 @@ class TaskDeletionWindow(tk.Toplevel):
                 system.add_task(e.task)
                 system.set_name(
                     e.task,
-                    logic_layer.get_task_attributes_register_view()[e.task].name,
+                    logic_layer.get_task_system().attributes_register()[e.task].name,
                 )
                 for dependent_task in e.dependent_tasks:
                     system.add_task(dependent_task)
                     system.set_name(
                         dependent_task,
-                        logic_layer.get_task_attributes_register_view()[
-                            dependent_task
-                        ].name,
+                        logic_layer.get_task_system()
+                        .attributes_register()[dependent_task]
+                        .name,
                     )
                     system.add_dependency(e.task, dependent_task)
 

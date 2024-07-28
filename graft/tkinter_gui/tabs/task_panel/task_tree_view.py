@@ -16,7 +16,7 @@ class TaskTreeView(ttk.Treeview):
             for (
                 uid,
                 attributes,
-            ) in self._logic_layer.get_task_attributes_register_view().items():
+            ) in self._logic_layer.get_task_system().attributes_register().items():
                 formatted_uid = str(uid)
                 formatted_name = str(attributes.name)
                 self.insert(
