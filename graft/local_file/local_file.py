@@ -282,15 +282,15 @@ class LocalFileDataLayer(architecture.DataLayer):
 def _save_data(system: domain.System, unused_task: tasks.UID | None = None) -> None:
     """Save the system and update the unused task file if necessary."""
     formatted_task_hierarchy_graph = json.dumps(
-        obj=system.task_system_view().hierarchy_graph_view().task_subtasks_pairs(),
+        obj=system.task_system().hierarchy_graph().task_subtasks_pairs(),
         default=_encode_task_relationships,
     )
     formatted_task_dependency_graph = json.dumps(
-        obj=system.task_system_view().dependency_graph_view().task_dependents_pairs(),
+        obj=system.task_system().dependency_graph().task_dependents_pairs(),
         default=_encode_task_relationships,
     )
     formatted_task_attributes_register = json.dumps(
-        obj=system.task_system_view().attributes_register_view(),
+        obj=system.task_system().attributes_register(),
         default=_encode_task_attributes_register,
     )
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import collections
 import itertools
 from collections.abc import Generator, Iterable, Iterator
-from typing import Any, Self
+from typing import Any, Protocol, Self
 
 from graft.domain.tasks.attributes_register import (
     AttributesRegister,
@@ -675,6 +675,55 @@ class InferiorTaskHasImportanceError(Exception):
         )
 
 
+class ISystemView(Protocol):
+    """Interface for a view of a task system."""
+
+
+    def __bool__(self) -> bool:
+        """Check if there are any tasks in the system."""
+        ...
+
+    def __len__(self) -> int:
+        """Return number of tasks in system."""
+        ...
+
+    def __iter__(self) -> Iterator[UID]:
+        """Return an iterator over the tasks in the system."""
+        ...
+
+    def __contains__(self, task: UID) -> bool:
+        """Check if the specified task exists in the system."""
+        ...
+
+    def attributes_register(self) -> AttributesRegisterView:
+        """Return a view of the attributes register."""
+        ...
+
+    def hierarchy_graph(self) -> HierarchyGraphView:
+        """Return a view of the hierarchy graph."""
+        ...
+
+    def dependency_graph(self) -> DependencyGraphView:
+        """Return a view of the dependency graph."""
+        ...
+
+    def get_progress(self, task: UID, /) -> Progress:
+        """Return the progress of the specified task.
+
+        If it is a concrete tasks, returns its progress. If it is a non-concrete
+        task, returns its inferred progress.
+        """
+        ...
+
+    def get_importance(self, task: UID, /) -> Importance | set[Importance] | None:
+        """Return the importance of the specified task.
+
+        If it has its own importance, return that. If not, return the inferred
+        importance.
+        """
+        ...
+
+
 class System:
     """System of task information."""
 
@@ -703,9 +752,9 @@ class System:
         """Return True if the system is not empty."""
         return bool(self._attributes_register)
 
-    def __contains__(self, key: UID) -> bool:
+    def __contains__(self, task: UID) -> bool:
         """Return True if key is in the task system."""
-        return key in self._attributes_register
+        return task in self._attributes_register
 
     def __len__(self) -> int:
         """Return the number of tasks in the system."""
@@ -719,20 +768,20 @@ class System:
         """Check if two systems are equal."""
         return (
             isinstance(other, System)
-            and self.attributes_register_view() == other.attributes_register_view()
-            and self.hierarchy_graph_view() == other.hierarchy_graph_view()
-            and self.dependency_graph_view() == other.dependency_graph_view()
+            and self.attributes_register() == other.attributes_register()
+            and self.hierarchy_graph() == other.hierarchy_graph()
+            and self.dependency_graph() == other.dependency_graph()
         )
 
-    def attributes_register_view(self) -> AttributesRegisterView:
+    def attributes_register(self) -> AttributesRegisterView:
         """Return a view of the attributes register."""
         return AttributesRegisterView(self._attributes_register)
 
-    def hierarchy_graph_view(self) -> HierarchyGraphView:
+    def hierarchy_graph(self) -> HierarchyGraphView:
         """Return a view of the hierarchy graph."""
         return HierarchyGraphView(self._hierarchy_graph)
 
-    def dependency_graph_view(self) -> DependencyGraphView:
+    def dependency_graph(self) -> DependencyGraphView:
         """Return a view of the dependency graph."""
         return DependencyGraphView(self._dependency_graph)
 
@@ -1853,9 +1902,13 @@ class System:
 class SystemView:
     """View of System."""
 
-    def __init__(self, system: System) -> None:
+    def __init__(self, system: ISystemView) -> None:
         """Initialise SystemView."""
         self._system = system
+
+    def __bool__(self) -> bool:
+        """Check if system has any tasks."""
+        return bool(self._system)
 
     def __len__(self) -> int:
         """Return number of tasks in system."""
@@ -1865,9 +1918,9 @@ class SystemView:
         """Check if system views are equal."""
         return (
             isinstance(other, SystemView)
-            and self.attributes_register_view() == other.attributes_register_view()
-            and self.hierarchy_graph_view() == other.hierarchy_graph_view()
-            and self.dependency_graph_view() == other.dependency_graph_view()
+            and self.attributes_register() == other.attributes_register()
+            and self.hierarchy_graph() == other.hierarchy_graph()
+            and self.dependency_graph() == other.dependency_graph()
         )
 
     def __iter__(self) -> Iterator[UID]:
@@ -1878,17 +1931,17 @@ class SystemView:
         """Check if the specified task exists in the system."""
         return task in self._system
 
-    def attributes_register_view(self) -> AttributesRegisterView:
+    def attributes_register(self) -> AttributesRegisterView:
         """Return a view of the attributes register."""
-        return self._system.attributes_register_view()
+        return self._system.attributes_register()
 
-    def hierarchy_graph_view(self) -> HierarchyGraphView:
+    def hierarchy_graph(self) -> HierarchyGraphView:
         """Return a view of the hierarchy graph."""
-        return self._system.hierarchy_graph_view()
+        return self._system.hierarchy_graph()
 
-    def dependency_graph_view(self) -> DependencyGraphView:
+    def dependency_graph(self) -> DependencyGraphView:
         """Return a view of the dependency graph."""
-        return self._system.dependency_graph_view()
+        return self._system.dependency_graph()
 
     def get_progress(self, task: UID, /) -> Progress:
         """Return the progress of the specified task.

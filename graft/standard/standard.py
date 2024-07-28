@@ -77,20 +77,20 @@ class StandardLogicLayer(architecture.LogicLayer):
     @override
     def get_task_attributes_register_view(self) -> tasks.AttributesRegisterView:
         """Return a view of the task attributes register."""
-        return self._system.task_system_view().attributes_register_view()
+        return self._system.task_system().attributes_register()
 
     @override
     def get_task_hierarchy_graph_view(self) -> tasks.HierarchyGraphView:
         """Return a view of the hierarchy graph."""
-        return self._system.task_system_view().hierarchy_graph_view()
+        return self._system.task_system().hierarchy_graph()
 
     @override
     def get_task_dependency_graph_view(self) -> tasks.DependencyGraphView:
-        return self._system.task_system_view().dependency_graph_view()
+        return self._system.task_system().dependency_graph()
 
     @override
     def get_task_system_view(self) -> tasks.SystemView:
-        return self._system.task_system_view()
+        return self._system.task_system()
 
     @override
     def create_task_hierarchy(self, supertask: tasks.UID, subtask: tasks.UID) -> None:

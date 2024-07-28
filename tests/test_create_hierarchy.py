@@ -934,7 +934,7 @@ def test_create_hierarchy_success_concrete_supertask(
     system.add_task(supertask)
     system.add_task(subtask)
     assert (
-        system.task_system_view().attributes_register_view()[supertask].progress
+        system.task_system().attributes_register()[supertask].progress
         is tasks.Progress.NOT_STARTED
     )
 
@@ -942,8 +942,8 @@ def test_create_hierarchy_success_concrete_supertask(
     system_with_hierarchy.add_task_hierarchy(supertask=supertask, subtask=subtask)
 
     assert (
-        system_with_hierarchy.task_system_view()
-        .attributes_register_view()[supertask]
+        system_with_hierarchy.task_system()
+        .attributes_register()[supertask]
         .progress
         is None
     )

@@ -150,15 +150,15 @@ def test_delete_hierarchy_success_supertask_becomes_concrete(
     system.set_task_progress(subtask, subtask_progress)
 
     assert (
-        system.task_system_view().attributes_register_view()[supertask].progress is None
+        system.task_system().attributes_register()[supertask].progress is None
     )
 
     system_without_hierarchy = copy.deepcopy(system)
     system_without_hierarchy.remove_task_hierarchy(supertask, subtask)
 
     assert (
-        system_without_hierarchy.task_system_view()
-        .attributes_register_view()[supertask]
+        system_without_hierarchy.task_system()
+        .attributes_register()[supertask]
         .progress
         is subtask_progress
     )

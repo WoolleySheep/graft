@@ -26,7 +26,7 @@ def _get_reduced_dag_from_hierarchy(
 ) -> graphs.ReducedDAG[tasks.UID]:
     """Return a reduced DAG from the system's hierarchy."""
     return graph_conversion.convert_hierarchy_to_reduced_dag(
-        graph=system.hierarchy_graph_view()
+        graph=system.hierarchy_graph()
     )
 
 
@@ -35,7 +35,7 @@ def _get_dag_from_dependency(
 ) -> graphs.DirectedAcyclicGraph[tasks.UID]:
     """Return a DAG from the system's dependency graph."""
     return graph_conversion.convert_dependency_to_dag(
-        graph=system.dependency_graph_view()
+        graph=system.dependency_graph()
     )
 
 
@@ -208,6 +208,6 @@ class SystemGraph(tk.Frame, abc.ABC):
                 annotation=annotation,
                 task_path_collection=task_path_collection,
                 tasks_in_path_order=tasks_in_path_order,
-                register=system.attributes_register_view(),
+                register=system.attributes_register(),
             ),
         )
