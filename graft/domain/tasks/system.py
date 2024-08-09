@@ -790,30 +790,31 @@ class System:
         The order of task yielding is neither breadth-first or depth-first - it
         just is what it is.
         """
-        downstream_tasks_to_check = collections.deque[UID]()
-        supertasks_to_check = collections.deque[UID]()
+        downstream_tasks_to_check = collections.deque(
+            self._dependency_graph.dependent_tasks(task)
+        )
+        supertasks_to_check = collections.deque(self._hierarchy_graph.supertasks(task))
 
         visited_downstream_tasks = set[UID]()
         visited_supertasks = set[UID]()
 
-        downstream_tasks_to_check.extend(self._dependency_graph.dependent_tasks(task))
-        supertasks_to_check.extend(self._hierarchy_graph.supertasks(task))
-
         while downstream_tasks_to_check or supertasks_to_check:
             while downstream_tasks_to_check:
-                task2 = downstream_tasks_to_check.popleft()
-                if task2 in visited_downstream_tasks:
+                downstream_task = downstream_tasks_to_check.popleft()
+                if downstream_task in visited_downstream_tasks:
                     continue
-                yield task2
+                yield downstream_task
 
-                visited_downstream_tasks.add(task2)
+                visited_downstream_tasks.add(downstream_task)
                 downstream_tasks_to_check.extend(
                     itertools.chain(
-                        self._dependency_graph.dependent_tasks(task2),
-                        self._hierarchy_graph.subtasks(task2),
+                        self._dependency_graph.dependent_tasks(downstream_task),
+                        self._hierarchy_graph.subtasks(downstream_task),
                     )
                 )
-                supertasks_to_check.extend(self._hierarchy_graph.supertasks(task2))
+                supertasks_to_check.extend(
+                    self._hierarchy_graph.supertasks(downstream_task)
+                )
 
             while supertasks_to_check:
                 supertask = supertasks_to_check.popleft()
@@ -831,14 +832,15 @@ class System:
         The order of task yielding is neither breadth-first or depth-first - it
         just is what it is.
         """
-        upstream_tasks_to_check = collections.deque[UID]()
-        supertasks_to_check = collections.deque[UID]()
+        upstream_tasks_to_check = collections.deque(
+            self._dependency_graph.dependee_tasks(task)
+        )
+        supertasks_to_check = collections.deque[UID](
+            self._hierarchy_graph.supertasks(task)
+        )
 
         visited_upstream_tasks = set[UID]()
         visited_supertasks = set[UID]()
-
-        upstream_tasks_to_check.extend(self._dependency_graph.dependee_tasks(task))
-        supertasks_to_check.extend(self._hierarchy_graph.supertasks(task))
 
         while upstream_tasks_to_check or supertasks_to_check:
             while upstream_tasks_to_check:
@@ -889,121 +891,121 @@ class System:
         of the task, but are required to connect all downstream tasks
         correctly. I'm calling these non-downstream tasks.
         """
-        raise NotImplementedError
+        system = System.empty()
+        system.add_task(task)
 
-        hierarchy_graph = HierarchyGraph()
-        dependency_graph = DependencyGraph()
-
-        hierarchy_graph.add_task(task)
-        dependency_graph.add_task(task)
-
-        downstream_tasks = set[UID]()
+        downstream_tasks = set[UID]([task])
         non_downstream_tasks = set[UID]()
 
-        dependent_tasks_to_check = collections.deque[UID]([task])
-        supertasks_to_check = collections.deque[UID]([task])
-        subtasks_to_check = collections.deque[UID]()
+        tasks_with_dependents_to_check = collections.deque[UID]([task])
+        tasks_with_supertasks_to_check = collections.deque[UID]([task])
+        tasks_with_subtasks_to_check = collections.deque[UID]()
 
-        visited_dependent_tasks = set[UID]()
-        visited_subtasks = set[UID]()
-        visited_supertasks = set[UID]()
+        tasks_with_checked_dependents = set[UID]()
+        tasks_with_checked_subtasks = set[UID]()
+        tasks_with_checked_supertasks = set[UID]()
 
-        while dependent_tasks_to_check or subtasks_to_check or supertasks_to_check:
-            while dependent_tasks_to_check:
-                task2 = dependent_tasks_to_check.popleft()
+        while (
+            tasks_with_dependents_to_check
+            or tasks_with_subtasks_to_check
+            or tasks_with_supertasks_to_check
+        ):
+            while tasks_with_dependents_to_check:
+                task_with_dependents_to_check = tasks_with_dependents_to_check.popleft()
 
-                if task2 in visited_dependent_tasks:
+                if task_with_dependents_to_check in tasks_with_checked_dependents:
                     continue
-                visited_dependent_tasks.add(task2)
+                tasks_with_checked_dependents.add(task_with_dependents_to_check)
 
-                for dependent_task in self._dependency_graph.dependent_tasks(task2):
+                for dependent_task in self._dependency_graph.dependent_tasks(
+                    task_with_dependents_to_check
+                ):
                     downstream_tasks.add(dependent_task)
+                    tasks_with_dependents_to_check.append(dependent_task)
+                    tasks_with_subtasks_to_check.append(dependent_task)
+                    tasks_with_supertasks_to_check.append(dependent_task)
 
-                    dependent_tasks_to_check.append(dependent_task)
-                    subtasks_to_check.append(dependent_task)
-                    supertasks_to_check.append(dependent_task)
+                    if dependent_task not in system:
+                        system.add_task(dependent_task)
+                    system.add_dependency(task_with_dependents_to_check, dependent_task)
 
-                    if dependent_task not in hierarchy_graph:
-                        hierarchy_graph.add_task(dependent_task)
+        while tasks_with_subtasks_to_check:
+            task_with_subtasks_to_check = tasks_with_subtasks_to_check.popleft()
 
-                    if dependent_task not in dependency_graph:
-                        dependency_graph.add_task(dependent_task)
-                        dependency_graph.add_dependency(task2, dependent_task)
+            if task_with_subtasks_to_check in tasks_with_checked_subtasks:
+                continue
+            tasks_with_checked_subtasks.add(task_with_subtasks_to_check)
 
-            while subtasks_to_check:
-                task2 = subtasks_to_check.popleft()
+            for subtask in self._hierarchy_graph.subtasks(task_with_subtasks_to_check):
+                downstream_tasks.add(subtask)
+                tasks_with_dependents_to_check.append(subtask)
+                tasks_with_subtasks_to_check.append(subtask)
+                tasks_with_supertasks_to_check.append(subtask)
 
-                if task2 in visited_subtasks:
-                    continue
-                visited_subtasks.add(task2)
+                if task not in system:
+                    system.add_task(subtask)
+                system.add_hierarchy(task_with_subtasks_to_check, subtask)
 
-                for subtask in self._hierarchy_graph.subtasks(task2):
-                    downstream_tasks.add(subtask)
+        while tasks_with_supertasks_to_check:
+            task_with_supertasks_to_check = tasks_with_supertasks_to_check.popleft()
 
-                    dependent_tasks_to_check.append(subtask)
-                    subtasks_to_check.append(subtask)
-                    supertasks_to_check.append(subtask)
+            if task_with_supertasks_to_check in tasks_with_checked_supertasks:
+                continue
+            tasks_with_checked_supertasks.add(task_with_supertasks_to_check)
 
-                    if subtask not in hierarchy_graph:
-                        hierarchy_graph.add_task(subtask)
-                        hierarchy_graph.add_hierarchy(task2, subtask)
+            for supertask in self._hierarchy_graph.supertasks(
+                task_with_supertasks_to_check
+            ):
+                non_downstream_tasks.add(supertask)
+                tasks_with_dependents_to_check.append(supertask)
+                tasks_with_supertasks_to_check.append(supertask)
 
-                    if subtask not in dependency_graph:
-                        dependency_graph.add_task(subtask)
-
-            while supertasks_to_check:
-                task2 = supertasks_to_check.popleft()
-
-                if task2 in visited_supertasks:
-                    continue
-                visited_supertasks.add(task2)
-
-                for supertask in self._hierarchy_graph.supertasks(task2):
-                    non_downstream_tasks.add(supertask)
-
-                    dependent_tasks_to_check.append(supertask)
-                    supertasks_to_check.append(supertask)
-
-                    if supertask not in hierarchy_graph:
-                        hierarchy_graph.add_task(supertask)
-                        hierarchy_graph.add_hierarchy(supertask, task2)
-
-                    if supertask not in dependency_graph:
-                        dependency_graph.add_task(supertask)
+                if supertask not in system:
+                    system.add_task(supertask)
+                system.add_hierarchy(supertask, task_with_supertasks_to_check)
 
         # Trim off any tasks that don't have dependee/dependent tasks, nor a
         # superior task with dependee/dependent tasks. These aren't part of the
         # subsystem
-        tasks_to_check = collections.deque(hierarchy_graph.top_level_tasks())
+        tasks_to_check = collections.deque(system.hierarchy_graph().top_level_tasks())
         visited_tasks = set[UID]()
         while tasks_to_check:
-            task2 = tasks_to_check.popleft()
+            task_with_dependencies_to_check = tasks_to_check.popleft()
 
-            if task2 in visited_tasks:
+            if task_with_dependencies_to_check in visited_tasks:
                 continue
-            visited_tasks.add(task2)
+            visited_tasks.add(task_with_dependencies_to_check)
 
-            if not dependency_graph.is_isolated(task2):
+            if not system.dependency_graph().is_isolated(
+                task_with_dependencies_to_check
+            ):
                 continue
 
-            non_downstream_tasks.remove(task2)
-            tasks_to_check.extend(hierarchy_graph.subtasks(task2))
-            hierarchy_graph.remove_task(task2)
-            dependency_graph.remove_task(task2)
+            non_downstream_tasks.remove(task_with_dependencies_to_check)
 
-        # Create a new attributes register with only tasks in the subsystem
-        register = AttributesRegister()
-        for task in hierarchy_graph:
+            hierarchies_to_remove = list[tuple[UID, UID]]()
+            for subtask in system.hierarchy_graph().subtasks(
+                task_with_dependencies_to_check
+            ):
+                tasks_to_check.append(subtask)
+                hierarchies_to_remove.append((task_with_dependencies_to_check, subtask))
+
+            for supertask, subtask in hierarchies_to_remove:
+                system.remove_hierarchy(supertask, subtask)
+            system.remove_task(task_with_dependencies_to_check)
+
+        # Set basic task attributes
+        for task in system:
             attributes = self._attributes_register[task]
-            register.add(task)
-            register.set_name(task, attributes.name)
-            register.set_description(task, attributes.description)
+            system.set_name(task, attributes.name)
+            system.set_description(task, attributes.description)
 
-        # Get all the tasks that are in the system, but aren't actually
-        # downstream of task
+        # For now, don't try and pass along any of the more complex
+        # relational attributes like along progress or importance
+
         non_downstream_tasks.difference_update(downstream_tasks)
 
-        return System(register, hierarchy_graph, dependency_graph), non_downstream_tasks
+        return system, non_downstream_tasks
 
     def upstream_subsystem(self, task: UID, /) -> tuple[System, set[UID]]:
         """Return sub-system of all upstream tasks of task.

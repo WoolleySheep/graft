@@ -276,6 +276,30 @@ class IDependencyGraphView(Protocol):
         """Return generator over task-dependents pairs."""
         ...
 
+    def is_first(self, task: UID, /) -> bool:
+        """Check if task has no dependees."""
+        ...
+
+    def first_tasks(self) -> Generator[UID, None, None]:
+        """Return generator of first tasks."""
+        ...
+
+    def is_last(self, task: UID, /) -> bool:
+        """Check if task has no dependents."""
+        ...
+
+    def last_tasks(self) -> Generator[UID, None, None]:
+        """Return generator of last tasks."""
+        ...
+
+    def is_isolated(self, task: UID, /) -> bool:
+        """Check if task has no dependents nor dependees."""
+        ...
+
+    def isolated_tasks(self) -> Generator[UID, None, None]:
+        """Return generator of isolated tasks."""
+        ...
+
 
 class DependencyGraph:
     """Graph of task dependencies.
@@ -547,3 +571,27 @@ class DependencyGraphView:
     def task_dependents_pairs(self) -> Generator[tuple[UID, UIDsView], None, None]:
         """Return generator over task-dependents pairs."""
         return self._graph.task_dependents_pairs()
+
+    def is_first(self, task: UID, /) -> bool:
+        """Check if task has no dependees."""
+        return self._graph.is_first(task)
+
+    def first_tasks(self) -> Generator[UID, None, None]:
+        """Return generator of first tasks."""
+        return self._graph.first_tasks()
+
+    def is_last(self, task: UID, /) -> bool:
+        """Check if task has no dependents."""
+        return self._graph.is_last(task)
+
+    def last_tasks(self) -> Generator[UID, None, None]:
+        """Return generator of last tasks."""
+        return self._graph.last_tasks()
+
+    def is_isolated(self, task: UID, /) -> bool:
+        """Check if task has no dependents nor dependees."""
+        return self._graph.is_isolated(task)
+
+    def isolated_tasks(self) -> Generator[UID, None, None]:
+        """Return generator of isolated tasks."""
+        return self._graph.isolated_tasks()

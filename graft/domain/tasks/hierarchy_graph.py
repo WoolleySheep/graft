@@ -307,6 +307,10 @@ class IHierarchyGraphView(Protocol):
         """Check if task is concrete."""
         ...
 
+    def top_level_tasks(self) -> Generator[UID, None, None]:
+        """Return generator over top-level tasks."""
+        ...
+
 
 class HierarchyGraph:
     """Graph of task hierarchies.
@@ -618,3 +622,7 @@ class HierarchyGraphView:
     def is_concrete(self, task: UID) -> bool:
         """Check if task is concrete."""
         return self._graph.is_concrete(task)
+
+    def top_level_tasks(self) -> Generator[UID, None, None]:
+        """Return generator over top-level tasks."""
+        return self._graph.top_level_tasks()
