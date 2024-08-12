@@ -19,6 +19,9 @@ TODO
 ### Launch poetry environment
 ```poetry shell```
 
+### Update dependencies
+```poetry update```
+
 ### Format
 ```
 ruff format graft tests
