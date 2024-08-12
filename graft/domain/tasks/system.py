@@ -7,6 +7,7 @@ import itertools
 from collections.abc import Generator, Iterable, Iterator
 from typing import Any, Protocol, Self
 
+from graft.domain import tasks
 from graft.domain.tasks.attributes_register import (
     AttributesRegister,
     AttributesRegisterView,
@@ -675,6 +676,21 @@ class InferiorTaskHasImportanceError(Exception):
         )
 
 
+class TasksGroupedByConcreteness:
+    def __init__(self) -> None:
+        """Initialise TasksGroupedByConcreteness."""
+        self.concrete_tasks = list[tasks.UID]()
+        self.non_concrete_tasks = list[tasks.UID]()
+
+
+class TasksGroupedByProgressAndConcreteness:
+    def __init__(self) -> None:
+        """Initialise TasksGroupedByProgress."""
+        self.not_started_tasks = TasksGroupedByConcreteness()
+        self.in_progress_tasks = TasksGroupedByConcreteness()
+        self.completed_tasks = TasksGroupedByConcreteness()
+
+
 class ISystemView(Protocol):
     """Interface for a view of a task system."""
 
@@ -1178,6 +1194,10 @@ class System:
             upstream_task in inferior_tasks_of_source
             for upstream_task in self._upstream_tasks(target_task)
         )
+
+    def _is_concrete(self, task: UID, /) -> bool:
+        """Check if the task is concrete."""
+        return self._hierarchy_graph.is_concrete(task)
 
     def add_task(self, task: UID, /) -> None:
         """Add a task."""
@@ -1849,6 +1869,7 @@ class System:
                 if not isinstance(other, PriorityScoreCard):
                     raise NotImplementedError
 
+                # TODO: Surely this can be changed into one combined inequality
                 if not self.highest_importance:
                     return False
 
@@ -1898,6 +1919,29 @@ class System:
             reverse=True,
         ):
             yield (task, score_card.highest_importance)
+
+    def get_tasks_grouped_by_progress_and_concreteness(
+        self,
+    ) -> TasksGroupedByProgressAndConcreteness:
+        task_groups = TasksGroupedByProgressAndConcreteness()
+        for task in self:
+            match self.get_progress(task):
+                case Progress.NOT_STARTED:
+                    tasks_grouped_by_concreteness = task_groups.not_started_tasks
+                case Progress.IN_PROGRESS:
+                    tasks_grouped_by_concreteness = task_groups.in_progress_tasks
+                case Progress.COMPLETED:
+                    tasks_grouped_by_concreteness = task_groups.completed_tasks
+
+            task_group = (
+                tasks_grouped_by_concreteness.concrete_tasks
+                if self._is_concrete(task)
+                else tasks_grouped_by_concreteness.non_concrete_tasks
+            )
+
+            task_group.append(task)
+
+        return task_groups
 
 
 class SystemView:
