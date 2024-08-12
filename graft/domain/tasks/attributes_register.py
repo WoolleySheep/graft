@@ -85,9 +85,7 @@ class AttributesRegister(Mapping[UID, AttributesView]):
         if task in self:
             raise TaskAlreadyExistsError(task=task)
 
-        self._task_to_attributes_map[task] = Attributes(
-            name=Name(), description=Description()
-        )
+        self._task_to_attributes_map[task] = Attributes()
 
     def remove(self, /, task: UID) -> None:
         """Remove an existing task."""
@@ -101,28 +99,36 @@ class AttributesRegister(Mapping[UID, AttributesView]):
         if task not in self:
             raise TaskDoesNotExistError(task=task)
 
-        self._task_to_attributes_map[task].name = name
+        self._task_to_attributes_map[task] = self._task_to_attributes_map[task].copy(
+            name=name
+        )
 
     def set_description(self, task: UID, description: Description) -> None:
         """Set description of an existing task."""
         if task not in self:
             raise TaskDoesNotExistError(task=task)
 
-        self._task_to_attributes_map[task].description = description
+        self._task_to_attributes_map[task] = self._task_to_attributes_map[task].copy(
+            description=description
+        )
 
     def set_progress(self, task: UID, progress: Progress | None = None) -> None:
         """Set progress of an existing task."""
         if task not in self:
             raise TaskDoesNotExistError(task=task)
 
-        self._task_to_attributes_map[task].progress = progress
+        self._task_to_attributes_map[task] = self._task_to_attributes_map[task].copy(
+            progress=progress
+        )
 
     def set_importance(self, task: UID, importance: Importance | None = None) -> None:
         """Set importance of an existing task."""
         if task not in self:
             raise TaskDoesNotExistError(task=task)
 
-        self._task_to_attributes_map[task].importance = importance
+        self._task_to_attributes_map[task] = self._task_to_attributes_map[task].copy(
+            importance=importance
+        )
 
 
 class AttributesRegisterView(Mapping[UID, AttributesView]):
