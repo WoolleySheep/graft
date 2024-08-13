@@ -440,7 +440,8 @@ class SimpleDiGraph[T: Hashable]:
         descendants_subgraph_multi to faciliate easy subclassing. Be aware
         that if an exception is raised, the graph may be partially populated.
         """
-        for node in nodes:
+        nodes1, nodes2 = itertools.tee(nodes, 2)
+        for node in nodes1:
             if node not in self:
                 raise NodeDoesNotExistError(node=node)
             if node in graph:
@@ -448,11 +449,13 @@ class SimpleDiGraph[T: Hashable]:
             graph.add_node(node)
 
         visited = set[T]()
-        queue = collections.deque[T](graph)
+        queue = collections.deque[T](nodes2)
 
         while queue:
             node2 = queue.popleft()
-            if node2 in visited or (stop_condition and stop_condition(node2)):
+            if node2 in visited:
+                continue
+            if stop_condition and stop_condition(node2):
                 continue
             visited.add(node2)
             for successor in self.successors(node2):
@@ -535,7 +538,8 @@ class SimpleDiGraph[T: Hashable]:
         ancestors_subgraph_multi to faciliate easy subclassing. Be aware
         that if an exception is raised, the graph may be partially populated.
         """
-        for node in nodes:
+        nodes1, nodes2 = itertools.tee(nodes, 2)
+        for node in nodes1:
             if node not in self:
                 raise NodeDoesNotExistError(node=node)
             if node in graph:
@@ -543,13 +547,15 @@ class SimpleDiGraph[T: Hashable]:
             graph.add_node(node)
 
         visited = set[T]()
-        queue = collections.deque[T](graph)
+        queue = collections.deque[T](nodes2)
 
         while queue:
             node2 = queue.popleft()
-            if node2 in visited or (stop_condition and stop_condition(node2)):
+            if node2 in visited:
                 continue
             visited.add(node2)
+            if stop_condition and stop_condition(node2):
+                continue
             for predecessor in self.predecessors(node2):
                 if predecessor not in graph:
                     graph.add_node(predecessor)

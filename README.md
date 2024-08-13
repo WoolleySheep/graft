@@ -10,17 +10,25 @@ Graft seeks to solve the two problems I run into when deciding what to work on:
 TODO
 
 ## How to run GUI app
-```python main.py```
+```
+python main.py
+```
 
 ## For developers
 ### Install developer dependencies
-```poetry install```
+```
+poetry install
+```
 
 ### Launch poetry environment
-```poetry shell```
+```
+poetry shell
+```
 
 ### Update dependencies
-```poetry update```
+```
+poetry update
+```
 
 ### Format
 ```
@@ -42,8 +50,12 @@ autoflake -r graft tests
 ```
 
 ### Run tests
-```pytest tests```
+```
+pytest tests
+```
 ### Generate & view code coverage report
-```pytest tests --cov-report html --cov=graft```
+```
+pytest tests --cov-report html --cov=graft
+```
 
 Open htmlcov/index.html in a browser to view the report
