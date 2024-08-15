@@ -71,22 +71,23 @@ class TaskDetails(tk.Frame):
             system: tasks.SystemView = self.logic_layer.get_task_system()
 
             importance = system.get_importance(self.task)
-            if importance is None or not isinstance(importance, set):
-                self.inferred_task_importance.grid_remove()
-                self.selected_importance.set(importance.value if importance else "")
-                self.task_importance_option_menu.grid()
-            else:
+            if system.has_inferred_importance(self.task):
+                # If we can infer an importance, it will by definition not be None
+                assert importance is not None
                 self.task_importance_option_menu.grid_remove()
-                formatted_importance = " | ".join(
-                    level.value for level in sorted(importance)
-                )
+                formatted_importance = importance.value
                 self.inferred_task_importance.config(text=formatted_importance)
                 self.inferred_task_importance.grid()
+            else:
+                self.inferred_task_importance.grid_remove()
+                formatted_importance = importance.value if importance else ""
+                self.selected_importance.set(formatted_importance)
+                self.task_importance_option_menu.grid()
 
             progress = system.get_progress(self.task)
             self.task_progress.config(text=progress.value)
 
-            if logic_layer.get_task_system().hierarchy_graph().is_concrete(self.task):
+            if system.hierarchy_graph().is_concrete(self.task):
                 self.decrement_task_progress_button.grid()
                 button_state = (
                     tk.DISABLED if progress is tasks.Progress.NOT_STARTED else tk.NORMAL
@@ -109,7 +110,7 @@ class TaskDetails(tk.Frame):
             )
             self.task_description_scrolled_text.config(state=tk.NORMAL)
 
-            hierarchy_graph = self.logic_layer.get_task_system().hierarchy_graph()
+            hierarchy_graph = system.hierarchy_graph()
 
             formatted_subtasks = (
                 f"{subtask}: {register[subtask].name or ""}"
@@ -249,8 +250,9 @@ class TaskDetails(tk.Frame):
         self.inferred_task_importance = ttk.Label(self)
         self.selected_importance = tk.StringVar(self)
         importance_menu_options = itertools.chain(
-            [""], (level.value for level in tasks.Importance)
+            (level.value for level in sorted(tasks.Importance, reverse=True)), [""]
         )
+
         self.task_importance_option_menu = ttk.OptionMenu(
             self,
             self.selected_importance,

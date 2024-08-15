@@ -730,11 +730,19 @@ class ISystemView(Protocol):
         """
         ...
 
-    def get_importance(self, task: UID, /) -> Importance | set[Importance] | None:
+    def get_importance(self, task: UID, /) -> Importance | None:
         """Return the importance of the specified task.
 
         If it has its own importance, return that. If not, return the inferred
-        importance.
+        importance. The inferred importance is the highest importance of its
+        super-tasks. If it also has no inferred importance, return None.
+        """
+        ...
+
+    def has_inferred_importance(self, task: UID, /) -> bool:
+        """Return whether the specified task has an inferred importance.
+
+        Inferred importance is the highest importance of its supertasks.
         """
         ...
 
@@ -1731,46 +1739,66 @@ class System:
         assert progress is not None
         return progress
 
-    def get_importance(self, task: UID, /) -> Importance | set[Importance] | None:
+    def has_inferred_importance(self, task: UID, /) -> bool:
+        """Return whether the specified task has an inferred importance.
+
+        Inferred importance is the highest importance of its supertasks.
+        """
+        return self._attributes_register[task].importance is None and any(
+            self._attributes_register[superior_task].importance is not None
+            for superior_task in self._hierarchy_graph.superior_tasks_bfs(task)
+        )
+
+    def get_importance(self, task: UID, /) -> Importance | None:
         """Return the importance of the specified task.
 
         If it has its own importance, return that. If not, return the inferred
-        importance.
+        importance. The inferred importance is the highest importance of its
+        super-tasks. If it also has no inferred importance, return None.
         """
-        if (importance := self._attributes_register[task].importance) is not None:
-            return importance
+        return next(self.get_importance_multi([task]))
 
-        return self._get_inferred_importance(task)
+    def get_importance_multi(
+        self, tasks: Iterable[UID], /
+    ) -> Generator[Importance | None, None, None]:
+        """Return the importances of the specified tasks.
 
-    def _get_inferred_importance(self, task: UID, /) -> set[Importance] | None:
-        """Return the inferred importance of the specified task with no importance.
-
-        If the task has one or more superior tasks with importances, then
-        they'll be returned as part of a set.
+        If it has its own importance, return that. If not, return the inferred
+        importance. The inferred importance is the highest importance of a
+        task's super-tasks. If it also has no inferred importance, return None.
         """
-        assert self._attributes_register[task].importance is None
 
-        importances = set[Importance]()
-        visited = set[UID]()
-        queue = collections.deque[UID](self._hierarchy_graph.supertasks(task))
-        all_importance_levels = set(Importance)
-        # if we've found every possible importance level, no need to keep searching
-        while queue and importances != all_importance_levels:
-            superior_task = queue.popleft()
-            if superior_task in visited:
-                continue
-            visited.add(superior_task)
+        def get_importance_recursive(
+            task: UID, task_importance_map: dict[UID, Importance | None]
+        ) -> Importance | None:
+            if (importance := self._attributes_register[task].importance) is not None:
+                return importance
 
-            if (
-                importance := self._attributes_register[superior_task].importance
-            ) is not None:
-                importances.add(importance)
-                # Don't go any further along this branch, as there'll be no more importances
-                continue
+            if task in task_importance_map:
+                return task_importance_map[task]
 
-            queue.extend(self._hierarchy_graph.supertasks(superior_task))
+            # Get inferred importance
+            highest_importance = None
+            for supertask in self._hierarchy_graph.supertasks(task):
+                supertask_importance = get_importance_recursive(
+                    supertask, task_importance_map
+                )
+                if supertask_importance is None:
+                    continue
+                if (
+                    highest_importance is None
+                    or supertask_importance > highest_importance
+                ):
+                    highest_importance = supertask_importance
+                if highest_importance is Importance.HIGH:
+                    break
 
-        return importances or None
+            task_importance_map[task] = highest_importance
+            return highest_importance
+
+        task_importance_map = dict[UID, Importance | None]()
+        for task in tasks:
+            yield get_importance_recursive(task, task_importance_map)
 
     def _is_active(self, task: UID, /) -> bool:
         """Return whether the specified task is active."""
@@ -1797,8 +1825,6 @@ class System:
         )
         for task in tasks:
             importance = self.get_importance(task)
-            if isinstance(importance, set):
-                importance = max(importance)
             importance_tasks_map[importance].append(task)
 
         return importance_tasks_map
@@ -1807,6 +1833,7 @@ class System:
         self,
     ) -> Generator[set[UID], None, None]:
         """Return the incomplete concrete tasks in order of ascending importance."""
+        # TODO: Work out if this is actually used anywhere
         no_priority_tasks = set[UID]()
         importance_tasks_map = collections.defaultdict[Importance, set[UID]](set)
 
@@ -1817,8 +1844,6 @@ class System:
             if importance is None:
                 no_priority_tasks.add(task)
                 continue
-            if isinstance(importance, set):
-                importance = max(importance)
             importance_tasks_map[importance].add(task)
 
         for tasks in itertools.chain(
@@ -1996,10 +2021,18 @@ class SystemView:
         """
         return self._system.get_progress(task)
 
-    def get_importance(self, task: UID, /) -> Importance | set[Importance] | None:
+    def get_importance(self, task: UID, /) -> Importance | None:
         """Return the importance of the specified task.
 
         If it has its own importance, return that. If not, return the inferred
-        importance.
+        importance. The inferred importance is the highest importance of its
+        super-tasks. If it also has no inferred importance, return None.
         """
         return self._system.get_importance(task)
+
+    def has_inferred_importance(self, task: UID, /) -> bool:
+        """Return whether the specified task has an inferred importance.
+
+        Inferred importance is the highest importance of its supertasks.
+        """
+        return self._system.has_inferred_importance(task)
