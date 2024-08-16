@@ -86,9 +86,3 @@ class LogicLayer(abc.ABC):
 
         Tasks are paired with the maximum importance of downstream tasks.
         """
-
-    @abc.abstractmethod
-    def get_tasks_grouped_by_progress_and_concreteness(
-        self,
-    ) -> tasks.TasksGroupedByProgressAndConcreteness:
-        """Return the tasks grouped by progress and concreteness."""

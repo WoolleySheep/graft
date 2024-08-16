@@ -9,9 +9,9 @@ from graft.tkinter_gui import event_broker
 from graft.tkinter_gui.helpers import TaskTable
 
 
-class TaskStatus(enum.Enum):
-    INFERRED = "Inferred"
-    EXPLICIT = "Explicit"
+class ImportanceType(enum.Enum):
+    INFERRED = "inferred"
+    EXPLICIT = "explicit"
 
 
 class ImportanceBoard(tk.Frame):
@@ -60,11 +60,11 @@ class ImportanceBoard(tk.Frame):
 
         self._update_tasks()
 
-    def _get_status(self, task: tasks.UID) -> TaskStatus:
+    def _get_importance_type(self, task: tasks.UID) -> ImportanceType:
         return (
-            TaskStatus.INFERRED
+            ImportanceType.INFERRED
             if self._logic_layer.get_task_system().has_inferred_importance(task)
-            else TaskStatus.EXPLICIT
+            else ImportanceType.EXPLICIT
         )
 
     def _update_tasks(self) -> None:
@@ -73,28 +73,28 @@ class ImportanceBoard(tk.Frame):
             tasks: list[tasks.UID]
             table: TaskTable
 
-        importance_status_tasks_map = {
+        importance_type_tasks_map = {
             Importance.HIGH: {
-                TaskStatus.INFERRED: TasksAndTable(
+                ImportanceType.INFERRED: TasksAndTable(
                     list[tasks.UID](), self._high_importance_inferred_tasks
                 ),
-                TaskStatus.EXPLICIT: TasksAndTable(
+                ImportanceType.EXPLICIT: TasksAndTable(
                     list[tasks.UID](), self._high_importance_explicit_tasks
                 ),
             },
             Importance.MEDIUM: {
-                TaskStatus.INFERRED: TasksAndTable(
+                ImportanceType.INFERRED: TasksAndTable(
                     list[tasks.UID](), self._medium_importance_inferred_tasks
                 ),
-                TaskStatus.EXPLICIT: TasksAndTable(
+                ImportanceType.EXPLICIT: TasksAndTable(
                     list[tasks.UID](), self._medium_importance_explicit_tasks
                 ),
             },
             Importance.LOW: {
-                TaskStatus.INFERRED: TasksAndTable(
+                ImportanceType.INFERRED: TasksAndTable(
                     list[tasks.UID](), self._low_importance_inferred_tasks
                 ),
-                TaskStatus.EXPLICIT: TasksAndTable(
+                ImportanceType.EXPLICIT: TasksAndTable(
                     list[tasks.UID](), self._low_importance_explicit_tasks
                 ),
             },
@@ -106,13 +106,13 @@ class ImportanceBoard(tk.Frame):
                 task
             ):
                 case Importance.HIGH | Importance.MEDIUM | Importance.LOW:
-                    importance_status_tasks_map[importance][
-                        self._get_status(task)
+                    importance_type_tasks_map[importance][
+                        self._get_importance_type(task)
                     ].tasks.append(task)
                 case None:
                     tasks_no_importance.append(task)
 
-        for status_tasks_map in importance_status_tasks_map.values():
+        for status_tasks_map in importance_type_tasks_map.values():
             for container in status_tasks_map.values():
                 tasks_with_names = (
                     (

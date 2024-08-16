@@ -69,8 +69,6 @@ from graft.domain.tasks.system import (
     SupertaskHasImportanceError,
     System,
     SystemView,
-    TasksGroupedByConcreteness,
-    TasksGroupedByProgressAndConcreteness,
 )
 from graft.domain.tasks.uid import (
     UID,

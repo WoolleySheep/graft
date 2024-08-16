@@ -119,10 +119,3 @@ class StandardLogicLayer(architecture.LogicLayer):
         Tasks are paired with the maximum importance of downstream tasks.
         """
         return self._system.get_active_concrete_tasks_in_order_of_descending_priority()
-
-    @override
-    def get_tasks_grouped_by_progress_and_concreteness(
-        self,
-    ) -> tasks.TasksGroupedByProgressAndConcreteness:
-        """Return the tasks grouped by progress and concreteness."""
-        return self._system.get_tasks_grouped_by_progress_and_concreteness()

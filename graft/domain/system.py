@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import Generator
 
 from graft.domain import tasks
-from graft.domain.tasks.system import TasksGroupedByProgressAndConcreteness
 
 
 class System:
@@ -94,8 +93,3 @@ class System:
         Tasks are paired with the maximum importance of downstream tasks.
         """
         return self._task_system.get_active_concrete_tasks_in_order_of_descending_priority()
-
-    def get_tasks_grouped_by_progress_and_concreteness(
-        self,
-    ) -> TasksGroupedByProgressAndConcreteness:
-        return self._task_system.get_tasks_grouped_by_progress_and_concreteness()
