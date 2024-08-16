@@ -1,1 +1,0 @@
-from graft.tkinter_gui.tabs.progress_board.progress_board import ProgressBoard

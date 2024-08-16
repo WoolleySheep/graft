@@ -1,8 +1,6 @@
-import functools
 import tkinter as tk
 from collections.abc import Iterable
 from tkinter import ttk
-from typing import Self
 
 from graft.domain import tasks
 from graft.tkinter_gui import event_broker
@@ -10,17 +8,6 @@ from graft.tkinter_gui import event_broker
 
 class TaskTreeView(ttk.Treeview):
     def __init__(self, master: tk.Misc) -> None:
-        def publish_task_selected_event(_, self: Self) -> None:
-            item_id = self.focus()
-
-            if not item_id:
-                return
-
-            task = tasks.UID(int(self.item(item_id, "values")[0]))
-            broker = event_broker.get_singleton()
-
-            broker.publish(event_broker.TaskSelected(task))
-
         super().__init__(master, columns=("id", "name"), show="headings")
 
         self.heading("id", text="ID")
@@ -28,10 +15,17 @@ class TaskTreeView(ttk.Treeview):
 
         self.column("id", width=40)
 
-        self.bind(
-            "<<TreeviewSelect>>",
-            functools.partial(publish_task_selected_event, self=self),
-        )
+        self.bind("<<TreeviewSelect>>", lambda _: self._publish_selected_task_event())
+
+    def _publish_selected_task_event(self) -> None:
+        item_id = self.focus()
+
+        if not item_id:
+            return
+
+        task = tasks.UID(int(self.item(item_id, "values")[0]))
+        broker = event_broker.get_singleton()
+        broker.publish(event_broker.TaskSelected(task))
 
     def update_tasks(self, task_group: Iterable[tuple[tasks.UID, tasks.Name]]) -> None:
         """Update the tasks displayed."""

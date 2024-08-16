@@ -2,7 +2,7 @@ import tkinter as tk
 
 from graft import architecture
 from graft.tkinter_gui import event_broker
-from graft.tkinter_gui.tabs.progress_board.task_table import TaskTable
+from graft.tkinter_gui.helpers import TaskTable
 
 
 class ProgressBoard(tk.Frame):

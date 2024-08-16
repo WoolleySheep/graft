@@ -3,7 +3,7 @@ from collections.abc import Iterable
 from tkinter import ttk
 
 from graft.domain import tasks
-from graft.tkinter_gui.tabs.progress_board.task_tree_view import TaskTreeView
+from graft.tkinter_gui.helpers.task_table.task_tree_view import TaskTreeView
 
 
 class TaskTable(tk.Frame):
