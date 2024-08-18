@@ -7,13 +7,22 @@ from graft.tkinter_gui import event_broker
 
 
 class TaskTreeView(ttk.Treeview):
-    def __init__(self, master: tk.Misc) -> None:
-        super().__init__(master, columns=("id", "name"), show="headings")
+    def __init__(
+        self,
+        master: tk.Misc,
+        id_column_width_chars: int,
+        name_column_width_chars: int,
+        height_rows: int,
+    ) -> None:
+        super().__init__(
+            master, columns=("id", "name"), show="headings", height=height_rows
+        )
 
         self.heading("id", text="ID")
         self.heading("name", text="Name")
 
-        self.column("id", width=40)
+        self.column("id", width=id_column_width_chars)
+        self.column("name", width=name_column_width_chars)
 
         self.bind("<<TreeviewSelect>>", lambda _: self._publish_selected_task_event())
 

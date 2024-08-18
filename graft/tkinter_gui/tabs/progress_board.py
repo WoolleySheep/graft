@@ -8,6 +8,19 @@ from graft.domain.tasks.progress import Progress
 from graft.tkinter_gui import event_broker
 from graft.tkinter_gui.helpers import TaskTable
 
+_TASK_TABLES_ID_COLUMN_WIDTH_CHARS = 5
+_TASK_TABLES_NAME_COLUMN_WIDTH_CHARS = 10
+_TASK_TABLES_HEIGHT_ROWS = 5
+
+
+def _create_task_table(master: tk.Misc) -> TaskTable:
+    return TaskTable(
+        master=master,
+        id_column_width_chars=_TASK_TABLES_ID_COLUMN_WIDTH_CHARS,
+        name_column_width_chars=_TASK_TABLES_NAME_COLUMN_WIDTH_CHARS,
+        height_rows=_TASK_TABLES_HEIGHT_ROWS,
+    )
+
 
 class ProgressType(enum.Enum):
     INFERRED = "Inferred"
@@ -23,16 +36,16 @@ class ProgressBoard(tk.Frame):
         self._inferred_header = tk.Label(self, text="Inferred")
 
         self._not_started_header = tk.Label(self, text="Not Started")
-        self._not_started_inferred_tasks = TaskTable(self)
-        self._not_started_explicit_tasks = TaskTable(self)
+        self._not_started_inferred_tasks = _create_task_table(self)
+        self._not_started_explicit_tasks = _create_task_table(self)
 
         self._in_progress_header = tk.Label(self, text="In Progress")
-        self._in_progress_inferred_tasks = TaskTable(self)
-        self._in_progress_explicit_tasks = TaskTable(self)
+        self._in_progress_inferred_tasks = _create_task_table(self)
+        self._in_progress_explicit_tasks = _create_task_table(self)
 
         self._completed_header = tk.Label(self, text="Completed")
-        self._completed_inferred_tasks = TaskTable(self)
-        self._completed_explicit_tasks = TaskTable(self)
+        self._completed_inferred_tasks = _create_task_table(self)
+        self._completed_explicit_tasks = _create_task_table(self)
 
         self._inferred_header.grid(row=1, column=0)
         self._explicit_header.grid(row=2, column=0)

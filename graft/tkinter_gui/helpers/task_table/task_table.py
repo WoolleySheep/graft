@@ -7,9 +7,20 @@ from graft.tkinter_gui.helpers.task_table.task_tree_view import TaskTreeView
 
 
 class TaskTable(tk.Frame):
-    def __init__(self, master: tk.Misc) -> None:
+    def __init__(
+        self,
+        master: tk.Misc,
+        id_column_width_chars: int,
+        name_column_width_chars: int,
+        height_rows: int,
+    ) -> None:
         super().__init__(master)
-        self._task_tree_view = TaskTreeView(self)
+        self._task_tree_view = TaskTreeView(
+            self,
+            id_column_width_chars=id_column_width_chars,
+            name_column_width_chars=name_column_width_chars,
+            height_rows=height_rows,
+        )
 
         # Create a Scrollbar
         self._scrollbar = ttk.Scrollbar(

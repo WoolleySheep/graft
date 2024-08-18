@@ -7,9 +7,43 @@ from typing import Any, Literal, ParamSpec, Self
 
 from graft.architecture.logic import LogicLayer
 from graft.domain import tasks
+from graft.domain.tasks.progress import Progress
 from graft.tkinter_gui import event_broker, helpers
 
+_NEIGHBOURING_TASK_TABLES_ID_COLUMN_WIDTH_CHARS = 5
+_NEIGHBOURING_TASK_TABLES_NAME_COLUMN_WIDTH_CHARS = 10
+_NEIGHBOURING_TASK_TABLES_HEIGHT_ROWS = 5
+
 P = ParamSpec("P")
+
+
+def _create_nieghbouring_task_table(master: tk.Misc) -> helpers.TaskTable:
+    return helpers.TaskTable(
+        master=master,
+        id_column_width_chars=_NEIGHBOURING_TASK_TABLES_ID_COLUMN_WIDTH_CHARS,
+        name_column_width_chars=_NEIGHBOURING_TASK_TABLES_NAME_COLUMN_WIDTH_CHARS,
+        height_rows=_NEIGHBOURING_TASK_TABLES_HEIGHT_ROWS,
+    )
+
+
+def _get_progress_increment(progress: Progress) -> Progress:
+    match progress:
+        case tasks.Progress.NOT_STARTED:
+            return tasks.Progress.IN_PROGRESS
+        case tasks.Progress.IN_PROGRESS:
+            return tasks.Progress.COMPLETED
+        case tasks.Progress.COMPLETED:
+            raise ValueError("Cannot increment progress of completed task")
+
+
+def _get_progress_decrement(progress: Progress) -> Progress:
+    match progress:
+        case tasks.Progress.NOT_STARTED:
+            raise ValueError("Cannot decrement progress of not started task")
+        case tasks.Progress.IN_PROGRESS:
+            return tasks.Progress.NOT_STARTED
+        case tasks.Progress.COMPLETED:
+            return tasks.Progress.IN_PROGRESS
 
 
 def make_return_true(fn: Callable[P, Any]) -> Callable[P, Literal[True]]:
@@ -25,50 +59,18 @@ def make_return_true(fn: Callable[P, Any]) -> Callable[P, Literal[True]]:
 
 class TaskDetails(tk.Frame):
     def __init__(self, master: tk.Misc, logic_layer: LogicLayer) -> None:
-        def update_name(self: Self) -> None:
-            assert self.task is not None
-
-            name = tasks.Name(self.task_name.get())
-
-            try:
-                logic_layer.update_task_name(task=self.task, name=name)
-            except Exception as e:
-                helpers.UnknownExceptionOperationFailedWindow(self, e)
-                return
-
-            broker = event_broker.get_singleton()
-            broker.publish(event=event_broker.SystemModified())
-
-        def update_importance(self: Self, formatted_importance: str) -> None:
-            assert self.task is not None
-
-            importance = (
-                tasks.Importance(formatted_importance) if formatted_importance else None
-            )
-
-            try:
-                logic_layer.update_task_importance(
-                    task=self.task, importance=importance
-                )
-            except Exception as e:
-                helpers.UnknownExceptionOperationFailedWindow(self, e)
-                return
-
-            broker = event_broker.get_singleton()
-            broker.publish(event=event_broker.SystemModified())
-
         def update_with_task(self: Self) -> None:
             assert self.task is not None
 
             self.task_id.config(text=str(self.task))
 
-            register = self.logic_layer.get_task_system().attributes_register()
+            register = self._logic_layer.get_task_system().attributes_register()
             attributes = register[self.task]
 
             self.task_name.set(str(attributes.name))
             self.task_name_entry.config(state=tk.NORMAL)
 
-            system: tasks.SystemView = self.logic_layer.get_task_system()
+            system: tasks.SystemView = self._logic_layer.get_task_system()
 
             importance = system.get_importance(self.task)
             if system.has_inferred_importance(self.task):
@@ -111,32 +113,31 @@ class TaskDetails(tk.Frame):
             self.task_description_scrolled_text.config(state=tk.NORMAL)
 
             hierarchy_graph = system.hierarchy_graph()
+            dependency_graph = self._logic_layer.get_task_system().dependency_graph()
 
-            formatted_subtasks = (
-                f"{subtask}: {register[subtask].name or ""}"
+            subtasks_with_names = (
+                (subtask, register[subtask].name)
                 for subtask in hierarchy_graph.subtasks(self.task)
             )
-            self.subtasks_list.config(text="\n".join(formatted_subtasks))
+            self._subtasks_table.update_tasks(subtasks_with_names)
 
-            formatted_supertasks = (
-                f"{supertask}: {register[supertask].name or ""}"
+            supertasks_with_names = (
+                (supertask, register[supertask].name)
                 for supertask in hierarchy_graph.supertasks(self.task)
             )
-            self.supertasks_list.config(text="\n".join(formatted_supertasks))
+            self._supertasks_table.update_tasks(supertasks_with_names)
 
-            dependency_graph = self.logic_layer.get_task_system().dependency_graph()
-
-            formatted_dependee_tasks = (
-                f"{supertask}: {register[supertask].name or ""}"
-                for supertask in dependency_graph.dependee_tasks(self.task)
+            dependee_tasks_with_names = (
+                (dependee_task, register[dependee_task].name)
+                for dependee_task in dependency_graph.dependee_tasks(self.task)
             )
-            self.dependee_tasks_list.config(text="\n".join(formatted_dependee_tasks))
+            self._dependee_tasks_table.update_tasks(dependee_tasks_with_names)
 
-            formatted_dependent_tasks = (
-                f"{supertask}: {register[supertask].name or ""}"
-                for supertask in dependency_graph.dependent_tasks(self.task)
+            dependent_tasks_with_names = (
+                (dependent_task, register[dependent_task].name)
+                for dependent_task in dependency_graph.dependent_tasks(self.task)
             )
-            self.dependent_tasks_list.config(text="\n".join(formatted_dependent_tasks))
+            self._dependent_tasks_table.update_tasks(dependent_tasks_with_names)
 
         def update_no_task(self: Self) -> None:
             assert self.task is None
@@ -152,10 +153,10 @@ class TaskDetails(tk.Frame):
             self.increment_task_progress_button.grid_remove()
             self.task_description_scrolled_text.delete(1.0, tk.END)
             self.task_description_scrolled_text.config(state=tk.DISABLED)
-            self.subtasks_list.config(text="")
-            self.supertasks_list.config(text="")
-            self.dependee_tasks_list.config(text="")
-            self.dependent_tasks_list.config(text="")
+            self._subtasks_table.update_tasks([])
+            self._supertasks_table.update_tasks([])
+            self._dependee_tasks_table.update_tasks([])
+            self._dependent_tasks_table.update_tasks([])
 
         def update(event: event_broker.Event, self: Self) -> None:
             if isinstance(event, event_broker.TaskSelected):
@@ -164,58 +165,12 @@ class TaskDetails(tk.Frame):
                 return
 
             if isinstance(event, event_broker.SystemModified) and self.task:
-                if self.task not in self.logic_layer.get_task_system():
+                if self.task not in self._logic_layer.get_task_system():
                     self.task = None
                     update_no_task(self)
                     return
 
                 update_with_task(self)
-
-        def increment_progress(self: Self) -> None:
-            assert self.task
-
-            current_progress = self.logic_layer.get_task_system().get_progress(
-                self.task
-            )
-            match current_progress:
-                case tasks.Progress.NOT_STARTED:
-                    incremented_progress = tasks.Progress.IN_PROGRESS
-                case tasks.Progress.IN_PROGRESS:
-                    incremented_progress = tasks.Progress.COMPLETED
-                case tasks.Progress.COMPLETED:
-                    raise ValueError("Cannot increment progress of completed task")
-
-            try:
-                self.logic_layer.update_task_progress(self.task, incremented_progress)
-            except Exception as e:
-                helpers.UnknownExceptionOperationFailedWindow(self, exception=e)
-                return
-
-            broker = event_broker.get_singleton()
-            broker.publish(event_broker.SystemModified())
-
-        def decrement_progress(self: Self) -> None:
-            assert self.task
-
-            current_progress = self.logic_layer.get_task_system().get_progress(
-                self.task
-            )
-            match current_progress:
-                case tasks.Progress.NOT_STARTED:
-                    raise ValueError("Cannot decrement progress of not started task")
-                case tasks.Progress.IN_PROGRESS:
-                    decremented_progress = tasks.Progress.NOT_STARTED
-                case tasks.Progress.COMPLETED:
-                    decremented_progress = tasks.Progress.IN_PROGRESS
-
-            try:
-                self.logic_layer.update_task_progress(self.task, decremented_progress)
-            except Exception as e:
-                helpers.UnknownExceptionOperationFailedWindow(self, exception=e)
-                return
-
-            broker = event_broker.get_singleton()
-            broker.publish(event_broker.SystemModified())
 
         def update_description(self: Self) -> None:
             assert self.task
@@ -225,7 +180,7 @@ class TaskDetails(tk.Frame):
             )
 
             try:
-                self.logic_layer.update_task_description(self.task, description)
+                self._logic_layer.update_task_description(self.task, description)
             except Exception as e:
                 helpers.UnknownExceptionOperationFailedWindow(self, e)
                 return
@@ -234,7 +189,7 @@ class TaskDetails(tk.Frame):
             broker.publish(event_broker.SystemModified())
 
         super().__init__(master)
-        self.logic_layer = logic_layer
+        self._logic_layer = logic_layer
 
         self.task: tasks.UID | None = None
 
@@ -244,11 +199,12 @@ class TaskDetails(tk.Frame):
             self,
             textvariable=self.task_name,
             validate="focusout",
-            validatecommand=make_return_true(functools.partial(update_name, self)),
+            validatecommand=make_return_true(self._save_current_name),
         )
 
         self.inferred_task_importance = ttk.Label(self)
         self.selected_importance = tk.StringVar(self)
+        self.selected_importance.get()
         importance_menu_options = itertools.chain(
             (level.value for level in sorted(tasks.Importance, reverse=True)), [""]
         )
@@ -258,15 +214,15 @@ class TaskDetails(tk.Frame):
             self.selected_importance,
             None,
             *importance_menu_options,
-            command=functools.partial(update_importance, self),
+            command=lambda _: self._save_current_importance,
         )
 
         self.decrement_task_progress_button = ttk.Button(
-            self, text="<", command=functools.partial(decrement_progress, self=self)
+            self, text="<", command=self._save_decremented_progress
         )
         self.task_progress = ttk.Label(self, text="")
         self.increment_task_progress_button = ttk.Button(
-            self, text=">", command=functools.partial(increment_progress, self=self)
+            self, text=">", command=self._save_incremented_progress
         )
 
         self.save_description_button = ttk.Button(
@@ -278,16 +234,16 @@ class TaskDetails(tk.Frame):
         self.task_description_scrolled_text = scrolledtext.ScrolledText(self)
 
         self.subtasks_label = ttk.Label(self, text="Subtasks")
-        self.subtasks_list = ttk.Label(self)
+        self._subtasks_table = _create_nieghbouring_task_table(self)
 
         self.supertasks_label = ttk.Label(self, text="Supertasks")
-        self.supertasks_list = ttk.Label(self)
+        self._supertasks_table = _create_nieghbouring_task_table(self)
 
         self.dependee_tasks_label = ttk.Label(self, text="Dependee-tasks")
-        self.dependee_tasks_list = ttk.Label(self)
+        self._dependee_tasks_table = _create_nieghbouring_task_table(self)
 
         self.dependent_tasks_label = ttk.Label(self, text="Dependent-tasks")
-        self.dependent_tasks_list = ttk.Label(self)
+        self._dependent_tasks_table = _create_nieghbouring_task_table(self)
 
         self.task_id.grid(row=0, column=0)
         self.task_name_entry.grid(row=0, column=1, columnspan=3)
@@ -298,14 +254,14 @@ class TaskDetails(tk.Frame):
         self.increment_task_progress_button.grid(row=2, column=2)
         self.task_description_scrolled_text.grid(row=3, column=0, columnspan=4)
         self.save_description_button.grid(row=4, column=0, columnspan=3)
-        self.subtasks_label.grid(row=5, column=0)
-        self.subtasks_list.grid(row=5, column=1, columnspan=3)
-        self.supertasks_label.grid(row=6, column=0)
-        self.supertasks_list.grid(row=6, column=1, columnspan=3)
-        self.dependee_tasks_label.grid(row=7, column=0)
-        self.dependee_tasks_list.grid(row=7, column=1, columnspan=3)
-        self.dependent_tasks_label.grid(row=8, column=0)
-        self.dependent_tasks_list.grid(row=8, column=1, columnspan=3)
+        self.subtasks_label.grid(row=5, column=0, columnspan=2)
+        self._subtasks_table.grid(row=6, column=0, columnspan=2)
+        self.supertasks_label.grid(row=5, column=2, columnspan=2)
+        self._supertasks_table.grid(row=6, column=2, columnspan=2)
+        self.dependee_tasks_label.grid(row=7, column=0, columnspan=2)
+        self._dependee_tasks_table.grid(row=8, column=0, columnspan=2)
+        self.dependent_tasks_label.grid(row=7, column=2, columnspan=2)
+        self._dependee_tasks_table.grid(row=8, column=2, columnspan=2)
 
         update_no_task(self)
 
@@ -316,3 +272,66 @@ class TaskDetails(tk.Frame):
         broker.subscribe(
             event_broker.SystemModified, functools.partial(update, self=self)
         )
+
+    def _save_current_name(self) -> None:
+        assert self.task is not None
+
+        name = tasks.Name(self.task_name.get())
+
+        try:
+            self._logic_layer.update_task_name(task=self.task, name=name)
+        except Exception as e:
+            helpers.UnknownExceptionOperationFailedWindow(self, e)
+            return
+
+        broker = event_broker.get_singleton()
+        broker.publish(event=event_broker.SystemModified())
+
+    def _save_current_importance(self) -> None:
+        assert self.task is not None
+
+        formatted_importance = self.selected_importance.get()
+        importance = (
+            tasks.Importance(formatted_importance) if formatted_importance else None
+        )
+
+        try:
+            self._logic_layer.update_task_importance(
+                task=self.task, importance=importance
+            )
+        except Exception as e:
+            helpers.UnknownExceptionOperationFailedWindow(self, e)
+            return
+
+        broker = event_broker.get_singleton()
+        broker.publish(event=event_broker.SystemModified())
+
+    def _save_incremented_progress(self) -> None:
+        assert self.task
+
+        current_progress = self._logic_layer.get_task_system().get_progress(self.task)
+        incremented_progress = _get_progress_increment(current_progress)
+
+        try:
+            self._logic_layer.update_task_progress(self.task, incremented_progress)
+        except Exception as e:
+            helpers.UnknownExceptionOperationFailedWindow(self, exception=e)
+            return
+
+        broker = event_broker.get_singleton()
+        broker.publish(event_broker.SystemModified())
+
+    def _save_decremented_progress(self) -> None:
+        assert self.task
+
+        current_progress = self._logic_layer.get_task_system().get_progress(self.task)
+        decremented_progress = _get_progress_decrement(current_progress)
+
+        try:
+            self._logic_layer.update_task_progress(self.task, decremented_progress)
+        except Exception as e:
+            helpers.UnknownExceptionOperationFailedWindow(self, exception=e)
+            return
+
+        broker = event_broker.get_singleton()
+        broker.publish(event_broker.SystemModified())

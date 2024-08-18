@@ -1,5 +1,6 @@
 import dataclasses
 import enum
+import itertools
 import tkinter as tk
 
 from graft import architecture
@@ -7,6 +8,28 @@ from graft.domain import tasks
 from graft.domain.tasks.importance import Importance
 from graft.tkinter_gui import event_broker
 from graft.tkinter_gui.helpers import TaskTable
+
+_IMPORTANCE_TASK_TABLES_ID_COLUMN_WIDTH_CHARS = 20
+_IMPORTANCE_TASK_TABLES_NAME_COLUMN_WIDTH_CHARS = 10
+_IMPORTANCE_TASK_TABLES_HEIGHT_ROWS = 5
+
+
+def _create_importance_task_table(master: tk.Misc) -> TaskTable:
+    return TaskTable(
+        master=master,
+        id_column_width_chars=_IMPORTANCE_TASK_TABLES_ID_COLUMN_WIDTH_CHARS,
+        name_column_width_chars=_IMPORTANCE_TASK_TABLES_NAME_COLUMN_WIDTH_CHARS,
+        height_rows=_IMPORTANCE_TASK_TABLES_HEIGHT_ROWS,
+    )
+
+
+def _create_no_importance_task_table(master: tk.Misc) -> TaskTable:
+    return TaskTable(
+        master=master,
+        id_column_width_chars=2 * _IMPORTANCE_TASK_TABLES_ID_COLUMN_WIDTH_CHARS,
+        name_column_width_chars=2 * _IMPORTANCE_TASK_TABLES_NAME_COLUMN_WIDTH_CHARS,
+        height_rows=2 * _IMPORTANCE_TASK_TABLES_HEIGHT_ROWS,
+    )
 
 
 class ImportanceType(enum.Enum):
@@ -23,19 +46,19 @@ class ImportanceBoard(tk.Frame):
         self._explicit_header = tk.Label(self, text="Explicit")
 
         self._high_importance_header = tk.Label(self, text="High")
-        self._high_importance_inferred_tasks = TaskTable(self)
-        self._high_importance_explicit_tasks = TaskTable(self)
+        self._high_importance_inferred_tasks = _create_importance_task_table(self)
+        self._high_importance_explicit_tasks = _create_importance_task_table(self)
 
         self._medium_importance_header = tk.Label(self, text="Medium")
-        self._medium_importance_inferred_tasks = TaskTable(self)
-        self._medium_importance_explicit_tasks = TaskTable(self)
+        self._medium_importance_inferred_tasks = _create_importance_task_table(self)
+        self._medium_importance_explicit_tasks = _create_importance_task_table(self)
 
         self._low_importance_header = tk.Label(self, text="Low")
-        self._low_importance_inferred_tasks = TaskTable(self)
-        self._low_importance_explicit_tasks = TaskTable(self)
+        self._low_importance_inferred_tasks = _create_importance_task_table(self)
+        self._low_importance_explicit_tasks = _create_importance_task_table(self)
 
         self._no_importance_header = tk.Label(self, text="None")
-        self._no_importance_tasks = TaskTable(self)
+        self._no_importance_tasks = _create_no_importance_task_table(self)
 
         self._inferred_header.grid(row=0, column=1)
         self._explicit_header.grid(row=0, column=2)
@@ -112,21 +135,23 @@ class ImportanceBoard(tk.Frame):
                 case None:
                     tasks_no_importance.append(task)
 
-        for status_tasks_map in importance_type_tasks_map.values():
-            for container in status_tasks_map.values():
-                tasks_with_names = (
-                    (
-                        task,
-                        self._logic_layer.get_task_system()
-                        .attributes_register()[task]
-                        .name,
-                    )
-                    for task in container.tasks
-                )
-                container.table.update_tasks(tasks_with_names)
-
-        tasks_no_importance_with_names = (
-            (task, self._logic_layer.get_task_system().attributes_register()[task].name)
-            for task in tasks_no_importance
+        importance_status_tasks_and_tables = (
+            task1
+            for status_tasks_map in importance_type_tasks_map.values()
+            for task1 in status_tasks_map.values()
         )
-        self._no_importance_tasks.update_tasks(tasks_no_importance_with_names)
+
+        for container in itertools.chain(
+            importance_status_tasks_and_tables,
+            [TasksAndTable(tasks_no_importance, self._no_importance_tasks)],
+        ):
+            tasks_with_names = (
+                (
+                    task,
+                    self._logic_layer.get_task_system()
+                    .attributes_register()[task]
+                    .name,
+                )
+                for task in container.tasks
+            )
+            container.table.update_tasks(tasks_with_names)
