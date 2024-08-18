@@ -172,22 +172,6 @@ class TaskDetails(tk.Frame):
 
                 update_with_task(self)
 
-        def update_description(self: Self) -> None:
-            assert self.task
-
-            description = tasks.Description(
-                self.task_description_scrolled_text.get(1.0, "end-1c")
-            )
-
-            try:
-                self._logic_layer.update_task_description(self.task, description)
-            except Exception as e:
-                helpers.UnknownExceptionOperationFailedWindow(self, e)
-                return
-
-            broker = event_broker.get_singleton()
-            broker.publish(event_broker.SystemModified())
-
         super().__init__(master)
         self._logic_layer = logic_layer
 
@@ -228,7 +212,7 @@ class TaskDetails(tk.Frame):
         self.save_description_button = ttk.Button(
             self,
             text="Save Description",
-            command=functools.partial(update_description, self=self),
+            command=self._save_current_description,
         )
 
         self.task_description_scrolled_text = scrolledtext.ScrolledText(self)
@@ -276,7 +260,8 @@ class TaskDetails(tk.Frame):
     def _save_current_name(self) -> None:
         assert self.task is not None
 
-        name = tasks.Name(self.task_name.get())
+        formatted_name = self.task_name.get()
+        name = tasks.Name(formatted_name)
 
         try:
             self._logic_layer.update_task_name(task=self.task, name=name)
@@ -286,6 +271,21 @@ class TaskDetails(tk.Frame):
 
         broker = event_broker.get_singleton()
         broker.publish(event=event_broker.SystemModified())
+
+    def _save_current_description(self: Self) -> None:
+        assert self.task
+
+        formatted_description = self.task_description_scrolled_text.get(1.0, "end-1c")
+        description = tasks.Description(formatted_description)
+
+        try:
+            self._logic_layer.update_task_description(self.task, description)
+        except Exception as e:
+            helpers.UnknownExceptionOperationFailedWindow(self, e)
+            return
+
+        broker = event_broker.get_singleton()
+        broker.publish(event_broker.SystemModified())
 
     def _save_current_importance(self) -> None:
         assert self.task is not None
