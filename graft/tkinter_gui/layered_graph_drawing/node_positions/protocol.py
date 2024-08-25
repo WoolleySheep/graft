@@ -5,8 +5,8 @@ from graft import graphs
 from graft.tkinter_gui.layered_graph_drawing.dummy_node import DummyNode
 
 
-class GetNodePositionsFn(Protocol):
-    def __call__[T: Hashable](
+class GetNodePositionsFn[T: Hashable](Protocol):
+    def __call__(
         self,
         graph: graphs.DirectedAcyclicGraph[T | DummyNode],
         ordered_layers: Sequence[Sequence[T | DummyNode]],

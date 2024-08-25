@@ -43,9 +43,9 @@ def _remove_dummy_nodes[T: Hashable, V](
 
 def calculate_node_positions[T: Hashable](
     graph: graphs.DirectedAcyclicGraph[T],
-    get_layers_fn: GetLayersFn,
-    get_layer_orders_fn: GetLayerOrdersFn,
-    get_node_positions_fn: GetNodePositionsFn,
+    get_layers_fn: GetLayersFn[T],
+    get_layer_orders_fn: GetLayerOrdersFn[T | DummyNode],
+    get_node_positions_fn: GetNodePositionsFn[T | DummyNode],
     orientation: GraphOrientation,
 ) -> dict[T, tuple[float, float]]:
     layers = get_layers_fn(graph=graph)

@@ -1,7 +1,14 @@
 import copy
 import itertools
 import statistics
-from collections.abc import Callable, Collection, Iterable, MutableSequence, Sequence
+from collections.abc import (
+    Callable,
+    Collection,
+    Hashable,
+    Iterable,
+    MutableSequence,
+    Sequence,
+)
 
 from graft import graphs
 from graft.tkinter_gui.layered_graph_drawing.layer_ordering.utils import (
@@ -110,7 +117,7 @@ def _transpose[T](
                 is_improved = True
 
 
-def get_layer_orders_median_with_transpose_method[T](
+def get_layer_orders_median_with_transpose_method[T: Hashable](
     graph: graphs.DirectedAcyclicGraph[T],
     layers: Sequence[Collection[T]],
 ) -> list[list[T]]:
