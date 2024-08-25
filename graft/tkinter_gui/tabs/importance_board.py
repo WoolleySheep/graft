@@ -9,16 +9,16 @@ from graft.domain.tasks.importance import Importance
 from graft.tkinter_gui import event_broker
 from graft.tkinter_gui.helpers import TaskTable
 
-_IMPORTANCE_TASK_TABLES_ID_COLUMN_WIDTH_CHARS = 20
-_IMPORTANCE_TASK_TABLES_NAME_COLUMN_WIDTH_CHARS = 10
+_IMPORTANCE_TASK_TABLES_ID_COLUMN_WIDTH_PIXELS = 30
+_IMPORTANCE_TASK_TABLES_NAME_COLUMN_WIDTH_PIXELS = 200
 _IMPORTANCE_TASK_TABLES_HEIGHT_ROWS = 5
 
 
 def _create_importance_task_table(master: tk.Misc) -> TaskTable:
     return TaskTable(
         master=master,
-        id_column_width_chars=_IMPORTANCE_TASK_TABLES_ID_COLUMN_WIDTH_CHARS,
-        name_column_width_chars=_IMPORTANCE_TASK_TABLES_NAME_COLUMN_WIDTH_CHARS,
+        id_column_width_pixels=_IMPORTANCE_TASK_TABLES_ID_COLUMN_WIDTH_PIXELS,
+        name_column_width_pixels=_IMPORTANCE_TASK_TABLES_NAME_COLUMN_WIDTH_PIXELS,
         height_rows=_IMPORTANCE_TASK_TABLES_HEIGHT_ROWS,
     )
 
@@ -26,8 +26,8 @@ def _create_importance_task_table(master: tk.Misc) -> TaskTable:
 def _create_no_importance_task_table(master: tk.Misc) -> TaskTable:
     return TaskTable(
         master=master,
-        id_column_width_chars=2 * _IMPORTANCE_TASK_TABLES_ID_COLUMN_WIDTH_CHARS,
-        name_column_width_chars=2 * _IMPORTANCE_TASK_TABLES_NAME_COLUMN_WIDTH_CHARS,
+        id_column_width_pixels=2 * _IMPORTANCE_TASK_TABLES_ID_COLUMN_WIDTH_PIXELS,
+        name_column_width_pixels=2 * _IMPORTANCE_TASK_TABLES_NAME_COLUMN_WIDTH_PIXELS,
         height_rows=2 * _IMPORTANCE_TASK_TABLES_HEIGHT_ROWS,
     )
 

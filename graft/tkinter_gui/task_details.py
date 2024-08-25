@@ -10,8 +10,8 @@ from graft.domain import tasks
 from graft.domain.tasks.progress import Progress
 from graft.tkinter_gui import event_broker, helpers
 
-_NEIGHBOURING_TASK_TABLES_ID_COLUMN_WIDTH_CHARS = 5
-_NEIGHBOURING_TASK_TABLES_NAME_COLUMN_WIDTH_CHARS = 10
+_NEIGHBOURING_TASK_TABLES_ID_COLUMN_WIDTH_PIXELS = 30
+_NEIGHBOURING_TASK_TABLES_NAME_COLUMN_WIDTH_PIXELS = 150
 _NEIGHBOURING_TASK_TABLES_HEIGHT_ROWS = 5
 
 P = ParamSpec("P")
@@ -20,8 +20,8 @@ P = ParamSpec("P")
 def _create_nieghbouring_task_table(master: tk.Misc) -> helpers.TaskTable:
     return helpers.TaskTable(
         master=master,
-        id_column_width_chars=_NEIGHBOURING_TASK_TABLES_ID_COLUMN_WIDTH_CHARS,
-        name_column_width_chars=_NEIGHBOURING_TASK_TABLES_NAME_COLUMN_WIDTH_CHARS,
+        id_column_width_pixels=_NEIGHBOURING_TASK_TABLES_ID_COLUMN_WIDTH_PIXELS,
+        name_column_width_pixels=_NEIGHBOURING_TASK_TABLES_NAME_COLUMN_WIDTH_PIXELS,
         height_rows=_NEIGHBOURING_TASK_TABLES_HEIGHT_ROWS,
     )
 
@@ -245,7 +245,7 @@ class TaskDetails(tk.Frame):
         self.dependee_tasks_label.grid(row=7, column=0, columnspan=2)
         self._dependee_tasks_table.grid(row=8, column=0, columnspan=2)
         self.dependent_tasks_label.grid(row=7, column=2, columnspan=2)
-        self._dependee_tasks_table.grid(row=8, column=2, columnspan=2)
+        self._dependent_tasks_table.grid(row=8, column=2, columnspan=2)
 
         update_no_task(self)
 

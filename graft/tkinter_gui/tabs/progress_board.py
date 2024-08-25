@@ -8,16 +8,16 @@ from graft.domain.tasks.progress import Progress
 from graft.tkinter_gui import event_broker
 from graft.tkinter_gui.helpers import TaskTable
 
-_TASK_TABLES_ID_COLUMN_WIDTH_CHARS = 5
-_TASK_TABLES_NAME_COLUMN_WIDTH_CHARS = 10
-_TASK_TABLES_HEIGHT_ROWS = 5
+_TASK_TABLES_ID_COLUMN_WIDTH_PIXELS = 30
+_TASK_TABLES_NAME_COLUMN_WIDTH_PIXELS = 130
+_TASK_TABLES_HEIGHT_ROWS = 10
 
 
 def _create_task_table(master: tk.Misc) -> TaskTable:
     return TaskTable(
         master=master,
-        id_column_width_chars=_TASK_TABLES_ID_COLUMN_WIDTH_CHARS,
-        name_column_width_chars=_TASK_TABLES_NAME_COLUMN_WIDTH_CHARS,
+        id_column_width_pixels=_TASK_TABLES_ID_COLUMN_WIDTH_PIXELS,
+        name_column_width_pixels=_TASK_TABLES_NAME_COLUMN_WIDTH_PIXELS,
         height_rows=_TASK_TABLES_HEIGHT_ROWS,
     )
 

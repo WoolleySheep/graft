@@ -10,8 +10,8 @@ class TaskTreeView(ttk.Treeview):
     def __init__(
         self,
         master: tk.Misc,
-        id_column_width_chars: int,
-        name_column_width_chars: int,
+        id_column_width_pixels: int,
+        name_column_width_pixels: int,
         height_rows: int,
     ) -> None:
         super().__init__(
@@ -21,8 +21,8 @@ class TaskTreeView(ttk.Treeview):
         self.heading("id", text="ID")
         self.heading("name", text="Name")
 
-        self.column("id", width=id_column_width_chars)
-        self.column("name", width=name_column_width_chars)
+        self.column("id", width=id_column_width_pixels)
+        self.column("name", width=name_column_width_pixels)
 
         self.bind("<<TreeviewSelect>>", lambda _: self._publish_selected_task_event())
 

@@ -10,15 +10,15 @@ class TaskTable(tk.Frame):
     def __init__(
         self,
         master: tk.Misc,
-        id_column_width_chars: int,
-        name_column_width_chars: int,
+        id_column_width_pixels: int,
+        name_column_width_pixels: int,
         height_rows: int,
     ) -> None:
         super().__init__(master)
         self._task_tree_view = TaskTreeView(
             self,
-            id_column_width_chars=id_column_width_chars,
-            name_column_width_chars=name_column_width_chars,
+            id_column_width_pixels=id_column_width_pixels,
+            name_column_width_pixels=name_column_width_pixels,
             height_rows=height_rows,
         )
 
