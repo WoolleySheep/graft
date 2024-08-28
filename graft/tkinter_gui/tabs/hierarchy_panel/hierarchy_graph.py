@@ -103,7 +103,9 @@ class HierarchyGraph(tk.Frame):
             )
             annotation.set_visible(False)
 
-            hierarchy_graph = self.logic_layer.get_task_system().hierarchy_graph()
+            hierarchy_graph = (
+                self.logic_layer.get_task_system().network_graph().hierarchy_graph()
+            )
             digraph = graph_conversion.convert_hierarchy_to_reduced_dag(
                 graph=hierarchy_graph
             )

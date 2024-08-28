@@ -70,7 +70,10 @@ class ProgressBoard(tk.Frame):
     def _get_progress_type(self, task: tasks.UID) -> ProgressType:
         return (
             ProgressType.EXPLICIT
-            if self._logic_layer.get_task_system().hierarchy_graph().is_concrete(task)
+            if self._logic_layer.get_task_system()
+            .network_graph()
+            .hierarchy_graph()
+            .is_concrete(task)
             else ProgressType.INFERRED
         )
 

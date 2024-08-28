@@ -24,9 +24,9 @@ class TaskTreeView(ttk.Treeview):
         self.column("id", width=id_column_width_pixels)
         self.column("name", width=name_column_width_pixels)
 
-        self.bind("<<TreeviewSelect>>", lambda _: self._publish_selected_task_event())
+        self.bind("<<TreeviewSelect>>", lambda _: self._publish_task_selected_event())
 
-    def _publish_selected_task_event(self) -> None:
+    def _publish_task_selected_event(self) -> None:
         item_id = self.focus()
 
         if not item_id:

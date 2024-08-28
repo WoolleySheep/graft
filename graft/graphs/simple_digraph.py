@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import collections
+import enum
 import itertools
 from collections.abc import (
     Callable,
@@ -16,6 +17,50 @@ from collections.abc import (
 from typing import Any, TypeGuard
 
 from graft.graphs import bidict as bd
+
+
+class SearchOrder(enum.Enum):
+    DEPTH_FIRST = "depth-first"
+    BREADTH_FIRST = "breadth-first"
+
+
+def search[T: Hashable](
+    node: T,
+    graph: Mapping[T, Set[T]],
+    order: SearchOrder,
+    stop_condition: Callable[[T], bool] | None = None,
+) -> Generator[T, None, None]:
+    """Search the graph from a given node, following the given search order.
+
+    Stop searching beyond a specific node if the stop condition is met.
+
+    The starting node is not included in the yielded nodes, but it is checked
+    against the stop condition.
+
+    Extracted out into its own function due to the commonalities between
+    DFS/BFS and descendants/ancestors.
+    """
+    if stop_condition is not None and stop_condition(node):
+        return
+
+    deque = collections.deque[T](graph[node])
+    visited = set[T]([node])
+
+    match order:
+        case SearchOrder.DEPTH_FIRST:
+            pop_next_node = deque.pop  # Stack
+        case SearchOrder.BREADTH_FIRST:
+            pop_next_node = deque.popleft  # Queue
+
+    while deque:
+        node2 = pop_next_node()
+        if node2 in visited:
+            continue
+        visited.add(node2)
+        yield node2
+        if stop_condition is not None and stop_condition(node2):
+            continue
+        deque.extend(graph[node2])
 
 
 class UnderlyingDictHasLoopsError[T: Hashable](Exception):
@@ -318,14 +363,17 @@ class SimpleDiGraph[T: Hashable]:
 
         self._bidict.add(key=node)
 
-    def remove_node(self, node: T, /) -> None:
-        """Remove node from digraph."""
+    def validate_node_can_be_removed(self, node: T, /) -> None:
+        """Validate that node can be removed from digraph."""
         if predecessors := self.predecessors(node):
             raise HasPredecessorsError(node=node, predecessors=predecessors)
 
         if successors := self.successors(node):
             raise HasSuccessorsError(node=node, successors=successors)
 
+    def remove_node(self, node: T, /) -> None:
+        """Remove node from digraph."""
+        self.validate_node_can_be_removed(node)
         del self._bidict[node]
 
     def nodes(self) -> NodesView[T]:
@@ -367,57 +415,24 @@ class SimpleDiGraph[T: Hashable]:
 
         return NodesView(self._bidict.inverse[node])
 
-    def descendants_bfs(
-        self, node: T, /, stop_condition: Callable[[T], bool] | None = None
+    def descendants(
+        self,
+        node: T,
+        /,
+        order: SearchOrder = SearchOrder.BREADTH_FIRST,
+        stop_condition: Callable[[T], bool] | None = None,
     ) -> Generator[T, None, None]:
-        """Return breadth-first search of descendants of node.
+        """Yield descendants of node, following the specified search order.
 
         Stop searching beyond a specific node if the stop condition is met.
 
         The starting node is not included in the yielded nodes, but it is
         checked against the stop condition.
         """
-        if stop_condition and stop_condition(node):
-            return
+        if node not in self:
+            raise NodeDoesNotExistError(node=node)
 
-        queue = collections.deque[T](self.successors(node))
-        visited = set[T]([node])
-
-        while queue:
-            node2 = queue.popleft()
-            if node2 in visited:
-                continue
-            visited.add(node2)
-            yield node2
-            if stop_condition and stop_condition(node2):
-                continue
-            queue.extend(self.successors(node2))
-
-    def descendants_dfs(
-        self, node: T, /, stop_condition: Callable[[T], bool] | None = None
-    ) -> Generator[T, None, None]:
-        """Return depth-first search of the descendants of node.
-
-        Stop searching beyond a specific node if the stop condition is met.
-
-        The starting node is not included in the yielded nodes, but it is
-        checked against the stop condition.
-        """
-        if stop_condition and stop_condition(node):
-            return
-
-        stack = collections.deque[T](self.successors(node))
-        visited = set[T]([node])
-
-        while stack:
-            node2 = stack.pop()
-            if node2 in visited:
-                continue
-            visited.add(node2)
-            yield node2
-            if stop_condition and stop_condition(node2):
-                continue
-            stack.extend(self.successors(node2))
+        return search(node, self._bidict, order=order, stop_condition=stop_condition)
 
     def descendants_subgraph(
         self, node: T, /, stop_condition: Callable[[T], bool] | None = None
@@ -485,57 +500,26 @@ class SimpleDiGraph[T: Hashable]:
                     graph.add_edge(node2, successor)
                 queue.append(successor)
 
-    def ancestors_bfs(
-        self, node: T, /, stop_condition: Callable[[T], bool] | None = None
+    def ancestors(
+        self,
+        node: T,
+        /,
+        order: SearchOrder = SearchOrder.BREADTH_FIRST,
+        stop_condition: Callable[[T], bool] | None = None,
     ) -> Generator[T, None, None]:
-        """Return breadth-first search of ancestors of node.
+        """Yield ancestors of node, following the specified search order.
 
         Stop searching beyond a specific node if the stop condition is met.
 
         The starting node is not included in the yielded nodes, but it is
         checked against the stop condition.
         """
-        if stop_condition and stop_condition(node):
-            return
+        if node not in self:
+            raise NodeDoesNotExistError(node=node)
 
-        queue = collections.deque[T](self.predecessors(node))
-        visited = set[T]([node])
-
-        while queue:
-            node2 = queue.popleft()
-            if node2 in visited:
-                continue
-            visited.add(node2)
-            yield node2
-            if stop_condition and stop_condition(node2):
-                continue
-            queue.extend(self.predecessors(node2))
-
-    def ancestors_dfs(
-        self, node: T, /, stop_condition: Callable[[T], bool] | None = None
-    ) -> Generator[T, None, None]:
-        """Return depth-first search of ancestors of node.
-
-        Stop searching beyond a specific node if the stop condition is met.
-
-        The starting node is not included in the yielded nodes, but it is
-        checked against the stop condition.
-        """
-        if stop_condition and stop_condition(node):
-            return
-
-        stack = collections.deque[T](self.predecessors(node))
-        visited = set[T]([node])
-
-        while stack:
-            node2 = stack.pop()
-            if node2 in visited:
-                continue
-            visited.add(node2)
-            yield node2
-            if stop_condition and stop_condition(node2):
-                continue
-            stack.extend(self.predecessors(node2))
+        return search(
+            node, self._bidict.inverse, order=order, stop_condition=stop_condition
+        )
 
     def ancestors_subgraph(
         self, node: T, /, stop_condition: Callable[[T], bool] | None = None
@@ -616,7 +600,7 @@ class SimpleDiGraph[T: Hashable]:
         if source == target:
             return True
 
-        return target in self.descendants_bfs(source)
+        return target in self.descendants(source)
 
     def connecting_subgraph(self, source: T, target: T) -> SimpleDiGraph[T]:
         """Return connecting subgraph from source to target."""

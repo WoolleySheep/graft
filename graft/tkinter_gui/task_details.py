@@ -89,7 +89,7 @@ class TaskDetails(tk.Frame):
             progress = system.get_progress(self.task)
             self.task_progress.config(text=progress.value)
 
-            if system.hierarchy_graph().is_concrete(self.task):
+            if system.network_graph().hierarchy_graph().is_concrete(self.task):
                 self.decrement_task_progress_button.grid()
                 button_state = (
                     tk.DISABLED if progress is tasks.Progress.NOT_STARTED else tk.NORMAL
@@ -112,8 +112,8 @@ class TaskDetails(tk.Frame):
             )
             self.task_description_scrolled_text.config(state=tk.NORMAL)
 
-            hierarchy_graph = system.hierarchy_graph()
-            dependency_graph = self._logic_layer.get_task_system().dependency_graph()
+            hierarchy_graph = system.network_graph().hierarchy_graph()
+            dependency_graph = system.network_graph().dependency_graph()
 
             subtasks_with_names = (
                 (subtask, register[subtask].name)

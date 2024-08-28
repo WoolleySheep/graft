@@ -35,9 +35,7 @@ from graft.domain.tasks.hierarchy_graph import (
 )
 from graft.domain.tasks.importance import Importance
 from graft.domain.tasks.name import Name
-from graft.domain.tasks.progress import Progress
-from graft.domain.tasks.system import (
-    DependeeIncompleteDependentStartedError,
+from graft.domain.tasks.network_graph import (
     DependencyIntroducesHierarchyClashError,
     DependencyIntroducesStreamCycleError,
     DependencyPathAlreadyExistsFromSubTaskToSuperTaskError,
@@ -45,6 +43,19 @@ from graft.domain.tasks.system import (
     HierarchyIntroducesDependencyClashError,
     HierarchyPathAlreadyExistsFromDependeeTaskToDependentTaskError,
     HierarchyPathAlreadyExistsFromDependentTaskToDependeeTaskError,
+    INetworkGraphView,
+    NetworkGraph,
+    NetworkGraphView,
+    StreamPathFromDependentTaskToInferiorTaskOfDependeeTaskExistsError,
+    StreamPathFromInferiorTaskOfDependentTaskToDependeeTaskExistsError,
+    StreamPathFromInferiorTaskOfSubTaskToSuperTaskExistsError,
+    StreamPathFromSubTaskToSuperTaskExistsError,
+    StreamPathFromSuperTaskToInferiorTaskOfSubTaskExistsError,
+    StreamPathFromSuperTaskToSubTaskExistsError,
+)
+from graft.domain.tasks.progress import Progress
+from graft.domain.tasks.system import (
+    DependeeIncompleteDependentStartedError,
     IncompleteDependeeTasksError,
     IncompleteDependeeTasksOfSuperiorTasksError,
     IncompleteDependeeTasksOfSuperiorTasksOfSupertaskError,
@@ -58,12 +69,6 @@ from graft.domain.tasks.system import (
     StartedDependentTasksOfSuperiorTasksError,
     StartedDependentTasksOfSuperiorTasksOfSupertaskError,
     StartedDependentTasksOfSupertaskError,
-    StreamPathFromDependentTaskToInferiorTaskOfDependeeTaskExistsError,
-    StreamPathFromInferiorTaskOfDependentTaskToDependeeTaskExistsError,
-    StreamPathFromInferiorTaskOfSubTaskToSuperTaskExistsError,
-    StreamPathFromSubTaskToSuperTaskExistsError,
-    StreamPathFromSuperTaskToInferiorTaskOfSubTaskExistsError,
-    StreamPathFromSuperTaskToSubTaskExistsError,
     SubtaskHasImportanceError,
     SuperiorTaskHasImportanceError,
     SupertaskHasImportanceError,

@@ -288,12 +288,10 @@ class LocalFileDataLayer(architecture.DataLayer):
 
     def _load_task_system(self) -> tasks.System:
         attributes_register = self._load_task_attributes_register()
-        hierarchy_graph = self._load_task_hierarchy_graph()
-        dependency_graph = self._load_task_dependency_graph()
+        network_graph = self._load_task_network_graph()
         return tasks.System(
             attributes_register=attributes_register,
-            hierarchy_graph=hierarchy_graph,
-            dependency_graph=dependency_graph,
+            network_graph=network_graph,
         )
 
     def _load_task_attributes_register(self) -> tasks.AttributesRegister:
@@ -322,6 +320,14 @@ class LocalFileDataLayer(architecture.DataLayer):
             dag=graphs.DirectedAcyclicGraph(
                 bidict=graphs.BiDirectionalSetDict(forward=dependency_relationships)
             )
+        )
+
+    def _load_task_network_graph(self) -> tasks.NetworkGraph:
+        """Load the task network graph."""
+        dependency_graph = self._load_task_dependency_graph()
+        hierearchy_graph = self._load_task_hierarchy_graph()
+        return tasks.NetworkGraph(
+            dependency_graph=dependency_graph, hierarchy_graph=hierearchy_graph
         )
 
     @override
@@ -363,11 +369,17 @@ class LocalFileDataLayer(architecture.DataLayer):
     ) -> None:
         """Save the system and update the unused task file if necessary."""
         formatted_task_hierarchy_graph = json.dumps(
-            obj=system.task_system().hierarchy_graph().task_subtasks_pairs(),
+            obj=system.task_system()
+            .network_graph()
+            .hierarchy_graph()
+            .task_subtasks_pairs(),
             default=_encode_task_relationships,
         )
         formatted_task_dependency_graph = json.dumps(
-            obj=system.task_system().dependency_graph().task_dependents_pairs(),
+            obj=system.task_system()
+            .network_graph()
+            .dependency_graph()
+            .task_dependents_pairs(),
             default=_encode_task_relationships,
         )
         formatted_task_attributes_register = json.dumps(
@@ -381,7 +393,7 @@ class LocalFileDataLayer(architecture.DataLayer):
             (self._task_attributes_register_file, formatted_task_attributes_register),
         ]
 
-        if unused_task:
+        if unused_task is not None:
             files_with_text.append(
                 (self._unused_task_file, _encode_task_uid(unused_task))
             )

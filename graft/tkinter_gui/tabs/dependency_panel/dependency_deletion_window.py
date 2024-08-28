@@ -18,7 +18,9 @@ def _get_dependencies_with_names(
     for (
         dependee_task,
         dependent_task,
-    ) in logic_layer.get_task_system().dependency_graph().dependencies():
+    ) in (
+        logic_layer.get_task_system().network_graph().dependency_graph().dependencies()
+    ):
         yield (
             (dependee_task, attributes_register[dependee_task].name),
             (dependent_task, attributes_register[dependent_task].name),

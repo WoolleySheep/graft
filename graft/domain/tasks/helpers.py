@@ -43,3 +43,12 @@ def reraise_node_does_not_exist_as_task_does_not_exist() -> Generator[None, None
         yield
     except graphs.NodeDoesNotExistError as e:
         raise TaskDoesNotExistError(e.node) from e
+
+
+@contextlib.contextmanager
+def reraise_node_already_exists_as_task_already_exists() -> Generator[None, None, None]:
+    """Reraise NodeAlreadyExistsError as TaskAlreadyExistsError."""
+    try:
+        yield
+    except graphs.NodeAlreadyExistsError as e:
+        raise TaskAlreadyExistsError(e.node) from e

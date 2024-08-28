@@ -10,13 +10,13 @@ from graft.tkinter_gui import event_broker, helpers
 def _get_hierarchies_with_names(
     logic_layer: architecture.LogicLayer,
 ) -> Generator[
-    tuple[tuple[tasks.UID, tasks.Name | None], tuple[tasks.UID, tasks.Name | None]],
+    tuple[tuple[tasks.UID, tasks.Name], tuple[tasks.UID, tasks.Name]],
     None,
     None,
 ]:
     attributes_register = logic_layer.get_task_system().attributes_register()
     for supertask, subtask in (
-        logic_layer.get_task_system().hierarchy_graph().hierarchies()
+        logic_layer.get_task_system().network_graph().hierarchy_graph().hierarchies()
     ):
         yield (
             (supertask, attributes_register[supertask].name),
@@ -24,8 +24,8 @@ def _get_hierarchies_with_names(
         )
 
 
-def _format_task_uid_name(task_uid: tasks.UID, task_name: tasks.Name | None) -> str:
-    return f"[{task_uid}]" if task_name is None else f"[{task_uid}] {task_name}"
+def _format_task_uid_name(task_uid: tasks.UID, task_name: tasks.Name) -> str:
+    return f"[{task_uid}] {task_name}" if task_name else f"[{task_uid}]"
 
 
 def _get_menu_options(

@@ -1,7 +1,5 @@
-import functools
 import tkinter as tk
 from tkinter import ttk
-from typing import Self
 
 from graft import architecture
 from graft.domain import tasks
@@ -10,47 +8,6 @@ from graft.tkinter_gui import event_broker
 
 class PriorityTreeView(ttk.Treeview):
     def __init__(self, master: tk.Misc, logic_layer: architecture.LogicLayer) -> None:
-        def update_tree(_: event_broker.Event | None, self: Self) -> None:
-            self.delete(*self.get_children())
-
-            for rank, (uid, importance) in enumerate(
-                self._logic_layer.get_active_concrete_tasks_in_order_of_descending_priority(),
-                start=1,
-            ):
-                name = (
-                    self._logic_layer.get_task_system().attributes_register()[uid].name
-                )
-                progress = self._logic_layer.get_task_system().get_progress(uid)
-                formatted_rank = str(rank)
-                formatted_uid = str(uid)
-                formatted_name = str(name)
-                formatted_importance = (
-                    importance.value if importance is not None else ""
-                )
-                formatted_progress = progress.value
-                self.insert(
-                    "",
-                    tk.END,
-                    values=[
-                        formatted_rank,
-                        formatted_uid,
-                        formatted_name,
-                        formatted_importance,
-                        formatted_progress,
-                    ],
-                )
-
-        def publish_task_selected_event(_, self: Self) -> None:
-            item_id = self.focus()
-
-            if not item_id:
-                return
-
-            task = tasks.UID(int(self.item(item_id, "values")[1]))
-            broker = event_broker.get_singleton()
-
-            broker.publish(event_broker.TaskSelected(task))
-
         super().__init__(
             master,
             columns=("rank", "id", "name", "highest_importance", "progress"),
@@ -69,14 +26,45 @@ class PriorityTreeView(ttk.Treeview):
         self.column("highest_importance", width=150)
         self.column("progress", width=100)
 
-        update_tree(None, self)
+        self._update_tasks()
 
-        self.bind(
-            "<<TreeviewSelect>>",
-            functools.partial(publish_task_selected_event, self=self),
-        )
+        self.bind("<<TreeviewSelect>>", lambda _: self._publish_task_selected_event())
 
         broker = event_broker.get_singleton()
-        broker.subscribe(
-            event_broker.SystemModified, functools.partial(update_tree, self=self)
-        )
+        broker.subscribe(event_broker.SystemModified, lambda _: self._update_tasks())
+
+    def _publish_task_selected_event(self) -> None:
+        item_id = self.focus()
+
+        if not item_id:
+            return
+
+        task = tasks.UID(int(self.item(item_id, "values")[1]))
+        broker = event_broker.get_singleton()
+        broker.publish(event_broker.TaskSelected(task))
+
+    def _update_tasks(self) -> None:
+        self.delete(*self.get_children())
+
+        for rank, (uid, importance) in enumerate(
+            self._logic_layer.get_active_concrete_tasks_in_order_of_descending_priority(),
+            start=1,
+        ):
+            name = self._logic_layer.get_task_system().attributes_register()[uid].name
+            progress = self._logic_layer.get_task_system().get_progress(uid)
+            formatted_rank = str(rank)
+            formatted_uid = str(uid)
+            formatted_name = str(name)
+            formatted_importance = importance.value if importance is not None else ""
+            formatted_progress = progress.value
+            self.insert(
+                "",
+                tk.END,
+                values=[
+                    formatted_rank,
+                    formatted_uid,
+                    formatted_name,
+                    formatted_importance,
+                    formatted_progress,
+                ],
+            )
