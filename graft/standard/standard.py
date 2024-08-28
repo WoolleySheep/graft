@@ -29,7 +29,7 @@ class StandardLogicLayer(architecture.LogicLayer):
         description: tasks.Description | None = None,
     ) -> tasks.UID:
         """Create a new task."""
-        uid = self._data_layer.get_unused_task_uid()
+        uid = self._data_layer.get_next_unused_task()
         self._system.add_task(uid)
         self._system.set_task_name(uid, name or tasks.Name())
         self._system.set_task_description(uid, description or tasks.Description())
@@ -39,8 +39,8 @@ class StandardLogicLayer(architecture.LogicLayer):
         return uid
 
     @override
-    def get_next_task_id(self) -> UID:
-        return self._data_layer.get_unused_task_uid()
+    def get_next_unused_task(self) -> UID:
+        return self._data_layer.get_next_unused_task()
 
     @override
     def delete_task(self, task: tasks.UID) -> None:

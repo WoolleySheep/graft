@@ -59,7 +59,7 @@ class TaskCreationWindow(tk.Toplevel):
 
         self.title("Create task")
 
-        self.task_id_label = TaskIdLabel(self, uid=logic_layer.get_next_task_id())
+        self.task_id_label = TaskIdLabel(self, uid=logic_layer.get_next_unused_task())
         self.name_entry = NameEntry(self)
         self.description_entry = DescriptionEntry(self)
 

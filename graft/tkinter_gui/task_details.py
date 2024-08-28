@@ -198,7 +198,7 @@ class TaskDetails(tk.Frame):
             self.selected_importance,
             None,
             *importance_menu_options,
-            command=lambda _: self._save_current_importance,
+            command=lambda _: self._save_current_importance(),
         )
 
         self.decrement_task_progress_button = ttk.Button(

@@ -15,7 +15,7 @@ def test_create_task(
     """Test the create_task method works as expected."""
     task = tasks.UID(0)
 
-    data_layer_mock.get_unused_task_uid.return_value = task
+    data_layer_mock.get_next_unused_task.return_value = task
     data_layer_mock.load_system.return_value = empty_system
     system_with_one_task = copy.deepcopy(empty_system)
     system_with_one_task.add_task(task)
@@ -24,7 +24,7 @@ def test_create_task(
 
     assert logic_layer.create_task() == task
 
-    data_layer_mock.get_unused_task_uid.assert_called_once()
+    data_layer_mock.get_next_unused_task.assert_called_once()
     data_layer_mock.load_system.assert_called_once()
     data_layer_mock.save_system_and_indicate_task_used.assert_called_once_with(
         system_with_one_task, task

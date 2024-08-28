@@ -27,8 +27,8 @@ class LogicLayer(abc.ABC):
         """Create a new task and return its UID."""
 
     @abc.abstractmethod
-    def get_next_task_id(self) -> tasks.UID:
-        """Return the next task ID."""
+    def get_next_unused_task(self) -> tasks.UID:
+        """Return the next unused task ID."""
 
     @abc.abstractmethod
     def delete_task(self, task: tasks.UID) -> None:
