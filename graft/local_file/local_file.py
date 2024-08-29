@@ -48,7 +48,7 @@ def _load_from_versioned_file[T](
     """Load data from a file according to the current schema.
 
     The file should start with the version number on the first line. This is
-    used to look up the corresponding decorder. As a result, the file schema can
+    used to look up the corresponding decoder. As a result, the file schema can
     change, as long as a corresponding decoder is available.
     """
     with file.open("r") as f:

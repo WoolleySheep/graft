@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import collections
 import itertools
-from collections.abc import Generator, Iterable, Iterator
+from collections.abc import Generator, Iterable, Iterator, MutableMapping
 from typing import Any, Protocol
 
 from graft import graphs
@@ -407,12 +407,33 @@ class ISystemView(Protocol):
         """
         ...
 
+    def get_progresses(
+        self, tasks: Iterable[UID], /
+    ) -> Generator[Progress, None, None]:
+        """Yield the progress of each of the specified tasks.
+
+        If it is a concrete tasks, returns its progress. If it is a non-concrete
+        task, returns its inferred progress.
+        """
+        ...
+
     def get_importance(self, task: UID, /) -> Importance | None:
         """Return the importance of the specified task.
 
         If it has its own importance, return that. If not, return the inferred
         importance. The inferred importance is the highest importance of its
         super-tasks. If it also has no inferred importance, return None.
+        """
+        ...
+
+    def get_importances(
+        self, tasks: Iterable[UID], /
+    ) -> Generator[Importance | None, None, None]:
+        """Yield the importance of each of the specified tasks.
+
+        If it has its own importance, return that. If not, return the inferred
+        importance. The inferred importance is the highest importance of a
+        task's super-tasks. If it also has no inferred importance, return None.
         """
         ...
 
@@ -533,28 +554,30 @@ class System:
             case Progress.COMPLETED:
                 if progress is not Progress.COMPLETED:
                     if any(
-                        self.get_progress(dependent_task) is not Progress.NOT_STARTED
-                        for dependent_task in self._network_graph.dependency_graph().dependent_tasks(
-                            task
+                        dependent_progress is not Progress.NOT_STARTED
+                        for dependent_progress in self.get_progresses(
+                            self._network_graph.dependency_graph().dependent_tasks(task)
                         )
                     ):
-                        dependent_tasks_with_progress = (
+                        dependent_tasks = (
+                            self._network_graph.dependency_graph().dependent_tasks(task)
+                        )
+                        started_dependent_tasks_with_progress = (
                             (dependent_task, dependent_progress)
-                            for dependent_task in self._network_graph.dependency_graph().dependent_tasks(
-                                task
+                            for dependent_task, dependent_progress in zip(
+                                dependent_tasks, self.get_progresses(dependent_tasks)
                             )
-                            if (dependent_progress := self.get_progress(dependent_task))
-                            is not Progress.NOT_STARTED
+                            if dependent_progress is not Progress.NOT_STARTED
                         )
                         raise StartedDependentTasksError(
                             task=task,
-                            started_dependent_tasks_with_progress=dependent_tasks_with_progress,
+                            started_dependent_tasks_with_progress=started_dependent_tasks_with_progress,
                         )
 
                     if any(
-                        self.get_progress(dependent_task) is not Progress.NOT_STARTED
-                        for dependent_task in self._get_dependent_tasks_of_superior_tasks(
-                            task
+                        superior_dependent_progress is not Progress.NOT_STARTED
+                        for superior_dependent_progress in self.get_progresses(
+                            self._get_dependent_tasks_of_superior_tasks(task)
                         )
                     ):
                         # TODO: Add subgraph to error
@@ -562,18 +585,20 @@ class System:
             case Progress.NOT_STARTED:
                 if progress is not Progress.NOT_STARTED:
                     if any(
-                        self.get_progress(dependee_task) is not Progress.COMPLETED
-                        for dependee_task in self._network_graph.dependency_graph().dependee_tasks(
-                            task
+                        dependee_progress is not Progress.COMPLETED
+                        for dependee_progress in self.get_progresses(
+                            self._network_graph.dependency_graph().dependee_tasks(task)
                         )
                     ):
+                        dependee_tasks = (
+                            self._network_graph.dependency_graph().dependee_tasks(task)
+                        )
                         incomplete_dependee_tasks_with_progress = (
                             (dependee_task, dependee_progress)
-                            for dependee_task in self._network_graph.dependency_graph().dependee_tasks(
-                                task
+                            for dependee_task, dependee_progress in zip(
+                                dependee_tasks, self.get_progresses(dependee_tasks)
                             )
-                            if (dependee_progress := self.get_progress(dependee_task))
-                            is not Progress.COMPLETED
+                            if dependee_progress is not Progress.COMPLETED
                         )
                         raise IncompleteDependeeTasksError(
                             task=task,
@@ -581,9 +606,9 @@ class System:
                         )
 
                     if any(
-                        self.get_progress(dependee_task) is not Progress.COMPLETED
-                        for dependee_task in self._get_dependee_tasks_of_superior_tasks(
-                            task
+                        superior_dependee_progress is not Progress.COMPLETED
+                        for superior_dependee_progress in self.get_progresses(
+                            self._get_dependee_tasks_of_superior_tasks(task)
                         )
                     ):
                         # TODO: Add subgraph to error
@@ -678,17 +703,21 @@ class System:
         subtask_progress = self.get_progress(subtask)
         if subtask_progress is not Progress.NOT_STARTED:
             if any(
-                self.get_progress(task) is not Progress.COMPLETED
-                for task in self._network_graph.dependency_graph().dependee_tasks(
-                    supertask
+                dependee_progress is not Progress.COMPLETED
+                for dependee_progress in self.get_progresses(
+                    self._network_graph.dependency_graph().dependee_tasks(supertask)
                 )
             ):
+                dependee_tasks_of_supertask = (
+                    self._network_graph.dependency_graph().dependee_tasks(supertask)
+                )
                 incomplete_dependee_tasks_of_supertask_with_progress = (
-                    (task, progress)
-                    for task in self._network_graph.dependency_graph().dependee_tasks(
-                        supertask
+                    (dependee_task, dependee_task_progress)
+                    for dependee_task, dependee_task_progress in zip(
+                        dependee_tasks_of_supertask,
+                        self.get_progresses(dependee_tasks_of_supertask),
                     )
-                    if (progress := self.get_progress(task)) is not Progress.COMPLETED
+                    if dependee_task_progress is not Progress.COMPLETED
                 )
                 raise IncompleteDependeeTasksOfSupertaskError(
                     supertask=supertask,
@@ -697,8 +726,10 @@ class System:
                 )
 
             if any(
-                self.get_progress(task) is not Progress.COMPLETED
-                for task in self._get_dependee_tasks_of_superior_tasks(supertask)
+                progress is not Progress.COMPLETED
+                for progress in self.get_progresses(
+                    self._get_dependee_tasks_of_superior_tasks(supertask)
+                )
             ):
                 # TODO: Get proper subgraph
                 raise IncompleteDependeeTasksOfSuperiorTasksOfSupertaskError(
@@ -709,17 +740,21 @@ class System:
 
         if subtask is not Progress.COMPLETED:
             if any(
-                self.get_progress(task) is not Progress.NOT_STARTED
-                for task in self._network_graph.dependency_graph().dependent_tasks(
-                    supertask
+                progress is not Progress.NOT_STARTED
+                for progress in self.get_progresses(
+                    self._network_graph.dependency_graph().dependent_tasks(supertask)
                 )
             ):
+                dependent_tasks_of_supertask = (
+                    self._network_graph.dependency_graph().dependent_tasks(supertask)
+                )
                 started_dependent_tasks_of_supertask_with_progress = (
                     (task, progress)
-                    for task in self._network_graph.dependency_graph().dependent_tasks(
-                        supertask
+                    for task, progress in zip(
+                        dependent_tasks_of_supertask,
+                        self.get_progresses(dependent_tasks_of_supertask),
                     )
-                    if (progress := self.get_progress(task)) is not Progress.NOT_STARTED
+                    if progress is not Progress.NOT_STARTED
                 )
                 raise StartedDependentTasksOfSupertaskError(
                     supertask=supertask,
@@ -728,8 +763,10 @@ class System:
                 )
 
             if any(
-                self.get_progress(task) is not Progress.NOT_STARTED
-                for task in self._get_dependent_tasks_of_superior_tasks(supertask)
+                progress is not Progress.NOT_STARTED
+                for progress in self.get_progresses(
+                    self._get_dependent_tasks_of_superior_tasks(supertask)
+                )
             ):
                 # TODO: Get proper subgraph
                 raise StartedDependentTasksOfSuperiorTasksOfSupertaskError(
@@ -791,49 +828,61 @@ class System:
         If it is a concrete tasks, returns its progress. If it is a non-concrete
         task, returns its inferred progress.
         """
-        return (
-            self._get_progress_of_concrete_task(task)
-            if self._network_graph.hierarchy_graph().is_concrete(task)
-            else self._get_inferred_progress(task)
-        )
+        return next(self.get_progresses([task]))
+
+    def get_progresses(
+        self, tasks: Iterable[UID], /
+    ) -> Generator[Progress, None, None]:
+        """Yield the progress of each of the specified tasks.
+
+        If it is a concrete tasks, returns its progress. If it is a non-concrete
+        task, returns its inferred progress.
+        """
+
+        def get_progress_recursive(
+            task: UID, task_progress_map: MutableMapping[UID, Progress]
+        ) -> Progress:
+            if self._network_graph.hierarchy_graph().is_concrete(task):
+                return self._get_progress_of_concrete_task(task)
+
+            if task in task_progress_map:
+                return task_progress_map[task]
+
+            # Get inferred progress
+            progress: Progress | None = None
+            for subtask in self._network_graph.hierarchy_graph().subtasks(task):
+                subtask_progress = get_progress_recursive(subtask, task_progress_map)
+
+                match subtask_progress:
+                    case Progress.NOT_STARTED:
+                        if progress is Progress.COMPLETED:
+                            progress = Progress.IN_PROGRESS
+                            break
+                        progress = Progress.NOT_STARTED
+                    case Progress.IN_PROGRESS:
+                        progress = Progress.IN_PROGRESS
+                        break
+                    case Progress.COMPLETED:
+                        if progress is Progress.NOT_STARTED:
+                            progress = Progress.IN_PROGRESS
+                            break
+                        progress = Progress.COMPLETED
+
+            assert progress
+            task_progress_map[task] = progress
+            return progress
+
+        task_progress_map = dict[UID, Progress]()
+        for task in tasks:
+            yield get_progress_recursive(task, task_progress_map)
 
     def _get_progress_of_concrete_task(self, task: UID, /) -> Progress:
         """Get the progress of a concrete task."""
-        if not self._network_graph.hierarchy_graph().is_concrete(task):
+        progress = self._attributes_register[task].progress
+
+        if progress is None:
             raise NotConcreteTaskError(task=task)
 
-        progress = self._attributes_register[task].progress
-        assert progress is not None
-        return progress
-
-    def _get_inferred_progress(self, task: UID) -> Progress:
-        """Return the inferred progress of the specified non-concrete task."""
-        if self._network_graph.hierarchy_graph().is_concrete(task):
-            raise ConcreteTaskError(task=task)
-
-        progress: Progress | None = None
-        # DFS will get to the concrete tasks faster, so use that
-        for inferior_task in self._network_graph.hierarchy_graph().inferior_tasks(
-            task, order=graphs.SearchOrder.DEPTH_FIRST
-        ):
-            if not self._network_graph.hierarchy_graph().is_concrete(inferior_task):
-                continue
-
-            concrete_task_progress = self._get_progress_of_concrete_task(inferior_task)
-
-            match concrete_task_progress:
-                case Progress.NOT_STARTED:
-                    if progress is Progress.COMPLETED:
-                        return Progress.IN_PROGRESS
-                    progress = Progress.NOT_STARTED
-                case Progress.IN_PROGRESS:
-                    return Progress.IN_PROGRESS
-                case Progress.COMPLETED:
-                    if progress is Progress.NOT_STARTED:
-                        return Progress.IN_PROGRESS
-                    progress = Progress.COMPLETED
-
-        assert progress is not None
         return progress
 
     def has_inferred_importance(self, task: UID, /) -> bool:
@@ -855,12 +904,12 @@ class System:
         importance. The inferred importance is the highest importance of its
         super-tasks. If it also has no inferred importance, return None.
         """
-        return next(self.get_importance_multi([task]))
+        return next(self.get_importances([task]))
 
-    def get_importance_multi(
+    def get_importances(
         self, tasks: Iterable[UID], /
     ) -> Generator[Importance | None, None, None]:
-        """Return the importances of the specified tasks.
+        """Yield the importance of each of the specified tasks.
 
         If it has its own importance, return that. If not, return the inferred
         importance. The inferred importance is the highest importance of a
@@ -1094,6 +1143,16 @@ class SystemView:
         """
         return self._system.get_progress(task)
 
+    def get_progresses(
+        self, tasks: Iterable[UID], /
+    ) -> Generator[Progress, None, None]:
+        """Yield the progress of each of the specified tasks.
+
+        If it is a concrete tasks, returns its progress. If it is a non-concrete
+        task, returns its inferred progress.
+        """
+        return self._system.get_progresses(tasks)
+
     def get_importance(self, task: UID, /) -> Importance | None:
         """Return the importance of the specified task.
 
@@ -1102,6 +1161,17 @@ class SystemView:
         super-tasks. If it also has no inferred importance, return None.
         """
         return self._system.get_importance(task)
+
+    def get_importances(
+        self, tasks: Iterable[UID], /
+    ) -> Generator[Importance | None, None, None]:
+        """Yield the importance of each of the specified tasks.
+
+        If it has its own importance, return that. If not, return the inferred
+        importance. The inferred importance is the highest importance of a
+        task's super-tasks. If it also has no inferred importance, return None.
+        """
+        return self._system.get_importances(tasks)
 
     def has_inferred_importance(self, task: UID, /) -> bool:
         """Return whether the specified task has an inferred importance.

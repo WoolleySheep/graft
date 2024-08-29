@@ -99,7 +99,7 @@ def _decode_importance(text: str) -> tasks.Importance:
 
 
 def _convert_attributes_to_dict(
-    attributes: tasks.AttributesView,
+    attributes: tasks.IAttributesView,
 ) -> TaskAttributesJSONDict:
     return {
         _NAME_KEY: _encode_name(attributes.name),

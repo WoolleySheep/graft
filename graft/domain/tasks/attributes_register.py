@@ -80,6 +80,17 @@ class AttributesRegister(Mapping[UID, AttributesView]):
 
         return AttributesView(attributes=attributes)
 
+    def __str__(self) -> str:
+        """Return string representation of the register."""
+        return str(self._task_to_attributes_map)
+
+    def __repr__(self) -> str:
+        """Return string representation of the register."""
+        task_attributes_pair = (
+            f"{task!r}: {attributes!r}" for task, attributes in self.items()
+        )
+        return f"{self.__class__.__name__}({{{", ".join(task_attributes_pair)}}})"
+
     def add(self, /, task: UID) -> None:
         """Add a new task."""
         if task in self:
@@ -163,3 +174,14 @@ class AttributesRegisterView(Mapping[UID, AttributesView]):
     def __getitem__(self, key: UID) -> AttributesView:
         """Return view of attributes associated with key."""
         return self._attributes_register[key]
+
+    def __str__(self) -> str:
+        """Return string representation of the register."""
+        return str(self._attributes_register)
+
+    def __repr__(self) -> str:
+        """Return string representation of the register."""
+        task_attributes_pair = (
+            f"{task!r}: {attributes!r}" for task, attributes in self.items()
+        )
+        return f"{self.__class__.__name__}({{{", ".join(task_attributes_pair)}}})"

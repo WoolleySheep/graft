@@ -1,6 +1,6 @@
 """Task-specific classes and exceptions."""
 
-from graft.domain.tasks.attributes import Attributes, AttributesView
+from graft.domain.tasks.attributes import Attributes, AttributesView, IAttributesView
 from graft.domain.tasks.attributes_register import (
     AttributesRegister,
     AttributesRegisterView,

@@ -14,7 +14,9 @@ from collections.abc import (
 from typing import Any
 
 
-def invert_set_mapping[T: Hashable](mapping: Mapping[T, Set[T]], /) -> dict[T, set[T]]:
+def invert_bidirectional_mapping[T: Hashable](
+    mapping: Mapping[T, Iterable[T]], /
+) -> dict[T, set[T]]:
     """Invert mapping of keys to hashable sets."""
     inverted: dict[T, set[T]] = {}
     for key, values in mapping.items():
@@ -67,7 +69,11 @@ class SetView[T: Hashable](Set[T]):
 
     def __str__(self) -> str:
         """Return string representation of the set."""
-        return f"set_view({{{', '.join(str(value) for value in self._set)}}})"
+        return f"{{{', '.join(str(value) for value in self._set)}}}"
+
+    def __repr__(self) -> str:
+        """Return string representation of the set."""
+        return f"{self.__class__.__name__}({{{', '.join(repr(value) for value in self._set)}}})"
 
 
 class SetViewMapping[T: Hashable, S: Hashable](Mapping[T, SetView[S]]):
@@ -90,9 +96,17 @@ class SetViewMapping[T: Hashable, S: Hashable](Mapping[T, SetView[S]]):
         return SetView[S](self._mapping[key])
 
     def __str__(self) -> str:
-        """Return string representation of the SetValuesMappingView."""
+        """Return string representation of the mapping."""
         keys_with_values = (f"{key}: {values}" for key, values in self._mapping.items())
-        return f"set_view_mapping({', '.join(keys_with_values)})"
+        return f"{{{', '.join(keys_with_values)}}}"
+
+    def __repr__(self) -> str:
+        """Return string representation of the mapping."""
+        keys_with_values = (
+            f"{key!r}: {{{", ".join(repr(value) for value in values)}}}"
+            for key, values in self._mapping.items()
+        )
+        return f"{self.__class__.__name__}({{{', '.join(keys_with_values)}}})"
 
 
 class BiDirectionalSetDict[T: Hashable](MutableMapping[T, SetView[T]]):
@@ -108,7 +122,7 @@ class BiDirectionalSetDict[T: Hashable](MutableMapping[T, SetView[T]]):
             if forward
             else dict[T, set[T]]()
         )
-        self._backward = invert_set_mapping(self._forward)
+        self._backward = invert_bidirectional_mapping(self._forward)
 
     @property
     def inverse(self) -> SetViewMapping[T, T]:
@@ -160,7 +174,15 @@ class BiDirectionalSetDict[T: Hashable](MutableMapping[T, SetView[T]]):
 
     def __str__(self) -> str:
         """Return string representation of bidict."""
-        return f"bi_directional_set_value_dict({self._forward})"
+        return str(self._forward)
+
+    def __repr__(self) -> str:
+        """Return string representation of bidict."""
+        keys_with_values = (
+            f"{key!r}: {{{", ".join(repr(value) for value in values)}}}"
+            for key, values in self._forward.items()
+        )
+        return f"{self.__class__.__name__}({{{', '.join(keys_with_values)}}})"
 
     def __len__(self) -> int:
         """Return number of keys in bidict."""

@@ -245,11 +245,18 @@ class DependenciesView(Set[tuple[UID, UID]]):
         return iter(self._dependencies)
 
     def __str__(self) -> str:
-        """Return string representation of view."""
-        formatted_dependencies = (
-            f"({dependee}, {dependent})" for dependee, dependent in self
+        """Return string representation of dependencies."""
+        task_dependent_pairs = (
+            f"({task}, {dependent_task})" for task, dependent_task in self
         )
-        return f"dependencies_view({', '.join(formatted_dependencies)})"
+        return f"{{{', '.join(task_dependent_pairs)}}}"
+
+    def __repr__(self) -> str:
+        """Return string representation of dependencies."""
+        task_dependent_pairs = (
+            f"({task!r}, {dependent_task!r})" for task, dependent_task in iter(self)
+        )
+        return f"{self.__class__.__name__}({{{', '.join(task_dependent_pairs)}}})"
 
 
 class IDependencyGraphView(Protocol):
@@ -267,15 +274,15 @@ class IDependencyGraphView(Protocol):
         """Return number of tasks in graph."""
         ...
 
-    def __eq__(self, other: object) -> bool:
-        """Check if two graphs are equal."""
-        ...
-
     def __iter__(self) -> Iterator[UID]:
         """Return generator over tasks in graph."""
         ...
 
     def __str__(self) -> str:
+        """Return string representation of graph."""
+        ...
+
+    def __repr__(self) -> str:
         """Return string representation of graph."""
         ...
 
@@ -422,11 +429,15 @@ class DependencyGraph:
 
     def __str__(self) -> str:
         """Return string representation of graph."""
-        tasks_with_dependent_tasks = (
-            f"{task}: {{{', '.join(str(dependent_task) for dependent_task in dependent_tasks)}}}"
-            for task, dependent_tasks in self.task_dependents_pairs()
+        return str(self._dag)
+
+    def __repr__(self) -> str:
+        """Return string representation of graph."""
+        tasks_with_dependents = (
+            f"{task!r}: {{{", ".join(repr(dependent) for dependent in dependents)}}}"
+            for task, dependents in self.task_dependents_pairs()
         )
-        return f"dependency_graph({{{', '.join(tasks_with_dependent_tasks)}}})"
+        return f"{self.__class__.__name__}({{{', '.join(tasks_with_dependents)}}})"
 
     @helpers.reraise_node_already_exists_as_task_already_exists()
     def add_task(self, /, task: UID) -> None:
@@ -643,12 +654,20 @@ class DependencyGraphView:
         return item in self._graph
 
     def __str__(self) -> str:
-        """Return string representation of graph view."""
-        tasks_with_dependent_tasks = (
-            f"{task}: {{{', '.join(str(dependent_task) for dependent_task in dependent_tasks)}}}"
-            for task, dependent_tasks in self.task_dependents_pairs()
+        """Return string representation of graph."""
+        tasks_with_dependents = (
+            f"{task}: {{{", ".join(str(dependent) for dependent in dependents)}}}"
+            for task, dependents in self.task_dependents_pairs()
         )
-        return f"dependency_graph_view({{{', '.join(tasks_with_dependent_tasks)}}})"
+        return f"{{{', '.join(tasks_with_dependents)}}}"
+
+    def __repr__(self) -> str:
+        """Return string representation of graph."""
+        tasks_with_dependents = (
+            f"{task!r}: {{{", ".join(repr(dependent) for dependent in dependents)}}}"
+            for task, dependents in self.task_dependents_pairs()
+        )
+        return f"{self.__class__.__name__}({{{', '.join(tasks_with_dependents)}}})"
 
     def tasks(self) -> UIDsView:
         """Return view of tasks in graph."""

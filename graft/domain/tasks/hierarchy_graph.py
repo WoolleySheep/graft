@@ -271,11 +271,14 @@ class HierarchiesView(Set[tuple[UID, UID]]):
         return isinstance(other, HierarchiesView) and set(self) == set(other)
 
     def __str__(self) -> str:
-        """Return string representation of view."""
-        formatted_hierarchies = (
-            f"({supertask}, {subtask})" for supertask, subtask in self
-        )
-        return f"hierarchies_view({', '.join(formatted_hierarchies)})"
+        """Return string representation of hierarchies."""
+        task_subtask_pairs = (f"({task}, {subtask})" for task, subtask in self)
+        return f"{{{', '.join(task_subtask_pairs)}}}"
+
+    def __repr__(self) -> str:
+        """Return string representation of hierarchies."""
+        task_subtask_pairs = (f"({task!r}, {subtask!r})" for task, subtask in self)
+        return f"{self.__class__.__name__}({{{', '.join(task_subtask_pairs)}}})"
 
 
 class IHierarchyGraphView(Protocol):
@@ -293,15 +296,15 @@ class IHierarchyGraphView(Protocol):
         """Return number of tasks in graph."""
         ...
 
-    def __eq__(self, other: object) -> bool:
-        """Check if two graphs are equal."""
-        ...
-
     def __iter__(self) -> Iterator[UID]:
         """Return generator over tasks in graph."""
         ...
 
     def __str__(self) -> str:
+        """Return string representation of graph."""
+        ...
+
+    def __repr__(self) -> str:
         """Return string representation of graph."""
         ...
 
@@ -480,11 +483,15 @@ class HierarchyGraph:
 
     def __str__(self) -> str:
         """Return string representation of graph."""
+        return str(self._reduced_dag)
+
+    def __repr__(self) -> str:
+        """Return string representation of graph."""
         tasks_with_subtasks = (
-            f"{task}: {{{', '.join(str(subtask) for subtask in subtasks)}}}"
+            f"{task!r}: {{{", ".join(repr(subtask) for subtask in subtasks)}}}"
             for task, subtasks in self.task_subtasks_pairs()
         )
-        return f"hierarchy_graph({{{', '.join(tasks_with_subtasks)}}})"
+        return f"{self.__class__.__name__}({{{', '.join(tasks_with_subtasks)}}})"
 
     def tasks(self) -> UIDsView:
         """Return view of tasks in graph."""
@@ -733,12 +740,20 @@ class HierarchyGraphView:
         return item in self._graph
 
     def __str__(self) -> str:
-        """Return string representation of graph view."""
+        """Return string representation of graph."""
         tasks_with_subtasks = (
-            f"{task}: {{{', '.join(str(subtask) for subtask in subtasks)}}}"
+            f"{task}: {{{", ".join(str(subtask) for subtask in subtasks)}}}"
             for task, subtasks in self.task_subtasks_pairs()
         )
-        return f"hierarchy_graph_view({{{', '.join(tasks_with_subtasks)}}})"
+        return f"{{{', '.join(tasks_with_subtasks)}}}"
+
+    def __repr__(self) -> str:
+        """Return string representation of graph."""
+        tasks_with_subtasks = (
+            f"{task!r}: {{{", ".join(repr(subtask) for subtask in subtasks)}}}"
+            for task, subtasks in self.task_subtasks_pairs()
+        )
+        return f"{self.__class__.__name__}({{{', '.join(tasks_with_subtasks)}}})"
 
     def tasks(self) -> UIDsView:
         """Return tasks in view."""

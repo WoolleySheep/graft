@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import enum
+from typing import Protocol
 
 from graft.domain.tasks.description import Description
 from graft.domain.tasks.importance import Importance
@@ -17,6 +18,30 @@ class DefaultSentinel(enum.Enum):
     """
 
     DEFAULT = enum.auto()
+
+
+class IAttributesView(Protocol):
+    """Interface for a view of attributes."""
+
+    @property
+    def name(self) -> Name:
+        """Get name."""
+        ...
+
+    @property
+    def description(self) -> Description:
+        """Get description."""
+        ...
+
+    @property
+    def progress(self) -> Progress | None:
+        """Get progress."""
+        ...
+
+    @property
+    def importance(self) -> Importance | None:
+        """Get importance."""
+        ...
 
 
 class Attributes:
@@ -39,6 +64,14 @@ class Attributes:
         self._description = description
         self._progress = progress
         self._importance = importance
+
+    def __str__(self) -> str:
+        """Return string representation of attributes."""
+        return f"{{name={self.name}, description={self.description}, progress={self.progress.value if self.progress else None}, importance={self.importance.value if self.importance else None}}}"
+
+    def __repr__(self) -> str:
+        """Return string representation of attributes."""
+        return f"{self.__class__.__name__}(name={self.name}, description={self.description}, progress={self.progress.value if self.progress else None}, importance={self.importance.value if self.importance else None})"
 
     @property
     def name(self) -> Name:
@@ -87,7 +120,7 @@ class Attributes:
 class AttributesView:
     """Attributes view."""
 
-    def __init__(self, attributes: Attributes) -> None:
+    def __init__(self, attributes: IAttributesView) -> None:
         """Initialise AttributesView."""
         self._attributes = attributes
 
@@ -100,6 +133,14 @@ class AttributesView:
             and self.progress is other.progress
             and self.importance is other.importance
         )
+
+    def __str__(self) -> str:
+        """Return string representation of attributes."""
+        return str(self._attributes)
+
+    def __repr__(self) -> str:
+        """Return string representation of attributes."""
+        return f"{self.__class__.__name__}(name={self.name}, description={self.description}, progress={self.progress.value if self.progress else None}, importance={self.importance.value if self.importance else None})"
 
     @property
     def name(self) -> Name:

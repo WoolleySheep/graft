@@ -235,8 +235,12 @@ class NodesView[T: Hashable](Set[T]):
         return isinstance(other, NodesView) and set(self._nodes) == set(other)
 
     def __str__(self) -> str:
-        """Return string representation of view."""
-        return f"nodes_view({{{', '.join(str(node) for node in self._nodes)}}})"
+        """Return string representation of the nodes."""
+        return f"{{{', '.join(str(node) for node in self)}}}"
+
+    def __repr__(self) -> str:
+        """Return string representation of the nodes."""
+        return f"{self.__class__.__name__}{{{', '.join(repr(node) for node in self)}}}"
 
 
 class EdgesView[T: Hashable](Set[tuple[T, T]]):
@@ -291,13 +295,16 @@ class EdgesView[T: Hashable](Set[tuple[T, T]]):
                 yield (node, successor)
 
     def __str__(self) -> str:
-        """Return string representation of view."""
-        node_with_successors = list[str]()
-        for node, successors in self._node_successors_map.items():
-            node_with_successors.append(
-                ", ".join(f"({node}, {successor})" for successor in successors),
-            )
-        return f"edges_view({{{', '.join(node_with_successors)}}})"
+        """Return string representation of edges."""
+        node_successor_pairs = (f"({node}, {successor})" for node, successor in self)
+        return f"{{{', '.join(node_successor_pairs)}}}"
+
+    def __repr__(self) -> str:
+        """Return string representation of edges."""
+        node_successor_pairs = (
+            f"({node!r}, {successor!r})" for node, successor in iter(self)
+        )
+        return f"{self.__class__.__name__}({{{', '.join(node_successor_pairs)}}})"
 
 
 class SimpleDiGraph[T: Hashable]:
@@ -333,12 +340,15 @@ class SimpleDiGraph[T: Hashable]:
 
     def __str__(self) -> str:
         """Return string representation of digraph."""
-        nodes_with_successors = list[str]()
-        for node, successors in self._bidict.items():
-            nodes_with_successors.append(
-                f"{node}: {{{', '.join(str(value) for value in successors)}}}",
-            )
-        return f"simple_digraph({{{', '.join(nodes_with_successors)}}})"
+        return str(self._bidict)
+
+    def __repr__(self) -> str:
+        """Return string representation of digraph."""
+        nodes_with_successors = (
+            f"{node!r}: {{{", ".join(repr(successor) for successor in successors)}}}"
+            for node, successors in self.node_successors_pairs()
+        )
+        return f"{self.__class__.__name__}({{{', '.join(nodes_with_successors)}}})"
 
     def __len__(self) -> int:
         """Return number of nodes in digraph."""
@@ -712,10 +722,8 @@ class SimpleDiGraph[T: Hashable]:
 
         visited_nodes = set[T]()
         current_subgraph_nodes = set[T]()
-        for node in self:
-            if node not in visited_nodes and process_node(
-                node, visited_nodes, current_subgraph_nodes
-            ):
-                return True
-
-        return False
+        return any(
+            node not in visited_nodes
+            and process_node(node, visited_nodes, current_subgraph_nodes)
+            for node in self
+        )
