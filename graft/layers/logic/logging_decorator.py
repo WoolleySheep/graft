@@ -21,8 +21,8 @@ class LoggingDecoratorLogicLayer(architecture.LogicLayer):
         logger.info("Erasing all data")
         try:
             self._data_layer.erase()
-        except:
-            logger.warning("Failed to erase all data")
+        except Exception as e:
+            logger.warning("Failed to erase all data, exception [%s]", e)
             raise
 
         logger.info("All data erased")
@@ -50,21 +50,28 @@ class LoggingDecoratorLogicLayer(architecture.LogicLayer):
 
         try:
             new_task = self._handler.create_task(name=name, description=description)
-        except:
+        except Exception as e:
             match (name, description):
                 case (None, None):
-                    logger.warning("Failed to create new task")
+                    logger.warning("Failed to create new task, exception [%s]", e)
                 case (None, _):
                     logger.warning(
-                        "Failed to create new task with description [%s]", description
+                        "Failed to create new task with description [%s], exception [%s]",
+                        description,
+                        e,
                     )
                 case (_, None):
-                    logger.warning("Failed to create new task with name [%s]", name)
+                    logger.warning(
+                        "Failed to create new task with name [%s], exception [%s]",
+                        name,
+                        e,
+                    )
                 case (_, _):
                     logger.warning(
-                        "Failed to create new task with name [%s] and description [%s]",
+                        "Failed to create new task with name [%s] and description [%s], exception [%s]",
                         name,
                         description,
+                        e,
                     )
             raise
 
@@ -96,8 +103,8 @@ class LoggingDecoratorLogicLayer(architecture.LogicLayer):
         logger.debug("Getting next unused task UID")
         try:
             next_unused_task = self._handler.get_next_unused_task()
-        except:
-            logger.warning("Failed to get next unused task UID")
+        except Exception as e:
+            logger.warning("Failed to get next unused task UID, exception [%s]", e)
             raise
         logger.debug("Got next unused task UID [%s]", next_unused_task)
         return next_unused_task
@@ -108,8 +115,10 @@ class LoggingDecoratorLogicLayer(architecture.LogicLayer):
         logger.info("Deleting task with UID [%s]", task)
         try:
             self._handler.delete_task(task)
-        except:
-            logger.warning("Failed to delete task with UID [%s]", task)
+        except Exception as e:
+            logger.warning(
+                "Failed to delete task with UID [%s], exception [%s]", task, e
+            )
             raise
         logger.info("Task with UID [%s] deleted", task)
 
@@ -119,9 +128,12 @@ class LoggingDecoratorLogicLayer(architecture.LogicLayer):
         logger.info("Updating name of task with UID [%s] to [%s]", task, name)
         try:
             self._handler.update_task_name(task, name)
-        except:
+        except Exception as e:
             logger.warning(
-                "Failed to update name of task with UID [%s] to [%s]", task, name
+                "Failed to update name of task with UID [%s] to [%s], exception [%s]",
+                task,
+                name,
+                e,
             )
             raise
         logger.info("Name of task with UID [%s] updated to [%s]", task, name)
@@ -136,11 +148,12 @@ class LoggingDecoratorLogicLayer(architecture.LogicLayer):
         )
         try:
             self._handler.update_task_description(task, description)
-        except:
+        except Exception as e:
             logger.warning(
-                "Failed to update description of task with UID [%s] to [%s]",
+                "Failed to update description of task with UID [%s] to [%s], exception [%s]",
                 task,
                 description,
+                e,
             )
             raise
         logger.info(
@@ -157,11 +170,12 @@ class LoggingDecoratorLogicLayer(architecture.LogicLayer):
         )
         try:
             self._handler.update_concrete_task_progress(task, progress)
-        except:
+        except Exception as e:
             logger.warning(
-                "Failed to update progress of task with UID [%s] to [%s]",
+                "Failed to update progress of task with UID [%s] to [%s], exception [%s]",
                 task,
                 progress.value,
+                e,
             )
             raise
         logger.info(
@@ -184,17 +198,20 @@ class LoggingDecoratorLogicLayer(architecture.LogicLayer):
                 )
         try:
             self._handler.update_task_importance(task, importance)
-        except:
+        except Exception as e:
             match importance:
                 case None:
                     logger.info(
-                        "Failed to remove importance of task with UID [%s]", task
+                        "Failed to remove importance of task with UID [%s], exception [%s]",
+                        task,
+                        e,
                     )
                 case _:
                     logger.info(
-                        "Failed to update importance of task with UID [%s] to [%s]",
+                        "Failed to update importance of task with UID [%s] to [%s], exception [%s]",
                         task,
                         importance.value,
+                        e,
                     )
             raise
 
@@ -214,8 +231,8 @@ class LoggingDecoratorLogicLayer(architecture.LogicLayer):
         logger.debug("Getting task system")
         try:
             task_system = self._handler.get_task_system()
-        except:
-            logger.warning("Failed to get task system")
+        except Exception as e:
+            logger.warning("Failed to get task system, exception [%s]", e)
             raise
         logger.debug("Got task system")
         return task_system
@@ -230,11 +247,12 @@ class LoggingDecoratorLogicLayer(architecture.LogicLayer):
         )
         try:
             self._handler.create_task_hierarchy(supertask, subtask)
-        except:
+        except Exception as e:
             logger.warning(
-                "Failed to create hierarchy between supertask with UID [%s] and subtask with UID [%s]",
+                "Failed to create hierarchy between supertask with UID [%s] and subtask with UID [%s], exception [%s]",
                 supertask,
                 subtask,
+                e,
             )
             raise
         logger.info(
@@ -253,11 +271,12 @@ class LoggingDecoratorLogicLayer(architecture.LogicLayer):
         )
         try:
             self._handler.delete_task_hierarchy(supertask, subtask)
-        except:
+        except Exception as e:
             logger.warning(
-                "Failed to delete hierarchy between supertask with UID [%s] and subtask with UID [%s]",
+                "Failed to delete hierarchy between supertask with UID [%s] and subtask with UID [%s], exception [%s]",
                 supertask,
                 subtask,
+                e,
             )
             raise
         logger.info(
@@ -278,11 +297,12 @@ class LoggingDecoratorLogicLayer(architecture.LogicLayer):
         )
         try:
             self._handler.create_task_dependency(dependee_task, dependent_task)
-        except:
+        except Exception as e:
             logger.warning(
-                "Failed to create dependency between dependee-task with UID [%s] and dependent-task with UID [%s]",
+                "Failed to create dependency between dependee-task with UID [%s] and dependent-task with UID [%s], exception [%s]",
                 dependee_task,
                 dependent_task,
+                e,
             )
             raise
         logger.info(
@@ -303,11 +323,12 @@ class LoggingDecoratorLogicLayer(architecture.LogicLayer):
         )
         try:
             self._handler.delete_task_dependency(dependee_task, dependent_task)
-        except:
+        except Exception as e:
             logger.warning(
-                "Failed to delete dependency between dependee-task with UID [%s] and dependent-task with UID [%s]",
+                "Failed to delete dependency between dependee-task with UID [%s] and dependent-task with UID [%s], exception [%s]",
                 dependee_task,
                 dependent_task,
+                e,
             )
             raise
         logger.info(
@@ -327,9 +348,10 @@ class LoggingDecoratorLogicLayer(architecture.LogicLayer):
         logger.debug("Getting active concrete tasks in order of descending priority")
         try:
             active_concrete_tasks_in_order_of_descending_priority = self._handler.get_active_concrete_tasks_in_order_of_descending_priority()
-        except:
+        except Exception as e:
             logger.warning(
-                "Failed to get active concrete tasks in order of descending priority"
+                "Failed to get active concrete tasks in order of descending priority, exception [%s]",
+                e,
             )
             raise
         logger.debug("Got active concrete tasks in order of descending priority")
