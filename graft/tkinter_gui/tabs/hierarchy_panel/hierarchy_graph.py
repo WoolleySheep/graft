@@ -22,6 +22,7 @@ class HierarchyGraph(tk.Frame):
 
         mpl.use("Agg")
         self._logic_layer = logic_layer
+        self._selected_task: tasks.UID | None = None
         self._fig = plt.figure()
         self._ax = self._fig.add_subplot()
         self._annotation = mpl_text.Annotation("", (0, 0), (20, 20))
@@ -36,7 +37,28 @@ class HierarchyGraph(tk.Frame):
         self._update_figure()
 
         broker = event_broker.get_singleton()
-        broker.subscribe(event_broker.SystemModified, lambda _: self._update_figure())
+        broker.subscribe(event_broker.SystemModified, self._on_system_modified)
+        broker.subscribe(event_broker.TaskSelected, self._on_task_selected)
+
+    def _on_system_modified(self, event: event_broker.Event) -> None:
+        if not isinstance(event, event_broker.SystemModified):
+            raise TypeError
+
+        if (
+            self._selected_task is not None
+            and self._selected_task not in self._logic_layer.get_task_system()
+        ):
+            self._selected_task = None
+
+        self._update_figure()
+
+    def _on_task_selected(self, event: event_broker.Event) -> None:
+        if not isinstance(event, event_broker.TaskSelected):
+            raise TypeError
+
+        if self._selected_task is None or event.task != self._selected_task:
+            self._selected_task = event.task
+            self._update_figure()
 
     def _update_figure(self) -> None:
         self._ax.clear()
@@ -64,10 +86,18 @@ class HierarchyGraph(tk.Frame):
             )
         )
 
+        task_colours = [
+            "red"
+            if self._selected_task is not None and task == self._selected_task
+            else "#1f78b4"
+            for task in self._tasks_in_path_order
+        ]
+
         self._task_path_collection: mpl_collections.PathCollection = (
             nx.draw_networkx_nodes(
                 networkx_graph,
                 pos=self._task_positions,
+                node_color=task_colours,  # pyright: ignore [reportArgumentType] (node_colour also accepts array[str])
                 ax=self._ax,
             )
         )
