@@ -7,7 +7,7 @@ import pytest
 
 from graft import domain
 from graft.domain import tasks
-from graft.standard import standard
+from graft.layers import logic
 
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
@@ -29,7 +29,7 @@ def test_create_dependency_success(
 
     data_layer_mock.load_system.return_value = system
 
-    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
     logic_layer.create_task_dependency(
         dependee_task=dependee_task, dependent_task=dependent_task
@@ -54,7 +54,7 @@ def test_create_dependency_failure_dependee_task_not_exist(
 
     data_layer_mock.load_system.return_value = system
 
-    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.TaskDoesNotExistError) as exc_info:
         logic_layer.create_task_dependency(
@@ -81,7 +81,7 @@ def test_create_dependency_failure_dependent_task_not_exist(
 
     data_layer_mock.load_system.return_value = system
 
-    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.TaskDoesNotExistError) as exc_info:
         logic_layer.create_task_dependency(
@@ -105,7 +105,7 @@ def test_create_dependency_failure_dependent_task_dependee_task_the_same(
 
     data_layer_mock.load_system.return_value = system
 
-    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.DependencyLoopError) as exc_info:
         logic_layer.create_task_dependency(dependee_task=task, dependent_task=task)
@@ -132,7 +132,7 @@ def test_create_dependency_failure_dependency_already_exists(
 
     data_layer_mock.load_system.return_value = system
 
-    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.DependencyAlreadyExistsError) as exc_info:
         logic_layer.create_task_dependency(
@@ -167,7 +167,7 @@ def test_create_dependency_failure_inverse_hierarchy_already_exists(
 
     data_layer_mock.load_system.return_value = system
 
-    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.DependencyIntroducesCycleError) as exc_info:
         logic_layer.create_task_dependency(
@@ -206,7 +206,7 @@ def test_create_dependency_failure_introduces_cycle(
 
     data_layer_mock.load_system.return_value = system
 
-    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.DependencyIntroducesCycleError) as exc_info:
         logic_layer.create_task_dependency(dependee_task=task2, dependent_task=task0)
@@ -246,7 +246,7 @@ def test_create_dependency_failure_introduces_cycle_prunes_subgraph_correctly(
 
     data_layer_mock.load_system.return_value = system
 
-    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.DependencyIntroducesCycleError) as exc_info:
         logic_layer.create_task_dependency(dependee_task=task2, dependent_task=task0)
@@ -285,7 +285,7 @@ def test_create_dependency_success_multiple_paths_allowed(
 
     data_layer_mock.load_system.return_value = system
 
-    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
     logic_layer.create_task_dependency(dependee_task=task0, dependent_task=task2)
 
@@ -313,7 +313,7 @@ def test_create_dependency_failure_hierarchy_path_from_dependee_task_to_dependen
 
     data_layer_mock.load_system.return_value = system
 
-    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(
         tasks.HierarchyPathAlreadyExistsFromDependeeTaskToDependentTaskError
@@ -349,7 +349,7 @@ def test_create_dependency_failure_hierarchy_path_from_dependent_task_to_depende
 
     data_layer_mock.load_system.return_value = system
 
-    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(
         tasks.HierarchyPathAlreadyExistsFromDependentTaskToDependeeTaskError
@@ -384,7 +384,7 @@ def test_create_dependency_failure_introduces_stream_cycle(
 
     data_layer_mock.load_system.return_value = system
 
-    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.DependencyIntroducesStreamCycleError) as exc_info:
         logic_layer.create_task_dependency(task2, task0)
@@ -420,7 +420,7 @@ def test_create_dependency_failure_path_from_inferior_task_of_dependent_task_to_
 
     data_layer_mock.load_system.return_value = system
 
-    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(
         tasks.StreamPathFromInferiorTaskOfDependentTaskToDependeeTaskExistsError
@@ -458,7 +458,7 @@ def test_create_dependency_failure_path_from_dependent_task_to_inferior_task_of_
 
     data_layer_mock.load_system.return_value = system
 
-    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(
         tasks.StreamPathFromDependentTaskToInferiorTaskOfDependeeTaskExistsError
@@ -493,7 +493,7 @@ def test_create_dependency_failure_introduces_hierarchy_clash(
 
     data_layer_mock.load_system.return_value = system
 
-    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.DependencyIntroducesHierarchyClashError) as exc_info:
         logic_layer.create_task_dependency(task0, task2)
@@ -526,7 +526,7 @@ def test_create_dependency_success_completed_dependee_task_started_dependent_tas
     system_with_dependency.add_task_dependency(dependee_task, dependent_task)
 
     data_layer_mock.load_system.return_value = system
-    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
     logic_layer.create_task_dependency(dependee_task, dependent_task)
 
@@ -559,7 +559,7 @@ def test_create_dependency_failure_incomplete_dependee_task_started_dependent_ta
     system.set_task_progress(dependent_task, started_progress)
 
     data_layer_mock.load_system.return_value = system
-    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.DependeeIncompleteDependentStartedError) as exc_info:
         logic_layer.create_task_dependency(dependee_task, dependent_task)

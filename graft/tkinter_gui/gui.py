@@ -19,6 +19,7 @@ class GUI(tk.Tk):
         self.title("graft")
 
     def run(self) -> None:
+        # TODO: Set it up so any exceptions thrown by tkinter are logged
         self.mainloop()
 
 

@@ -121,7 +121,7 @@ class SystemGraph(tk.Frame, abc.ABC):
             task = tasks_in_path_order[details["ind"][0]]
             task_name = register[task].name
 
-            if task_name is None:
+            if not task_name:
                 if annotation.get_visible():
                     annotation.set_visible(False)
                     canvas.draw_idle()

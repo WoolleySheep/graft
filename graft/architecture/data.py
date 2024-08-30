@@ -10,8 +10,8 @@ class DataLayer(abc.ABC):
     """Data-layer interface."""
 
     @abc.abstractmethod
-    def get_next_unused_task(self) -> tasks.UID:
-        """Get the next unused task UID.
+    def load_next_unused_task(self) -> tasks.UID:
+        """Load the next unused task UID.
 
         "Unused" means that the UID has never been used in the system before,
         regardless of whether the task had subsequently been deleted.

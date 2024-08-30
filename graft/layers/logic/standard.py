@@ -1,12 +1,14 @@
 """Standard logic-layer implementation and associated exceptions."""
 
-from collections.abc import Generator
-from typing import override
+import logging
+from typing import Final, override
 
 from graft import architecture
 from graft.domain import tasks
 from graft.domain.tasks.description import Description
 from graft.domain.tasks.uid import UID
+
+logger: Final = logging.getLogger(__name__)
 
 
 class StandardLogicLayer(architecture.LogicLayer):
@@ -14,8 +16,14 @@ class StandardLogicLayer(architecture.LogicLayer):
 
     def __init__(self, data_layer: architecture.DataLayer) -> None:
         """Initialise StandardLogicLayer."""
-        super().__init__(data_layer=data_layer)
-        self._system = self._data_layer.load_system()
+        logger.info("Initialising %s", self.__class__.__name__)
+        try:
+            super().__init__(data_layer=data_layer)
+            self._system = self._data_layer.load_system()
+        except:
+            logger.error("Failed to initialise %s", self.__class__.__name__)
+            raise
+        logger.info("Initialised %s", self.__class__.__name__)
 
     @override
     def erase(self) -> None:
@@ -29,10 +37,13 @@ class StandardLogicLayer(architecture.LogicLayer):
         description: tasks.Description | None = None,
     ) -> tasks.UID:
         """Create a new task."""
-        uid = self._data_layer.get_next_unused_task()
+        name = name if name is not None else tasks.Name()
+        description = description if description is not None else tasks.Description()
+
+        uid = self._data_layer.load_next_unused_task()
         self._system.add_task(uid)
-        self._system.set_task_name(uid, name or tasks.Name())
-        self._system.set_task_description(uid, description or tasks.Description())
+        self._system.set_task_name(uid, name)
+        self._system.set_task_description(uid, description)
         self._data_layer.save_system_and_indicate_task_used(
             system=self._system, used_task=uid
         )
@@ -40,7 +51,7 @@ class StandardLogicLayer(architecture.LogicLayer):
 
     @override
     def get_next_unused_task(self) -> UID:
-        return self._data_layer.get_next_unused_task()
+        return self._data_layer.load_next_unused_task()
 
     @override
     def delete_task(self, task: tasks.UID) -> None:
@@ -61,8 +72,10 @@ class StandardLogicLayer(architecture.LogicLayer):
         self._data_layer.save_system(system=self._system)
 
     @override
-    def update_task_progress(self, task: UID, progress: tasks.Progress) -> None:
-        """Update the specified task's progress."""
+    def update_concrete_task_progress(
+        self, task: UID, progress: tasks.Progress
+    ) -> None:
+        """Update the specified concrete task's progress."""
         self._system.set_task_progress(task, progress)
         self._data_layer.save_system(system=self._system)
 
@@ -76,6 +89,7 @@ class StandardLogicLayer(architecture.LogicLayer):
 
     @override
     def get_task_system(self) -> tasks.SystemView:
+        """Return a view of the system."""
         return self._system.task_system()
 
     @override
@@ -113,7 +127,7 @@ class StandardLogicLayer(architecture.LogicLayer):
     @override
     def get_active_concrete_tasks_in_order_of_descending_priority(
         self,
-    ) -> Generator[tuple[tasks.UID, tasks.Importance | None], None, None]:
+    ) -> list[tuple[tasks.UID, tasks.Importance | None]]:
         """Return the active concrete tasks in order of descending priority.
 
         Tasks are paired with the maximum importance of downstream tasks.

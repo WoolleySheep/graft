@@ -1,16 +1,19 @@
+import logging
 import tkinter as tk
-from collections.abc import Generator, Sequence
+from collections.abc import Generator
 from tkinter import ttk
 
 from graft import architecture
 from graft.domain import tasks
 from graft.tkinter_gui import event_broker, helpers
 
+logger = logging.getLogger(__name__)
+
 
 def _get_dependencies_with_names(
     logic_layer: architecture.LogicLayer,
 ) -> Generator[
-    tuple[tuple[tasks.UID, tasks.Name | None], tuple[tasks.UID, tasks.Name | None]],
+    tuple[tuple[tasks.UID, tasks.Name], tuple[tasks.UID, tasks.Name]],
     None,
     None,
 ]:
@@ -27,11 +30,8 @@ def _get_dependencies_with_names(
         )
 
 
-def _format_task_uid_name(task_uid: tasks.UID, task_name: tasks.Name | None) -> str:
-    if task_name is None:
-        return f"[{task_uid}]"
-
-    return f"[{task_uid}] {task_name}"
+def _format_task_uid_name(task_uid: tasks.UID, task_name: tasks.Name) -> str:
+    return f"[{task_uid}] {task_name}" if task_name else f"[{task_uid}]"
 
 
 def _get_menu_options(
@@ -78,65 +78,45 @@ def _parse_task_uids_from_menu_option(menu_option: str) -> tuple[tasks.UID, task
     return dependee_task, dependent_task
 
 
-class LabelledOptionMenu(tk.Frame):
-    def __init__(
-        self,
-        master: tk.Misc,
-        label_text: str,
-        variable: tk.StringVar,
-        menu_options: Sequence[str],
-    ) -> None:
-        super().__init__(master=master)
-
-        self.label = ttk.Label(self, text=label_text)
-        self.option_menu = ttk.OptionMenu(
-            self, variable, menu_options[0] if menu_options else None, *menu_options
-        )
-
-        self.label.grid(row=0, column=0)
-        self.option_menu.grid(row=0, column=1)
-
-
 class DependencyDeletionWindow(tk.Toplevel):
     def __init__(self, master: tk.Misc, logic_layer: architecture.LogicLayer) -> None:
-        def delete_dependency_between_selected_tasks_then_destroy_window() -> None:
-            dependee_task, dependent_task = _parse_task_uids_from_menu_option(
-                self.selected_dependency.get()
-            )
-            try:
-                logic_layer.delete_task_dependency(dependee_task, dependent_task)
-            except Exception as e:
-                helpers.UnknownExceptionOperationFailedWindow(master=self, exception=e)
-                return
-            broker = event_broker.get_singleton()
-            broker.publish(event_broker.SystemModified())
-            self.destroy()
-
+        self._logic_layer = logic_layer
         super().__init__(master=master)
 
         self.title("Delete dependency")
 
         menu_options = list(_get_menu_options(logic_layer=logic_layer))
 
-        self.selected_dependency = tk.StringVar(self)
-        self.dependency_option_menu = ttk.OptionMenu(
+        self._selected_dependency = tk.StringVar(self)
+        self._dependency_option_menu = ttk.OptionMenu(
             self,
-            self.selected_dependency,
+            self._selected_dependency,
             menu_options[0] if menu_options else None,
             *menu_options,
         )
 
-        self.confirm_button = ttk.Button(
+        self._confirm_button = ttk.Button(
             self,
             text="Confirm",
-            command=delete_dependency_between_selected_tasks_then_destroy_window,
+            command=self._on_confirm_button_clicked,
         )
 
-        self.dependency_option_menu.grid(row=0, column=0)
-        self.confirm_button.grid(row=1, column=0)
+        self._dependency_option_menu.grid(row=0, column=0)
+        self._confirm_button.grid(row=1, column=0)
 
+    def _on_confirm_button_clicked(self) -> None:
+        logger.info("Confirm dependency deletion button clicked")
+        self._delete_dependency_between_selected_tasks_then_destroy_window()
 
-def create_dependency_deletion_window(
-    master: tk.Misc, logic_layer: architecture.LogicLayer
-) -> None:
-    DependencyDeletionWindow(master=master, logic_layer=logic_layer)
+    def _delete_dependency_between_selected_tasks_then_destroy_window(self) -> None:
+        dependee_task, dependent_task = _parse_task_uids_from_menu_option(
+            self._selected_dependency.get()
+        )
+        try:
+            self._logic_layer.delete_task_dependency(dependee_task, dependent_task)
+        except Exception as e:
+            helpers.UnknownExceptionOperationFailedWindow(master=self, exception=e)
+            return
+        broker = event_broker.get_singleton()
+        broker.publish(event_broker.SystemModified())
+        self.destroy()

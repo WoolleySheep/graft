@@ -1,9 +1,10 @@
 import functools
 import itertools
+import logging
 import tkinter as tk
 from collections.abc import Callable
 from tkinter import scrolledtext, ttk
-from typing import Any, Literal, ParamSpec, Self
+from typing import Any, Final, Literal, ParamSpec, Self
 
 from graft.architecture.logic import LogicLayer
 from graft.domain import tasks
@@ -15,6 +16,8 @@ _NEIGHBOURING_TASK_TABLES_NAME_COLUMN_WIDTH_PIXELS = 150
 _NEIGHBOURING_TASK_TABLES_HEIGHT_ROWS = 5
 
 P = ParamSpec("P")
+
+logger: Final = logging.getLogger(__name__)
 
 
 def _create_nieghbouring_task_table(master: tk.Misc) -> helpers.TaskTable:
@@ -51,7 +54,7 @@ def make_return_true(fn: Callable[P, Any]) -> Callable[P, Literal[True]]:
 
     @functools.wraps(fn)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> Literal[True]:
-        fn(*args, **kwargs)
+        _ = fn(*args, **kwargs)
         return True
 
     return wrapper
@@ -59,163 +62,53 @@ def make_return_true(fn: Callable[P, Any]) -> Callable[P, Literal[True]]:
 
 class TaskDetails(tk.Frame):
     def __init__(self, master: tk.Misc, logic_layer: LogicLayer) -> None:
-        def update_with_task(self: Self) -> None:
-            assert self.task is not None
-
-            self.task_id.config(text=str(self.task))
-
-            register = self._logic_layer.get_task_system().attributes_register()
-            attributes = register[self.task]
-
-            self.task_name.set(str(attributes.name))
-            self.task_name_entry.config(state=tk.NORMAL)
-
-            system: tasks.SystemView = self._logic_layer.get_task_system()
-
-            importance = system.get_importance(self.task)
-            if system.has_inferred_importance(self.task):
-                # If we can infer an importance, it will by definition not be None
-                assert importance is not None
-                self.task_importance_option_menu.grid_remove()
-                formatted_importance = importance.value
-                self.inferred_task_importance.config(text=formatted_importance)
-                self.inferred_task_importance.grid()
-            else:
-                self.inferred_task_importance.grid_remove()
-                formatted_importance = importance.value if importance else ""
-                self.selected_importance.set(formatted_importance)
-                self.task_importance_option_menu.grid()
-
-            progress = system.get_progress(self.task)
-            self.task_progress.config(text=progress.value)
-
-            if system.network_graph().hierarchy_graph().is_concrete(self.task):
-                self.decrement_task_progress_button.grid()
-                button_state = (
-                    tk.DISABLED if progress is tasks.Progress.NOT_STARTED else tk.NORMAL
-                )
-                self.decrement_task_progress_button.config(state=button_state)
-
-                self.increment_task_progress_button.grid()
-                button_state = (
-                    tk.DISABLED if progress is tasks.Progress.COMPLETED else tk.NORMAL
-                )
-                self.increment_task_progress_button.config(state=button_state)
-            else:
-                self.decrement_task_progress_button.grid_remove()
-                self.increment_task_progress_button.grid_remove()
-
-            self.task_description_scrolled_text.delete(1.0, tk.END)
-            self.task_description_scrolled_text.insert(
-                1.0,
-                str(attributes.description),
-            )
-            self.task_description_scrolled_text.config(state=tk.NORMAL)
-
-            hierarchy_graph = system.network_graph().hierarchy_graph()
-            dependency_graph = system.network_graph().dependency_graph()
-
-            subtasks_with_names = (
-                (subtask, register[subtask].name)
-                for subtask in hierarchy_graph.subtasks(self.task)
-            )
-            self._subtasks_table.update_tasks(subtasks_with_names)
-
-            supertasks_with_names = (
-                (supertask, register[supertask].name)
-                for supertask in hierarchy_graph.supertasks(self.task)
-            )
-            self._supertasks_table.update_tasks(supertasks_with_names)
-
-            dependee_tasks_with_names = (
-                (dependee_task, register[dependee_task].name)
-                for dependee_task in dependency_graph.dependee_tasks(self.task)
-            )
-            self._dependee_tasks_table.update_tasks(dependee_tasks_with_names)
-
-            dependent_tasks_with_names = (
-                (dependent_task, register[dependent_task].name)
-                for dependent_task in dependency_graph.dependent_tasks(self.task)
-            )
-            self._dependent_tasks_table.update_tasks(dependent_tasks_with_names)
-
-        def update_no_task(self: Self) -> None:
-            assert self.task is None
-
-            self.task_id.config(text="")
-            self.task_name.set("")
-            self.task_name_entry.config(state=tk.DISABLED)
-            self.inferred_task_importance.grid()
-            self.inferred_task_importance.config(text="")
-            self.task_importance_option_menu.grid_remove()
-            self.task_progress.config(text="")
-            self.decrement_task_progress_button.grid_remove()
-            self.increment_task_progress_button.grid_remove()
-            self.task_description_scrolled_text.delete(1.0, tk.END)
-            self.task_description_scrolled_text.config(state=tk.DISABLED)
-            self._subtasks_table.update_tasks([])
-            self._supertasks_table.update_tasks([])
-            self._dependee_tasks_table.update_tasks([])
-            self._dependent_tasks_table.update_tasks([])
-
-        def update(event: event_broker.Event, self: Self) -> None:
-            if isinstance(event, event_broker.TaskSelected):
-                self.task = event.task
-                update_with_task(self)
-                return
-
-            if isinstance(event, event_broker.SystemModified) and self.task:
-                if self.task not in self._logic_layer.get_task_system():
-                    self.task = None
-                    update_no_task(self)
-                    return
-
-                update_with_task(self)
-
         super().__init__(master)
         self._logic_layer = logic_layer
 
-        self.task: tasks.UID | None = None
+        self._task: tasks.UID | None = None
 
-        self.task_id = ttk.Label(self)
-        self.task_name = tk.StringVar(self)
-        self.task_name_entry = ttk.Entry(
+        self._task_id = ttk.Label(self)
+        self._task_name = tk.StringVar(self)
+        self._task_name_entry = ttk.Entry(
             self,
-            textvariable=self.task_name,
+            textvariable=self._task_name,
             validate="focusout",
-            validatecommand=make_return_true(self._save_current_name),
+            validatecommand=make_return_true(
+                self._on_name_entry_field_goes_out_of_focus
+            ),
         )
 
-        self.inferred_task_importance = ttk.Label(self)
-        self.selected_importance = tk.StringVar(self)
-        self.selected_importance.get()
+        self._inferred_task_importance = ttk.Label(self)
+        self._selected_importance = tk.StringVar(self)
+
         importance_menu_options = itertools.chain(
             (level.value for level in sorted(tasks.Importance, reverse=True)), [""]
         )
-
-        self.task_importance_option_menu = ttk.OptionMenu(
+        # Tkinter OptionMenu command should be passed a StringVar, but it is
+        # instead passed a string. Hence the type ignore.
+        self._task_importance_option_menu = ttk.OptionMenu(
             self,
-            self.selected_importance,
+            self._selected_importance,
             None,
             *importance_menu_options,
-            command=lambda _: self._save_current_importance(),
+            command=self._on_importance_selected_from_option_button,  # type: ignore
         )
 
-        self.decrement_task_progress_button = ttk.Button(
-            self, text="<", command=self._save_decremented_progress
+        self._decrement_progress_button = ttk.Button(
+            self, text="<", command=self._on_decrement_progress_button_clicked
         )
-        self.task_progress = ttk.Label(self, text="")
-        self.increment_task_progress_button = ttk.Button(
-            self, text=">", command=self._save_incremented_progress
+        self._task_progress = ttk.Label(self, text="")
+        self._increment_progress_button = ttk.Button(
+            self, text=">", command=self._on_increment_progress_button_clicked
         )
 
-        self.save_description_button = ttk.Button(
+        self._save_description_button = ttk.Button(
             self,
             text="Save Description",
-            command=self._save_current_description,
+            command=self._on_save_description_button_clicked,
         )
 
-        self.task_description_scrolled_text = scrolledtext.ScrolledText(self)
+        self._task_description_scrolled_text = scrolledtext.ScrolledText(self)
 
         self.subtasks_label = ttk.Label(self, text="Subtasks")
         self._subtasks_table = _create_nieghbouring_task_table(self)
@@ -229,15 +122,15 @@ class TaskDetails(tk.Frame):
         self.dependent_tasks_label = ttk.Label(self, text="Dependent-tasks")
         self._dependent_tasks_table = _create_nieghbouring_task_table(self)
 
-        self.task_id.grid(row=0, column=0)
-        self.task_name_entry.grid(row=0, column=1, columnspan=3)
-        self.inferred_task_importance.grid(row=1, column=0, columnspan=3)
-        self.task_importance_option_menu.grid(row=1, column=0, columnspan=3)
-        self.task_progress.grid(row=2, column=1)
-        self.decrement_task_progress_button.grid(row=2, column=0)
-        self.increment_task_progress_button.grid(row=2, column=2)
-        self.task_description_scrolled_text.grid(row=3, column=0, columnspan=4)
-        self.save_description_button.grid(row=4, column=0, columnspan=3)
+        self._task_id.grid(row=0, column=0)
+        self._task_name_entry.grid(row=0, column=1, columnspan=3)
+        self._inferred_task_importance.grid(row=1, column=0, columnspan=3)
+        self._task_importance_option_menu.grid(row=1, column=0, columnspan=3)
+        self._task_progress.grid(row=2, column=1)
+        self._decrement_progress_button.grid(row=2, column=0)
+        self._increment_progress_button.grid(row=2, column=2)
+        self._task_description_scrolled_text.grid(row=3, column=0, columnspan=4)
+        self._save_description_button.grid(row=4, column=0, columnspan=3)
         self.subtasks_label.grid(row=5, column=0, columnspan=2)
         self._subtasks_table.grid(row=6, column=0, columnspan=2)
         self.supertasks_label.grid(row=5, column=2, columnspan=2)
@@ -247,24 +140,137 @@ class TaskDetails(tk.Frame):
         self.dependent_tasks_label.grid(row=7, column=2, columnspan=2)
         self._dependent_tasks_table.grid(row=8, column=2, columnspan=2)
 
-        update_no_task(self)
+        self._update_with_no_task()
 
         broker = event_broker.get_singleton()
-        broker.subscribe(
-            event_broker.TaskSelected, functools.partial(update, self=self)
+        broker.subscribe(event_broker.TaskSelected, self._update)
+        broker.subscribe(event_broker.SystemModified, self._update)
+
+    def _update_with_task(self) -> None:
+        assert self._task is not None
+
+        self._task_id.config(text=str(self._task))
+
+        register = self._logic_layer.get_task_system().attributes_register()
+        attributes = register[self._task]
+
+        self._task_name.set(str(attributes.name))
+        self._task_name_entry.config(state=tk.NORMAL)
+
+        system: tasks.SystemView = self._logic_layer.get_task_system()
+
+        importance = system.get_importance(self._task)
+        if system.has_inferred_importance(self._task):
+            # If we can infer an importance, it will by definition not be None
+            assert importance is not None
+            self._task_importance_option_menu.grid_remove()
+            formatted_importance = importance.value
+            self._inferred_task_importance.config(text=formatted_importance)
+            self._inferred_task_importance.grid()
+        else:
+            self._inferred_task_importance.grid_remove()
+            formatted_importance = importance.value if importance else ""
+            self._selected_importance.set(formatted_importance)
+            self._task_importance_option_menu.grid()
+
+        progress = system.get_progress(self._task)
+        self._task_progress.config(text=progress.value)
+
+        if system.network_graph().hierarchy_graph().is_concrete(self._task):
+            self._decrement_progress_button.grid()
+            button_state = (
+                tk.DISABLED if progress is tasks.Progress.NOT_STARTED else tk.NORMAL
+            )
+            self._decrement_progress_button.config(state=button_state)
+
+            self._increment_progress_button.grid()
+            button_state = (
+                tk.DISABLED if progress is tasks.Progress.COMPLETED else tk.NORMAL
+            )
+            self._increment_progress_button.config(state=button_state)
+        else:
+            self._decrement_progress_button.grid_remove()
+            self._increment_progress_button.grid_remove()
+
+        self._task_description_scrolled_text.delete(1.0, tk.END)
+        self._task_description_scrolled_text.insert(
+            1.0,
+            str(attributes.description),
         )
-        broker.subscribe(
-            event_broker.SystemModified, functools.partial(update, self=self)
+        self._task_description_scrolled_text.config(state=tk.NORMAL)
+
+        hierarchy_graph = system.network_graph().hierarchy_graph()
+        dependency_graph = system.network_graph().dependency_graph()
+
+        subtasks_with_names = (
+            (subtask, register[subtask].name)
+            for subtask in hierarchy_graph.subtasks(self._task)
         )
+        self._subtasks_table.update_tasks(subtasks_with_names)
+
+        supertasks_with_names = (
+            (supertask, register[supertask].name)
+            for supertask in hierarchy_graph.supertasks(self._task)
+        )
+        self._supertasks_table.update_tasks(supertasks_with_names)
+
+        dependee_tasks_with_names = (
+            (dependee_task, register[dependee_task].name)
+            for dependee_task in dependency_graph.dependee_tasks(self._task)
+        )
+        self._dependee_tasks_table.update_tasks(dependee_tasks_with_names)
+
+        dependent_tasks_with_names = (
+            (dependent_task, register[dependent_task].name)
+            for dependent_task in dependency_graph.dependent_tasks(self._task)
+        )
+        self._dependent_tasks_table.update_tasks(dependent_tasks_with_names)
+
+    def _update_with_no_task(self) -> None:
+        assert self._task is None
+
+        self._task_id.config(text="")
+        self._task_name.set("")
+        self._task_name_entry.config(state=tk.DISABLED)
+        self._inferred_task_importance.grid()
+        self._inferred_task_importance.config(text="")
+        self._task_importance_option_menu.grid_remove()
+        self._task_progress.config(text="")
+        self._decrement_progress_button.grid_remove()
+        self._increment_progress_button.grid_remove()
+        self._task_description_scrolled_text.delete(1.0, tk.END)
+        self._task_description_scrolled_text.config(state=tk.DISABLED)
+        self._subtasks_table.update_tasks([])
+        self._supertasks_table.update_tasks([])
+        self._dependee_tasks_table.update_tasks([])
+        self._dependent_tasks_table.update_tasks([])
+
+    def _update(self, event: event_broker.Event) -> None:
+        if isinstance(event, event_broker.TaskSelected):
+            self._task = event.task
+            self._update_with_task()
+            return
+
+        if isinstance(event, event_broker.SystemModified) and self._task:
+            if self._task not in self._logic_layer.get_task_system():
+                self._task = None
+                self._update_with_no_task()
+                return
+
+            self._update_with_task()
+
+    def _on_name_entry_field_goes_out_of_focus(self) -> None:
+        logger.info("Name entry field lost focus")
+        self._save_current_name()
 
     def _save_current_name(self) -> None:
-        assert self.task is not None
+        assert self._task is not None
 
-        formatted_name = self.task_name.get()
+        formatted_name = self._task_name.get()
         name = tasks.Name(formatted_name)
 
         try:
-            self._logic_layer.update_task_name(task=self.task, name=name)
+            self._logic_layer.update_task_name(task=self._task, name=name)
         except Exception as e:
             helpers.UnknownExceptionOperationFailedWindow(self, e)
             return
@@ -272,14 +278,18 @@ class TaskDetails(tk.Frame):
         broker = event_broker.get_singleton()
         broker.publish(event=event_broker.SystemModified())
 
-    def _save_current_description(self: Self) -> None:
-        assert self.task
+    def _on_save_description_button_clicked(self) -> None:
+        logger.info("Save description button clicked")
+        self._save_current_description()
 
-        formatted_description = self.task_description_scrolled_text.get(1.0, "end-1c")
+    def _save_current_description(self: Self) -> None:
+        assert self._task
+
+        formatted_description = self._task_description_scrolled_text.get(1.0, "end-1c")
         description = tasks.Description(formatted_description)
 
         try:
-            self._logic_layer.update_task_description(self.task, description)
+            self._logic_layer.update_task_description(self._task, description)
         except Exception as e:
             helpers.UnknownExceptionOperationFailedWindow(self, e)
             return
@@ -287,17 +297,21 @@ class TaskDetails(tk.Frame):
         broker = event_broker.get_singleton()
         broker.publish(event_broker.SystemModified())
 
-    def _save_current_importance(self) -> None:
-        assert self.task is not None
+    def _on_importance_selected_from_option_button(self, selection: str) -> None:
+        logger.debug("Importance [%s] selected from option menu", selection)
+        self._save_current_importance()
 
-        formatted_importance = self.selected_importance.get()
+    def _save_current_importance(self) -> None:
+        assert self._task is not None
+
+        formatted_importance = self._selected_importance.get()
         importance = (
             tasks.Importance(formatted_importance) if formatted_importance else None
         )
 
         try:
             self._logic_layer.update_task_importance(
-                task=self.task, importance=importance
+                task=self._task, importance=importance
             )
         except Exception as e:
             helpers.UnknownExceptionOperationFailedWindow(self, e)
@@ -306,14 +320,20 @@ class TaskDetails(tk.Frame):
         broker = event_broker.get_singleton()
         broker.publish(event=event_broker.SystemModified())
 
-    def _save_incremented_progress(self) -> None:
-        assert self.task
+    def _on_increment_progress_button_clicked(self) -> None:
+        logger.info("Increment progress button clicked")
+        self._save_incremented_progress()
 
-        current_progress = self._logic_layer.get_task_system().get_progress(self.task)
+    def _save_incremented_progress(self) -> None:
+        assert self._task
+
+        current_progress = self._logic_layer.get_task_system().get_progress(self._task)
         incremented_progress = _get_progress_increment(current_progress)
 
         try:
-            self._logic_layer.update_task_progress(self.task, incremented_progress)
+            self._logic_layer.update_concrete_task_progress(
+                self._task, incremented_progress
+            )
         except Exception as e:
             helpers.UnknownExceptionOperationFailedWindow(self, exception=e)
             return
@@ -321,14 +341,20 @@ class TaskDetails(tk.Frame):
         broker = event_broker.get_singleton()
         broker.publish(event_broker.SystemModified())
 
-    def _save_decremented_progress(self) -> None:
-        assert self.task
+    def _on_decrement_progress_button_clicked(self) -> None:
+        logger.info("Decrement progress button clicked")
+        self._save_decremented_progress()
 
-        current_progress = self._logic_layer.get_task_system().get_progress(self.task)
+    def _save_decremented_progress(self) -> None:
+        assert self._task
+
+        current_progress = self._logic_layer.get_task_system().get_progress(self._task)
         decremented_progress = _get_progress_decrement(current_progress)
 
         try:
-            self._logic_layer.update_task_progress(self.task, decremented_progress)
+            self._logic_layer.update_concrete_task_progress(
+                self._task, decremented_progress
+            )
         except Exception as e:
             helpers.UnknownExceptionOperationFailedWindow(self, exception=e)
             return

@@ -9,12 +9,16 @@ class Name:
         self._text = text
 
     def __bool__(self) -> bool:
-        """Return True if name is not empty."""
+        """Return True if name is not zero characters long."""
         return bool(self._text)
+
+    def __len__(self) -> int:
+        """Return number of characters in name."""
+        return len(self._text)
 
     def __eq__(self, other: object) -> bool:
         """Return True if equal."""
-        return isinstance(other, Name) and self._text == str(other)
+        return isinstance(other, Name) and str(self) == str(other)
 
     def __str__(self) -> str:
         """Return name as a string."""

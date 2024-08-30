@@ -1,7 +1,6 @@
 """Logic-layer interface and associated exceptions."""
 
 import abc
-from collections.abc import Generator
 
 from graft.architecture import data
 from graft.domain import tasks
@@ -45,8 +44,10 @@ class LogicLayer(abc.ABC):
         """Update the specified task's description."""
 
     @abc.abstractmethod
-    def update_task_progress(self, task: tasks.UID, progress: tasks.Progress) -> None:
-        """Update the specified task's progress."""
+    def update_concrete_task_progress(
+        self, task: tasks.UID, progress: tasks.Progress
+    ) -> None:
+        """Update the specified concrete task's progress."""
 
     @abc.abstractmethod
     def update_task_importance(
@@ -81,7 +82,7 @@ class LogicLayer(abc.ABC):
     @abc.abstractmethod
     def get_active_concrete_tasks_in_order_of_descending_priority(
         self,
-    ) -> Generator[tuple[tasks.UID, tasks.Importance | None], None, None]:
+    ) -> list[tuple[tasks.UID, tasks.Importance | None]]:
         """Return the active concrete tasks in order of descending priority.
 
         Tasks are paired with the maximum importance of downstream tasks.

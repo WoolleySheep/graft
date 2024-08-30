@@ -80,7 +80,7 @@ class HierarchyGraph(tk.Frame):
                 register = self.logic_layer.get_task_system().attributes_register()
                 attributes = register[task]
 
-                if attributes.name is None:
+                if not attributes.name:
                     if annotation.get_visible():
                         annotation.set_visible(False)
                         self.canvas.draw_idle()

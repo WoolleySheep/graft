@@ -1,12 +1,13 @@
-"""Unit tests for Standard.update_task_description."""
+"""Unit tests for logic.update_task_description."""
 
 import copy
 from unittest import mock
 
 import pytest
 
-from graft import domain, standard
+from graft import domain
 from graft.domain import tasks
+from graft.layers import logic
 
 
 @pytest.mark.parametrize(
@@ -18,12 +19,12 @@ from graft.domain import tasks
     [tasks.Progress.NOT_STARTED, tasks.Progress.IN_PROGRESS, tasks.Progress.COMPLETED],
 )
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
-def test_update_task_progress_success_one_task(
+def test_update_concrete_task_progress_success_one_task(
     data_layer_mock: mock.MagicMock,
     new_progress: tasks.Progress,
     old_progress: tasks.Progress,
 ) -> None:
-    """Test that update_task_progress works for a single task."""
+    """Test that update_concrete_task_progress works for a single task."""
     task = tasks.UID(0)
     system = domain.System.empty()
 
@@ -34,25 +35,27 @@ def test_update_task_progress_success_one_task(
     system_with_new_progress.set_task_progress(task=task, progress=new_progress)
 
     data_layer_mock.load_system.return_value = system
-    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
-    logic_layer.update_task_progress(task=task, progress=new_progress)
+    logic_layer.update_concrete_task_progress(task=task, progress=new_progress)
 
     data_layer_mock.load_system.assert_called_once_with()
     data_layer_mock.save_system.assert_called_once_with(system_with_new_progress)
 
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
-def test_update_task_progress_failure_task_does_not_exist(
+def test_update_concrete_task_progress_failure_task_does_not_exist(
     data_layer_mock: mock.MagicMock,
 ) -> None:
-    """Test the update_task_progress method fails when the task does not exist."""
+    """Test the update_concrete_task_progress method fails when the task does not exist."""
     task = tasks.UID(0)
     data_layer_mock.load_system.return_value = domain.System.empty()
-    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.TaskDoesNotExistError) as e:
-        logic_layer.update_task_progress(task=task, progress=tasks.Progress.COMPLETED)
+        logic_layer.update_concrete_task_progress(
+            task=task, progress=tasks.Progress.COMPLETED
+        )
     assert e.value.task == task
 
     data_layer_mock.load_system.assert_called_once_with()
@@ -60,10 +63,10 @@ def test_update_task_progress_failure_task_does_not_exist(
 
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
-def test_update_task_progress_failure_task_is_not_concrete(
+def test_update_concrete_task_progress_failure_task_is_not_concrete(
     data_layer_mock: mock.MagicMock,
 ) -> None:
-    """Test that update_task_progress fails for a non-concrete task."""
+    """Test that update_concrete_task_progress fails for a non-concrete task."""
     supertask = tasks.UID(0)
     subtask = tasks.UID(1)
     system = domain.System.empty()
@@ -73,10 +76,10 @@ def test_update_task_progress_failure_task_is_not_concrete(
     system.add_task_hierarchy(supertask, subtask)
 
     data_layer_mock.load_system.return_value = system
-    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.NotConcreteTaskError) as e:
-        logic_layer.update_task_progress(
+        logic_layer.update_concrete_task_progress(
             task=supertask, progress=tasks.Progress.IN_PROGRESS
         )
     assert e.value.task == supertask
@@ -94,12 +97,12 @@ def test_update_task_progress_failure_task_is_not_concrete(
     [tasks.Progress.IN_PROGRESS, tasks.Progress.COMPLETED],
 )
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
-def test_update_task_progress_failure_started_dependent_tasks(
+def test_update_concrete_task_progress_failure_started_dependent_tasks(
     data_layer_mock: mock.MagicMock,
     started_progress: tasks.Progress,
     incomplete_progress: tasks.Progress,
 ) -> None:
-    """Test that update_task_progress fails if the task is complete, has any started dependent tasks, and attempt to change progress to incomplete."""
+    """Test that update_concrete_task_progress fails if the task is complete, has any started dependent tasks, and attempt to change progress to incomplete."""
     dependee_task = tasks.UID(0)
     dependent_task = tasks.UID(1)
     system = domain.System.empty()
@@ -112,10 +115,10 @@ def test_update_task_progress_failure_started_dependent_tasks(
     system.set_task_progress(dependent_task, started_progress)
 
     data_layer_mock.load_system.return_value = system
-    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.StartedDependentTasksError) as e:
-        logic_layer.update_task_progress(
+        logic_layer.update_concrete_task_progress(
             task=dependee_task, progress=incomplete_progress
         )
     assert e.value.task == dependee_task
@@ -134,12 +137,12 @@ def test_update_task_progress_failure_started_dependent_tasks(
     [tasks.Progress.IN_PROGRESS, tasks.Progress.COMPLETED],
 )
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
-def test_update_task_progress_failure_started_dependent_tasks_of_superior_tasks(
+def test_update_concrete_task_progress_failure_started_dependent_tasks_of_superior_tasks(
     data_layer_mock: mock.MagicMock,
     started_progress: tasks.Progress,
     incomplete_progress: tasks.Progress,
 ) -> None:
-    """Test that update_task_progress fails if the task is complete, has any started dependent tasks of super-tasks, and attempt to change progress to incomplete."""
+    """Test that update_concrete_task_progress fails if the task is complete, has any started dependent tasks of super-tasks, and attempt to change progress to incomplete."""
     task0 = tasks.UID(0)
     task1 = tasks.UID(1)
     task2 = tasks.UID(2)
@@ -155,10 +158,12 @@ def test_update_task_progress_failure_started_dependent_tasks_of_superior_tasks(
     system.set_task_progress(task2, started_progress)
 
     data_layer_mock.load_system.return_value = system
-    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.StartedDependentTasksOfSuperiorTasksError) as e:
-        logic_layer.update_task_progress(task=task1, progress=incomplete_progress)
+        logic_layer.update_concrete_task_progress(
+            task=task1, progress=incomplete_progress
+        )
     assert e.value.task == task1
 
     data_layer_mock.load_system.assert_called_once_with()
@@ -174,12 +179,12 @@ def test_update_task_progress_failure_started_dependent_tasks_of_superior_tasks(
     [tasks.Progress.IN_PROGRESS, tasks.Progress.COMPLETED],
 )
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
-def test_update_task_progress_failure_incomplete_dependee_tasks(
+def test_update_concrete_task_progress_failure_incomplete_dependee_tasks(
     data_layer_mock: mock.MagicMock,
     started_progress: tasks.Progress,
     incomplete_progress: tasks.Progress,
 ) -> None:
-    """Test that update_task_progress fails if the task is not started, has any incomplete dependee tasks, and attempt to change progress to started."""
+    """Test that update_concrete_task_progress fails if the task is not started, has any incomplete dependee tasks, and attempt to change progress to started."""
     dependee_task = tasks.UID(0)
     dependent_task = tasks.UID(1)
     system = domain.System.empty()
@@ -191,10 +196,12 @@ def test_update_task_progress_failure_incomplete_dependee_tasks(
     system.set_task_progress(dependee_task, incomplete_progress)
 
     data_layer_mock.load_system.return_value = system
-    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.IncompleteDependeeTasksError) as e:
-        logic_layer.update_task_progress(task=dependent_task, progress=started_progress)
+        logic_layer.update_concrete_task_progress(
+            task=dependent_task, progress=started_progress
+        )
     assert e.value.task == dependent_task
     assert e.value.incomplete_dependee_tasks_with_progress == [
         (dependee_task, incomplete_progress)
@@ -213,12 +220,12 @@ def test_update_task_progress_failure_incomplete_dependee_tasks(
     [tasks.Progress.IN_PROGRESS, tasks.Progress.COMPLETED],
 )
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
-def test_update_task_progress_failure_incomplete_dependee_tasks_of_superior_tasks(
+def test_update_concrete_task_progress_failure_incomplete_dependee_tasks_of_superior_tasks(
     data_layer_mock: mock.MagicMock,
     started_progress: tasks.Progress,
     incomplete_progress: tasks.Progress,
 ) -> None:
-    """Test that update_task_progress fails if the task is not started, has any incomplete dependee tasks of super-tasks, and attempt to change progress to started."""
+    """Test that update_concrete_task_progress fails if the task is not started, has any incomplete dependee tasks of super-tasks, and attempt to change progress to started."""
     task0 = tasks.UID(0)
     task1 = tasks.UID(1)
     task2 = tasks.UID(2)
@@ -233,10 +240,10 @@ def test_update_task_progress_failure_incomplete_dependee_tasks_of_superior_task
     system.set_task_progress(task2, incomplete_progress)
 
     data_layer_mock.load_system.return_value = system
-    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.IncompleteDependeeTasksOfSuperiorTasksError) as e:
-        logic_layer.update_task_progress(task=task1, progress=started_progress)
+        logic_layer.update_concrete_task_progress(task=task1, progress=started_progress)
     assert e.value.task == task1
 
     data_layer_mock.load_system.assert_called_once_with()

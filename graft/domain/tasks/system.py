@@ -7,7 +7,6 @@ import itertools
 from collections.abc import Generator, Iterable, Iterator, MutableMapping
 from typing import Any, Protocol
 
-from graft import graphs
 from graft.domain.tasks.attributes_register import (
     AttributesRegister,
     AttributesRegisterView,
@@ -1007,7 +1006,7 @@ class System:
 
     def get_active_concrete_tasks_in_order_of_descending_priority(
         self,
-    ) -> Generator[tuple[UID, Importance | None], None, None]:
+    ) -> list[tuple[UID, Importance | None]]:
         """Return the active concrete tasks in order of descending priority.
 
         Tasks are paired with the maximum importance of downstream tasks.
@@ -1088,12 +1087,14 @@ class System:
                     if task in upstream_tasks:
                         priority_score_card.add_downstream_importance(importance)
 
-        for task, score_card in sorted(
-            active_concrete_tasks_priority_score_cards_map.items(),
-            key=lambda x: x[1],
-            reverse=True,
-        ):
-            yield (task, score_card.highest_importance)
+        return list(
+            (task, score_card.highest_importance)
+            for task, score_card in sorted(
+                active_concrete_tasks_priority_score_cards_map.items(),
+                key=lambda x: x[1],
+                reverse=True,
+            )
+        )
 
 
 class SystemView:

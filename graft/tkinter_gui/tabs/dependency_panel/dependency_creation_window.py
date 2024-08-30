@@ -1,3 +1,4 @@
+import logging
 import tkinter as tk
 from collections.abc import Generator, Sequence
 from tkinter import ttk
@@ -6,22 +7,21 @@ from graft import architecture
 from graft.domain import tasks
 from graft.tkinter_gui import event_broker, helpers
 
+logger = logging.getLogger(__name__)
+
 
 def _get_task_uids_names(
     logic_layer: architecture.LogicLayer,
-) -> Generator[tuple[tasks.UID, tasks.Name | None], None, None]:
+) -> Generator[tuple[tasks.UID, tasks.Name], None, None]:
     """Yield pairs of task UIDs and task names."""
     for uid, attributes in logic_layer.get_task_system().attributes_register().items():
         yield uid, attributes.name
 
 
 def _format_task_uid_name_as_menu_option(
-    task_uid: tasks.UID, task_name: tasks.Name | None
+    task_uid: tasks.UID, task_name: tasks.Name
 ) -> str:
-    if task_name is None:
-        return f"[{task_uid}]"
-
-    return f"[{task_uid}] {task_name}"
+    return f"[{task_uid}] {task_name}" if task_name else f"[{task_uid}]"
 
 
 def _get_menu_options(
@@ -50,61 +50,66 @@ class LabelledOptionMenu(tk.Frame):
     ) -> None:
         super().__init__(master=master)
 
-        self.label = ttk.Label(self, text=label_text)
-        self.option_menu = ttk.OptionMenu(
+        self._label = ttk.Label(self, text=label_text)
+        self._option_menu = ttk.OptionMenu(
             self, variable, menu_options[0] if menu_options else None, *menu_options
         )
 
-        self.label.grid(row=0, column=0)
-        self.option_menu.grid(row=0, column=1)
+        self._label.grid(row=0, column=0)
+        self._option_menu.grid(row=0, column=1)
 
 
 class DependencyCreationWindow(tk.Toplevel):
     def __init__(self, master: tk.Misc, logic_layer: architecture.LogicLayer) -> None:
-        def create_dependency_between_selected_tasks_then_destroy_window() -> None:
-            dependee_task = _parse_task_uid_from_menu_option(
-                self.selected_dependee_task.get()
-            )
-            dependent_task = _parse_task_uid_from_menu_option(
-                self.selected_dependent_task.get()
-            )
-            try:
-                logic_layer.create_task_dependency(dependee_task, dependent_task)
-            except Exception as e:
-                helpers.UnknownExceptionOperationFailedWindow(master=self, exception=e)
-                return
-            broker = event_broker.get_singleton()
-            broker.publish(event_broker.SystemModified())
-            self.destroy()
-
+        self._logic_layer = logic_layer
         super().__init__(master=master)
 
         self.title("Create dependency")
 
         menu_options = list(_get_menu_options(logic_layer=logic_layer))
 
-        self.selected_dependee_task = tk.StringVar(self)
-        self.dependee_task_option_menu = LabelledOptionMenu(
+        self._selected_dependee_task = tk.StringVar(self)
+        self._dependee_task_option_menu = LabelledOptionMenu(
             self,
             label_text="Dependee-task: ",
-            variable=self.selected_dependee_task,
+            variable=self._selected_dependee_task,
             menu_options=menu_options,
         )
 
-        self.selected_dependent_task = tk.StringVar(self)
-        self.dependent_task_option_menu = LabelledOptionMenu(
+        self._selected_dependent_task = tk.StringVar(self)
+        self._dependent_task_option_menu = LabelledOptionMenu(
             self,
             label_text="Dependent-task: ",
-            variable=self.selected_dependent_task,
+            variable=self._selected_dependent_task,
             menu_options=menu_options,
         )
 
-        self.confirm_button = ttk.Button(
+        self._confirm_button = ttk.Button(
             self,
             text="Confirm",
-            command=create_dependency_between_selected_tasks_then_destroy_window,
+            command=self._on_confirm_button_clicked,
         )
 
-        self.dependee_task_option_menu.grid(row=0, column=0)
-        self.dependent_task_option_menu.grid(row=1, column=0)
-        self.confirm_button.grid(row=2, column=0)
+        self._dependee_task_option_menu.grid(row=0, column=0)
+        self._dependent_task_option_menu.grid(row=1, column=0)
+        self._confirm_button.grid(row=2, column=0)
+
+    def _on_confirm_button_clicked(self) -> None:
+        logger.info("Confirm dependency creation button clicked")
+        self._create_dependency_between_selected_tasks_then_destroy_window()
+
+    def _create_dependency_between_selected_tasks_then_destroy_window(self) -> None:
+        dependee_task = _parse_task_uid_from_menu_option(
+            self._selected_dependee_task.get()
+        )
+        dependent_task = _parse_task_uid_from_menu_option(
+            self._selected_dependent_task.get()
+        )
+        try:
+            self._logic_layer.create_task_dependency(dependee_task, dependent_task)
+        except Exception as e:
+            helpers.UnknownExceptionOperationFailedWindow(master=self, exception=e)
+            return
+        broker = event_broker.get_singleton()
+        broker.publish(event_broker.SystemModified())
+        self.destroy()

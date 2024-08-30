@@ -7,7 +7,7 @@ import pytest
 
 from graft import domain
 from graft.domain import tasks
-from graft.standard import standard
+from graft.layers import logic
 
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
@@ -22,7 +22,7 @@ def test_delete_task_success(
 
     data_layer_mock.load_system.return_value = system_with_one_task
 
-    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
     logic_layer.delete_task(task)
 
@@ -39,7 +39,7 @@ def test_delete_task_failure_task_not_exist(
 
     data_layer_mock.load_system.return_value = empty_system
 
-    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.TaskDoesNotExistError) as exc_info:
         logic_layer.delete_task(task)
@@ -64,7 +64,7 @@ def test_delete_task_failure_has_supertask(
 
     data_layer_mock.load_system.return_value = system_with_hierarchy
 
-    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.HasSuperTasksError) as exc_info:
         logic_layer.delete_task(subtask)
@@ -90,7 +90,7 @@ def test_delete_task_failure_has_subtask(
 
     data_layer_mock.load_system.return_value = system_with_hierarchy
 
-    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.HasSubTasksError) as exc_info:
         logic_layer.delete_task(supertask)
@@ -118,7 +118,7 @@ def test_delete_task_failure_has_dependee_task(
 
     data_layer_mock.load_system.return_value = system_with_dependency
 
-    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.HasDependeeTasksError) as exc_info:
         logic_layer.delete_task(dependent_task)
@@ -146,7 +146,7 @@ def test_delete_task_failure_has_dependent_task(
 
     data_layer_mock.load_system.return_value = system_with_dependency
 
-    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.HasDependentTasksError) as exc_info:
         logic_layer.delete_task(dependee_task)

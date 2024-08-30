@@ -1,10 +1,14 @@
+import logging
 import tkinter as tk
-from collections.abc import Generator, Sequence
+from collections.abc import Generator
 from tkinter import ttk
+from typing import Final
 
 from graft import architecture
 from graft.domain import tasks
 from graft.tkinter_gui import event_broker, helpers
+
+logger: Final = logging.getLogger(__name__)
 
 
 def _get_hierarchies_with_names(
@@ -28,6 +32,17 @@ def _format_task_uid_name(task_uid: tasks.UID, task_name: tasks.Name) -> str:
     return f"[{task_uid}] {task_name}" if task_name else f"[{task_uid}]"
 
 
+def _format_hierarchy(
+    supertask: tasks.UID,
+    supertask_name: tasks.Name,
+    subtask: tasks.UID,
+    subtask_name: tasks.Name,
+) -> str:
+    formatted_supertask = _format_task_uid_name(supertask, supertask_name)
+    formatted_subtask = _format_task_uid_name(subtask, subtask_name)
+    return f"{formatted_supertask} -> {formatted_subtask}"
+
+
 def _get_menu_options(
     logic_layer: architecture.LogicLayer,
 ) -> Generator[str, None, None]:
@@ -37,9 +52,7 @@ def _get_menu_options(
     )
 
     for (supertask, supertask_name), (subtask, subtask_name) in hierarchies_with_names:
-        formatted_supertask = _format_task_uid_name(supertask, supertask_name)
-        formatted_subtask = _format_task_uid_name(subtask, subtask_name)
-        yield f"{formatted_supertask} -> {formatted_subtask}"
+        yield _format_hierarchy(supertask, supertask_name, subtask, subtask_name)
 
 
 def _parse_task_uid_from_formatted_task_uid_name(
@@ -61,65 +74,45 @@ def _parse_task_uids_from_menu_option(menu_option: str) -> tuple[tasks.UID, task
     return supertask, subtask
 
 
-class LabelledOptionMenu(tk.Frame):
-    def __init__(
-        self,
-        master: tk.Misc,
-        label_text: str,
-        variable: tk.StringVar,
-        menu_options: Sequence[str],
-    ) -> None:
-        super().__init__(master=master)
-
-        self.label = ttk.Label(self, text=label_text)
-        self.option_menu = ttk.OptionMenu(
-            self, variable, menu_options[0] if menu_options else None, *menu_options
-        )
-
-        self.label.grid(row=0, column=0)
-        self.option_menu.grid(row=0, column=1)
-
-
 class HierarchyDeletionWindow(tk.Toplevel):
     def __init__(self, master: tk.Misc, logic_layer: architecture.LogicLayer) -> None:
-        def delete_hierarchy_between_selected_tasks_then_destroy_window() -> None:
-            supertask, subtask = _parse_task_uids_from_menu_option(
-                self.selected_hierarchy.get()
-            )
-            try:
-                logic_layer.delete_task_hierarchy(supertask, subtask)
-            except Exception as e:
-                helpers.UnknownExceptionOperationFailedWindow(master=self, exception=e)
-                return
-            broker = event_broker.get_singleton()
-            broker.publish(event_broker.SystemModified())
-            self.destroy()
-
+        self._logic_layer = logic_layer
         super().__init__(master=master)
 
         self.title("Delete hierarchy")
 
         menu_options = list(_get_menu_options(logic_layer=logic_layer))
 
-        self.selected_hierarchy = tk.StringVar(self)
-        self.hierarchy_option_menu = ttk.OptionMenu(
+        self._selected_hierarchy = tk.StringVar(self)
+        self._hierarchy_option_menu = ttk.OptionMenu(
             self,
-            self.selected_hierarchy,
+            self._selected_hierarchy,
             menu_options[0] if menu_options else None,
             *menu_options,
         )
 
-        self.confirm_button = ttk.Button(
+        self._confirm_button = ttk.Button(
             self,
             text="Confirm",
-            command=delete_hierarchy_between_selected_tasks_then_destroy_window,
+            command=self._on_confirm_button_clicked,
         )
 
-        self.hierarchy_option_menu.grid(row=0, column=0)
-        self.confirm_button.grid(row=1, column=0)
+        self._hierarchy_option_menu.grid(row=0, column=0)
+        self._confirm_button.grid(row=1, column=0)
 
+    def _on_confirm_button_clicked(self) -> None:
+        logger.info("Confirm hierarchy deletion button clicked")
+        self._delete_hierarchy_between_selected_tasks_then_destroy_window()
 
-def create_hierarchy_deletion_window(
-    master: tk.Misc, logic_layer: architecture.LogicLayer
-) -> None:
-    HierarchyDeletionWindow(master=master, logic_layer=logic_layer)
+    def _delete_hierarchy_between_selected_tasks_then_destroy_window(self) -> None:
+        supertask, subtask = _parse_task_uids_from_menu_option(
+            self._selected_hierarchy.get()
+        )
+        try:
+            self._logic_layer.delete_task_hierarchy(supertask, subtask)
+        except Exception as e:
+            helpers.UnknownExceptionOperationFailedWindow(master=self, exception=e)
+            return
+        broker = event_broker.get_singleton()
+        broker.publish(event_broker.SystemModified())
+        self.destroy()

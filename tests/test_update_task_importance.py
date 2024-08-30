@@ -1,4 +1,4 @@
-"""Unit tests for Standard.update_task_progress."""
+"""Unit tests for logic.update_concrete_task_progress."""
 
 import copy
 import itertools
@@ -6,8 +6,9 @@ from unittest import mock
 
 import pytest
 
-from graft import domain, standard
+from graft import domain
 from graft.domain import tasks
+from graft.layers import logic
 
 
 @pytest.mark.parametrize(
@@ -35,7 +36,7 @@ def test_update_task_importance_success_one_task(
     system_with_new_importance.set_task_importance(task, new_importance)
 
     data_layer_mock.load_system.return_value = system
-    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
     logic_layer.update_task_importance(task=task, importance=new_importance)
 
@@ -64,7 +65,7 @@ def test_update_task_importance_failure_supertask_with_importance(
     system.set_task_importance(supertask, supertask_importance)
 
     data_layer_mock.load_system.return_value = system
-    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.SupertaskHasImportanceError) as exc_info:
         logic_layer.update_task_importance(task=task, importance=task_importance)
@@ -101,7 +102,7 @@ def test_update_task_importance_failure_superior_task_with_importance(
     system.set_task_importance(superior_task, superior_task_importance)
 
     data_layer_mock.load_system.return_value = system
-    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.SuperiorTaskHasImportanceError) as exc_info:
         logic_layer.update_task_importance(task=task, importance=task_importance)
@@ -132,7 +133,7 @@ def test_update_task_importance_failure_subtask_with_importance(
     system.set_task_importance(subtask, subtask_importance)
 
     data_layer_mock.load_system.return_value = system
-    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.SubtaskHasImportanceError) as exc_info:
         logic_layer.update_task_importance(task=task, importance=task_importance)
@@ -167,7 +168,7 @@ def test_update_task_importance_failure_inferior_task_with_importance(
     system.set_task_importance(inferior_task, inferior_task_importance)
 
     data_layer_mock.load_system.return_value = system
-    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.InferiorTaskHasImportanceError) as exc_info:
         logic_layer.update_task_importance(task=task, importance=task_importance)

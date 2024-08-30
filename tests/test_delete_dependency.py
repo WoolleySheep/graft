@@ -7,7 +7,7 @@ import pytest
 
 from graft import domain
 from graft.domain import tasks
-from graft.standard import standard
+from graft.layers import logic
 
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
@@ -28,7 +28,7 @@ def test_delete_dependency_success(
 
     data_layer_mock.load_system.return_value = system
 
-    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
     logic_layer.delete_task_dependency(dependee_task, dependent_task)
 
@@ -49,7 +49,7 @@ def test_delete_dependency_failure_dependee_task_not_exists(
 
     data_layer_mock.load_system.return_value = system
 
-    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.TaskDoesNotExistError) as exc_info:
         logic_layer.delete_task_hierarchy(absent_dependee_task, dependent_task)
@@ -72,7 +72,7 @@ def test_delete_dependency_failure_dependent_task_not_exists(
 
     data_layer_mock.load_system.return_value = system
 
-    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.TaskDoesNotExistError) as exc_info:
         logic_layer.delete_task_hierarchy(dependee_task, absent_dependent_task)
@@ -94,7 +94,7 @@ def test_delete_dependency_failure_dependency_loop(
 
     data_layer_mock.load_system.return_value = system
 
-    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.DependencyLoopError) as exc_info:
         logic_layer.delete_task_dependency(task, task)
@@ -118,7 +118,7 @@ def test_delete_dependency_failure_dependency_not_exist(
 
     data_layer_mock.load_system.return_value = system
 
-    logic_layer = standard.StandardLogicLayer(data_layer=data_layer_mock)
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
     with pytest.raises(tasks.DependencyDoesNotExistError) as exc_info:
         logic_layer.delete_task_dependency(dependee_task, dependent_task)

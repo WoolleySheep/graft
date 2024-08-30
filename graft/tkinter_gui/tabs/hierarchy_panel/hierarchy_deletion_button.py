@@ -1,10 +1,9 @@
-import functools
 import tkinter as tk
 from tkinter import ttk
 
 from graft import architecture
 from graft.tkinter_gui.tabs.hierarchy_panel.hierarchy_deletion_window import (
-    create_hierarchy_deletion_window,
+    HierarchyDeletionWindow,
 )
 
 
@@ -14,9 +13,7 @@ class HierarchyDeletionButton(ttk.Button):
         super().__init__(
             master,
             text="Delete Hierarchy",
-            command=functools.partial(
-                create_hierarchy_deletion_window,
-                master=self,
-                logic_layer=self.logic_layer,
+            command=lambda: HierarchyDeletionWindow(
+                master=self, logic_layer=logic_layer
             ),
         )
