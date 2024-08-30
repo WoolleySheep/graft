@@ -57,5 +57,10 @@ pytest tests
 ```
 pytest tests --cov-report html --cov=graft
 ```
-
 Open htmlcov/index.html in a browser to view the report
+
+### Build executable
+```
+pyinstaller main.py --onefile --noconsole --name graft
+```
+After building is complete, `graft.exe` can be found in the `dist` directory
