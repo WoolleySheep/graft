@@ -109,7 +109,8 @@ class DependencyCreationWindow(tk.Toplevel):
             self._logic_layer.create_task_dependency(dependee_task, dependent_task)
         except Exception as e:
             helpers.UnknownExceptionOperationFailedWindow(master=self, exception=e)
-            return
+            # Raise so it gets logged further up the chain
+            raise
         broker = event_broker.get_singleton()
         broker.publish(event_broker.SystemModified())
         self.destroy()

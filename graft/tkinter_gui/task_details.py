@@ -273,7 +273,8 @@ class TaskDetails(tk.Frame):
             self._logic_layer.update_task_name(task=self._task, name=name)
         except Exception as e:
             helpers.UnknownExceptionOperationFailedWindow(self, e)
-            return
+            # Raise so it gets logged further up the chain
+            raise
 
         broker = event_broker.get_singleton()
         broker.publish(event=event_broker.SystemModified())
@@ -292,13 +293,14 @@ class TaskDetails(tk.Frame):
             self._logic_layer.update_task_description(self._task, description)
         except Exception as e:
             helpers.UnknownExceptionOperationFailedWindow(self, e)
-            return
+            # Raise so it gets logged further up the chain
+            raise
 
         broker = event_broker.get_singleton()
         broker.publish(event_broker.SystemModified())
 
     def _on_importance_selected_from_option_button(self, selection: str) -> None:
-        logger.debug("Importance [%s] selected from option menu", selection)
+        logger.info("Importance [%s] selected from option menu", selection)
         self._save_current_importance()
 
     def _save_current_importance(self) -> None:
@@ -315,7 +317,8 @@ class TaskDetails(tk.Frame):
             )
         except Exception as e:
             helpers.UnknownExceptionOperationFailedWindow(self, e)
-            return
+            # Raise so it gets logged further up the chain
+            raise
 
         broker = event_broker.get_singleton()
         broker.publish(event=event_broker.SystemModified())
@@ -336,7 +339,8 @@ class TaskDetails(tk.Frame):
             )
         except Exception as e:
             helpers.UnknownExceptionOperationFailedWindow(self, exception=e)
-            return
+            # Raise so it gets logged further up the chain
+            raise
 
         broker = event_broker.get_singleton()
         broker.publish(event_broker.SystemModified())
@@ -357,7 +361,8 @@ class TaskDetails(tk.Frame):
             )
         except Exception as e:
             helpers.UnknownExceptionOperationFailedWindow(self, exception=e)
-            return
+            # Raise so it gets logged further up the chain
+            raise
 
         broker = event_broker.get_singleton()
         broker.publish(event_broker.SystemModified())

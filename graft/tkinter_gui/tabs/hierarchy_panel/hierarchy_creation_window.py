@@ -176,7 +176,8 @@ class HierarchyCreationWindow(tk.Toplevel):
             return
         except Exception as e:
             helpers.UnknownExceptionOperationFailedWindow(self, exception=e)
-            return
+            # Raise so it gets logged further up the chain
+            raise
 
         broker = event_broker.get_singleton()
         broker.publish(event_broker.SystemModified())
