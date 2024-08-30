@@ -1,7 +1,4 @@
-import functools
 import tkinter as tk
-from collections.abc import Mapping
-from typing import Self, Sequence
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -21,130 +18,145 @@ GRAPH_ORIENTATION = layered_graph_drawing.GraphOrientation.VERTICAL
 
 class HierarchyGraph(tk.Frame):
     def __init__(self, master: tk.Misc, logic_layer: architecture.LogicLayer) -> None:
-        def update_figure(self: Self) -> None:
-            def draw_graph(
-                self: Self,
-                graph: nx.DiGraph,
-                pos: Mapping[tasks.UID, tuple[float, float]],
-            ) -> tuple[mpl_collections.PathCollection, list[tasks.UID]]:
-                node_path_collection: mpl_collections.PathCollection = (
-                    nx.draw_networkx_nodes(
-                        graph,
-                        pos=pos,
-                        ax=self.ax,
-                    )
-                )
-                nodes_in_path_order = list(graph)
-                nx.draw_networkx_edges(
-                    graph, pos=pos, ax=self.ax, connectionstyle="arc3,rad=0.1"
-                )
-                nx.draw_networkx_labels(networkx_graph, pos=pos, ax=self.ax)
-
-                self.canvas.draw()
-
-                return node_path_collection, nodes_in_path_order
-
-            def display_annotation(
-                event: mpl_backend_bases.Event,
-                self: Self,
-                task_path_collection: mpl_collections.PathCollection,
-                tasks_in_path_order: Sequence[tasks.UID],
-                annotation: mpl_text.Annotation,
-            ) -> None:
-                if not isinstance(event, mpl_backend_bases.MouseEvent):
-                    raise TypeError
-
-                if event.inaxes != self.ax:
-                    if annotation.get_visible():
-                        annotation.set_visible(False)
-                        self.canvas.draw_idle()
-                    return
-
-                # If there are no paths in the path collection, the `contains`
-                # method will throw a TypeError rather than returning a nice,
-                # sensible 'false'. This check stops it, as when there are zero
-                # tasks there will be zero paths.
-                if not tasks_in_path_order:
-                    return
-
-                contains, details = task_path_collection.contains(event)
-
-                if not contains:
-                    if annotation.get_visible():
-                        annotation.set_visible(False)
-                        self.fig.canvas.draw_idle()
-                    return
-
-                task = tasks_in_path_order[details["ind"][0]]
-
-                register = self.logic_layer.get_task_system().attributes_register()
-                attributes = register[task]
-
-                if not attributes.name:
-                    if annotation.get_visible():
-                        annotation.set_visible(False)
-                        self.canvas.draw_idle()
-                    return
-
-                annotation.set_text(str(attributes.name) or "")
-                annotation.xy = pos[task]
-
-                annotation.set_visible(True)
-                self.fig.canvas.draw_idle()
-
-            self.ax.clear()
-
-            annotation = self.ax.annotate(
-                "",
-                xy=(0, 0),
-                xytext=(20, 20),
-                textcoords="offset points",
-                bbox={"boxstyle": "round", "fc": "w"},
-            )
-            annotation.set_visible(False)
-
-            hierarchy_graph = (
-                self.logic_layer.get_task_system().network_graph().hierarchy_graph()
-            )
-            digraph = graph_conversion.convert_hierarchy_to_reduced_dag(
-                graph=hierarchy_graph
-            )
-            networkx_graph = graph_conversion.convert_simple_digraph_to_nx_digraph(
-                digraph
-            )
-
-            pos = layered_graph_drawing.calculate_node_positions_sugiyama_method(
-                graph=digraph, orientation=GRAPH_ORIENTATION
-            )
-
-            task_path_collection, tasks_in_path_order = draw_graph(
-                self=self, graph=networkx_graph, pos=pos
-            )
-
-            if self._annotation_callback_id is not None:
-                self.fig.canvas.mpl_disconnect(self._annotation_callback_id)
-            self._annotation_callback_id = self.fig.canvas.mpl_connect(
-                "motion_notify_event",
-                functools.partial(
-                    display_annotation,
-                    self=self,
-                    task_path_collection=task_path_collection,
-                    tasks_in_path_order=tasks_in_path_order,
-                    annotation=annotation,
-                ),
-            )
-
         super().__init__(master)
 
         mpl.use("Agg")
-        self.logic_layer = logic_layer
-        self.fig = plt.figure()
-        self.ax = self.fig.add_subplot()
-        self.canvas = backend_tkagg.FigureCanvasTkAgg(self.fig, self)
-        self._annotation_callback_id: int | None = None
-        self.canvas.get_tk_widget().grid()
+        self._logic_layer = logic_layer
+        self._fig = plt.figure()
+        self._ax = self._fig.add_subplot()
+        self._annotation = mpl_text.Annotation("", (0, 0), (20, 20))
+        self._display_annotation_callback_id: int | None = None
+        self._select_task_callback_id: int | None = None
+        self._canvas = backend_tkagg.FigureCanvasTkAgg(self._fig, self)
+        self._canvas.get_tk_widget().grid()
+        self._task_positions = dict[tasks.UID, tuple[float, float]]()
+        self._tasks_in_path_order = list[tasks.UID]()
+        self._task_path_collection = mpl_collections.PathCollection([])
 
-        update_figure(self)
+        self._update_figure()
 
         broker = event_broker.get_singleton()
-        broker.subscribe(event_broker.SystemModified, lambda _: update_figure(self))
+        broker.subscribe(event_broker.SystemModified, lambda _: self._update_figure())
+
+    def _update_figure(self) -> None:
+        self._ax.clear()
+        self._annotation = self._ax.annotate(
+            "",
+            xy=(0, 0),
+            xytext=(20, 20),
+            textcoords="offset points",
+            bbox={"boxstyle": "round", "fc": "w"},
+        )
+        self._annotation.set_visible(False)
+
+        hierarchy_graph = (
+            self._logic_layer.get_task_system().network_graph().hierarchy_graph()
+        )
+        digraph = graph_conversion.convert_hierarchy_to_reduced_dag(
+            graph=hierarchy_graph
+        )
+        networkx_graph = graph_conversion.convert_simple_digraph_to_nx_digraph(digraph)
+        self._tasks_in_path_order: list[tasks.UID] = list(networkx_graph)
+
+        self._task_positions = (
+            layered_graph_drawing.calculate_node_positions_sugiyama_method(
+                graph=digraph, orientation=GRAPH_ORIENTATION
+            )
+        )
+
+        self._task_path_collection: mpl_collections.PathCollection = (
+            nx.draw_networkx_nodes(
+                networkx_graph,
+                pos=self._task_positions,
+                ax=self._ax,
+            )
+        )
+
+        nx.draw_networkx_edges(
+            networkx_graph,
+            pos=self._task_positions,
+            ax=self._ax,
+            connectionstyle="arc3,rad=0.1",
+        )
+        nx.draw_networkx_labels(networkx_graph, pos=self._task_positions, ax=self._ax)
+
+        self._canvas.draw()
+
+        if self._display_annotation_callback_id is not None:
+            self._fig.canvas.mpl_disconnect(self._display_annotation_callback_id)
+        self._display_annotation_callback_id = self._fig.canvas.mpl_connect(
+            "motion_notify_event", self._display_annotation
+        )
+
+        if self._select_task_callback_id is not None:
+            self._fig.canvas.mpl_disconnect(self._select_task_callback_id)
+        self._select_task_callback_id = self._fig.canvas.mpl_connect(
+            "button_release_event", self._select_task
+        )
+
+    def _select_task(self, event: mpl_backend_bases.Event) -> None:
+        if not isinstance(event, mpl_backend_bases.MouseEvent):
+            raise TypeError
+
+        # If there are no paths in the path collection, the `contains`
+        # method will throw a TypeError rather than returning a nice,
+        # sensible 'false'. This check stops it, as when there are zero
+        # tasks there will be zero paths.
+        if (
+            event.button is not mpl_backend_bases.MouseButton.LEFT
+            or event.inaxes != self._ax
+            or not self._tasks_in_path_order
+        ):
+            return
+
+        contains, details = self._task_path_collection.contains(event)
+
+        if not contains:
+            return
+
+        task: tasks.UID = self._tasks_in_path_order[details["ind"][0]]
+
+        broker = event_broker.get_singleton()
+        broker.publish(event_broker.TaskSelected(task=task))
+
+    def _display_annotation(self, event: mpl_backend_bases.Event) -> None:
+        if not isinstance(event, mpl_backend_bases.MouseEvent):
+            raise TypeError
+
+        if event.inaxes != self._ax:
+            if self._annotation.get_visible():
+                self._annotation.set_visible(False)
+                self._canvas.draw_idle()
+            return
+
+        # If there are no paths in the path collection, the `contains`
+        # method will throw a TypeError rather than returning a nice,
+        # sensible 'false'. This check stops it, as when there are zero
+        # tasks there will be zero paths.
+        if not self._tasks_in_path_order:
+            return
+
+        contains, details = self._task_path_collection.contains(event)
+
+        if not contains:
+            if self._annotation.get_visible():
+                self._annotation.set_visible(False)
+                self._fig.canvas.draw_idle()
+            return
+
+        task: tasks.UID = self._tasks_in_path_order[details["ind"][0]]
+
+        register = self._logic_layer.get_task_system().attributes_register()
+        attributes = register[task]
+
+        if not attributes.name:
+            if self._annotation.get_visible():
+                self._annotation.set_visible(False)
+                self._canvas.draw_idle()
+            return
+
+        self._annotation.set_text(str(attributes.name) or "")
+        self._annotation.xy = self._task_positions[task]
+
+        self._annotation.set_visible(True)
+        self._fig.canvas.draw_idle()
