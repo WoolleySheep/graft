@@ -56,7 +56,7 @@ class DependencyGraph(tk.Frame):
         if not isinstance(event, event_broker.TaskSelected):
             raise TypeError
 
-        if event.task != self._selected_task:
+        if self._selected_task is None or event.task != self._selected_task:
             self._selected_task = event.task
             self._update_figure()
 
