@@ -28,7 +28,7 @@ _DEVELOPER_LOG_FILE_LOG_DATE_FORMAT: Final = "%Y-%m-%dT%H:%M:%S"
 
 
 class OperatingSystem(enum.Enum):
-    WINDOWS = "Windows"
+    WINDOWS = enum.auto()
 
 def _parse_level_from_environment_variable_value(level: str) -> int:
     if level ==  _LOGGING_LEVEL_ENVIRONMENT_VARIABLE_DEBUG_VALUE:
@@ -75,7 +75,7 @@ def _get_operating_system() -> OperatingSystem:
         case _:
             # TODO: Add Linux and Mac support
             # TODO: Raise proper exception
-            raise ValueError(f"OS [{operating_system}] and not currently supported")
+            raise ValueError(f"OS [{operating_system}] not currently supported")
 
 
 def _get_default_log_directory(operating_system: OperatingSystem) -> pathlib.Path:

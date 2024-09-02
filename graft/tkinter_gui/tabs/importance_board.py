@@ -33,8 +33,8 @@ def _create_no_importance_task_table(master: tk.Misc) -> TaskTable:
 
 
 class ImportanceType(enum.Enum):
-    INFERRED = "inferred"
-    EXPLICIT = "explicit"
+    INFERRED = enum.auto()
+    EXPLICIT = enum.auto()
 
 
 class ImportanceBoard(tk.Frame):

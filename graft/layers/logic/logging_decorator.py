@@ -165,22 +165,18 @@ class LoggingDecoratorLogicLayer(architecture.LogicLayer):
         self, task: tasks.UID, progress: tasks.Progress
     ) -> None:
         """Update the specified concrete task's progress."""
-        logger.info(
-            "Updating progress of task with UID [%s] to [%s]", task, progress.value
-        )
+        logger.info("Updating progress of task with UID [%s] to [%s]", task, progress)
         try:
             self._handler.update_concrete_task_progress(task, progress)
         except Exception as e:
             logger.warning(
                 "Failed to update progress of task with UID [%s] to [%s], exception [%s]",
                 task,
-                progress.value,
+                progress,
                 e,
             )
             raise
-        logger.info(
-            "Progress of task with UID [%s] updated to [%s]", task, progress.value
-        )
+        logger.info("Progress of task with UID [%s] updated to [%s]", task, progress)
 
     @override
     def update_task_importance(
@@ -194,7 +190,7 @@ class LoggingDecoratorLogicLayer(architecture.LogicLayer):
                 logger.info(
                     "Updating importance of task with UID [%s] to [%s]",
                     task,
-                    importance.value,
+                    importance,
                 )
         try:
             self._handler.update_task_importance(task, importance)
@@ -210,7 +206,7 @@ class LoggingDecoratorLogicLayer(architecture.LogicLayer):
                     logger.info(
                         "Failed to update importance of task with UID [%s] to [%s], exception [%s]",
                         task,
-                        importance.value,
+                        importance,
                         e,
                     )
             raise
@@ -222,7 +218,7 @@ class LoggingDecoratorLogicLayer(architecture.LogicLayer):
                 logger.info(
                     "Importance of task with UID [%s] updated to [%s]",
                     task,
-                    importance.value,
+                    importance,
                 )
 
     @override

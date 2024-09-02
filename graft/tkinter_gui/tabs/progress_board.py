@@ -23,8 +23,8 @@ def _create_task_table(master: tk.Misc) -> TaskTable:
 
 
 class ProgressType(enum.Enum):
-    INFERRED = "Inferred"
-    EXPLICIT = "Explicit"
+    INFERRED = enum.auto()
+    EXPLICIT = enum.auto()
 
 
 class ProgressBoard(tk.Frame):

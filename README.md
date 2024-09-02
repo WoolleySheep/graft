@@ -53,7 +53,7 @@ autoflake -r graft tests
 ```
 pytest tests
 ```
-### Generate & view code coverage report
+### Generate code coverage report
 ```
 pytest tests --cov-report html --cov=graft
 ```

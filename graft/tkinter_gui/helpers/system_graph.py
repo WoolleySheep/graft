@@ -17,6 +17,7 @@ from graft import graphs
 from graft.domain import tasks
 from graft.tkinter_gui import layered_graph_drawing
 from graft.tkinter_gui.helpers import graph_conversion
+from graft.tkinter_gui.layered_graph_drawing.orientation import GraphOrientation
 
 type Edge = tuple[tasks.UID, tasks.UID]
 
@@ -40,22 +41,8 @@ def _get_dag_from_dependency(
 
 
 class GraphType(enum.Enum):
-    HIERARCHY = (
-        layered_graph_drawing.GraphOrientation.VERTICAL,
-        _get_reduced_dag_from_hierarchy,
-    )
-    DEPENDENCY = (
-        layered_graph_drawing.GraphOrientation.HORIZONTAL,
-        _get_dag_from_dependency,
-    )
-
-    def __init__(
-        self,
-        orientation: layered_graph_drawing.GraphOrientation,
-        get_graph: Callable[[tasks.System], graphs.DirectedAcyclicGraph[tasks.UID]],
-    ) -> None:
-        self.orientation = orientation
-        self.get_graph = get_graph
+    HIERARCHY = enum.auto()
+    DEPENDENCY = enum.auto()
 
 
 def get_edge_colour_fn(
@@ -148,17 +135,25 @@ class SystemGraph(tk.Frame, abc.ABC):
 
         super().__init__(master=master)
 
+        match graph_type:
+            case GraphType.HIERARCHY:
+                orientation = GraphOrientation.VERTICAL
+                get_graph = _get_reduced_dag_from_hierarchy
+            case GraphType.DEPENDENCY:
+                orientation = GraphOrientation.HORIZONTAL
+                get_graph = _get_dag_from_dependency
+
         mpl.use("Agg")
         fig = plt.figure()
         ax = fig.add_subplot()
         canvas = backend_tkagg.FigureCanvasTkAgg(fig, self)
         canvas.get_tk_widget().grid()
 
-        graph = graph_type.get_graph(system)
+        graph = get_graph(system)
         nx_graph = graph_conversion.convert_simple_digraph_to_nx_digraph(graph=graph)
 
         pos = layered_graph_drawing.calculate_node_positions_sugiyama_method(
-            graph=graph, orientation=graph_type.orientation
+            graph=graph, orientation=orientation
         )
 
         annotation = ax.annotate(

@@ -6,9 +6,9 @@ import enum
 class Progress(enum.Enum):
     """Progress of a task."""
 
-    NOT_STARTED = "not started"
-    IN_PROGRESS = "in progress"
-    COMPLETED = "completed"
+    NOT_STARTED = enum.auto()
+    IN_PROGRESS = enum.auto()
+    COMPLETED = enum.auto()
 
     def __lt__(self, other: object) -> bool:
         """Check if a task's progress is less than another's.

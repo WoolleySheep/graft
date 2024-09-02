@@ -6,9 +6,9 @@ import enum
 class Importance(enum.Enum):
     """Importance of a task."""
 
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
+    LOW = enum.auto()
+    MEDIUM = enum.auto()
+    HIGH = enum.auto()
 
     def __lt__(self, other: object) -> bool:
         """Check if a task's importance is less than another's.

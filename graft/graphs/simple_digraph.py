@@ -20,8 +20,8 @@ from graft.graphs import bidict as bd
 
 
 class SearchOrder(enum.Enum):
-    DEPTH_FIRST = "depth-first"
-    BREADTH_FIRST = "breadth-first"
+    DEPTH_FIRST = enum.auto()
+    BREADTH_FIRST = enum.auto()
 
 
 def search[T: Hashable](

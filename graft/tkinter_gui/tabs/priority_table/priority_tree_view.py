@@ -4,6 +4,7 @@ from tkinter import ttk
 from graft import architecture
 from graft.domain import tasks
 from graft.tkinter_gui import event_broker
+from graft.tkinter_gui.helpers import importance_display, progress_display
 
 
 class PriorityTreeView(ttk.Treeview):
@@ -55,8 +56,10 @@ class PriorityTreeView(ttk.Treeview):
             formatted_rank = str(rank)
             formatted_uid = str(uid)
             formatted_name = str(name)
-            formatted_importance = importance.value if importance is not None else ""
-            formatted_progress = progress.value
+            formatted_importance = (
+                importance_display.format(importance) if importance is not None else ""
+            )
+            formatted_progress = progress_display.format(progress)
             self.insert(
                 "",
                 tk.END,

@@ -10,6 +10,7 @@ from graft.architecture.logic import LogicLayer
 from graft.domain import tasks
 from graft.domain.tasks.progress import Progress
 from graft.tkinter_gui import event_broker, helpers
+from graft.tkinter_gui.helpers import importance_display, progress_display
 
 _NEIGHBOURING_TASK_TABLES_ID_COLUMN_WIDTH_PIXELS = 30
 _NEIGHBOURING_TASK_TABLES_NAME_COLUMN_WIDTH_PIXELS = 150
@@ -82,7 +83,11 @@ class TaskDetails(tk.Frame):
         self._selected_importance = tk.StringVar(self)
 
         importance_menu_options = itertools.chain(
-            (level.value for level in sorted(tasks.Importance, reverse=True)), [""]
+            (
+                importance_display.format(importance)
+                for importance in sorted(tasks.Importance, reverse=True)
+            ),
+            [""],
         )
         # Tkinter OptionMenu command should be passed a StringVar, but it is
         # instead passed a string. Hence the type ignore.
@@ -97,7 +102,7 @@ class TaskDetails(tk.Frame):
         self._decrement_progress_button = ttk.Button(
             self, text="<", command=self._on_decrement_progress_button_clicked
         )
-        self._task_progress = ttk.Label(self, text="")
+        self._task_progress_label = ttk.Label(self, text="")
         self._increment_progress_button = ttk.Button(
             self, text=">", command=self._on_increment_progress_button_clicked
         )
@@ -126,7 +131,7 @@ class TaskDetails(tk.Frame):
         self._task_name_entry.grid(row=0, column=1, columnspan=3)
         self._inferred_task_importance.grid(row=1, column=0, columnspan=3)
         self._task_importance_option_menu.grid(row=1, column=0, columnspan=3)
-        self._task_progress.grid(row=2, column=1)
+        self._task_progress_label.grid(row=2, column=1)
         self._decrement_progress_button.grid(row=2, column=0)
         self._increment_progress_button.grid(row=2, column=2)
         self._task_description_scrolled_text.grid(row=3, column=0, columnspan=4)
@@ -164,17 +169,19 @@ class TaskDetails(tk.Frame):
             # If we can infer an importance, it will by definition not be None
             assert importance is not None
             self._task_importance_option_menu.grid_remove()
-            formatted_importance = importance.value
+            formatted_importance = importance_display.format(importance)
             self._inferred_task_importance.config(text=formatted_importance)
             self._inferred_task_importance.grid()
         else:
             self._inferred_task_importance.grid_remove()
-            formatted_importance = importance.value if importance else ""
+            formatted_importance = (
+                importance_display.format(importance) if importance else ""
+            )
             self._selected_importance.set(formatted_importance)
             self._task_importance_option_menu.grid()
 
         progress = system.get_progress(self._task)
-        self._task_progress.config(text=progress.value)
+        self._task_progress_label.config(text=progress_display.format(progress))
 
         if system.network_graph().hierarchy_graph().is_concrete(self._task):
             self._decrement_progress_button.grid()
@@ -235,7 +242,7 @@ class TaskDetails(tk.Frame):
         self._inferred_task_importance.grid()
         self._inferred_task_importance.config(text="")
         self._task_importance_option_menu.grid_remove()
-        self._task_progress.config(text="")
+        self._task_progress_label.config(text="")
         self._decrement_progress_button.grid_remove()
         self._increment_progress_button.grid_remove()
         self._task_description_scrolled_text.delete(1.0, tk.END)
@@ -308,7 +315,9 @@ class TaskDetails(tk.Frame):
 
         formatted_importance = self._selected_importance.get()
         importance = (
-            tasks.Importance(formatted_importance) if formatted_importance else None
+            importance_display.parse(formatted_importance)
+            if formatted_importance
+            else None
         )
 
         try:
