@@ -2,7 +2,7 @@ import logging
 import tkinter as tk
 from types import TracebackType
 
-from graft import architecture
+from graft import app_name, architecture
 from graft.tkinter_gui.tabs.tabs import Tabs
 from graft.tkinter_gui.task_details import TaskDetails
 
@@ -24,7 +24,7 @@ class GUI(tk.Tk):
     def __init__(self, logic_layer: architecture.LogicLayer) -> None:
         super().__init__()
         self._logic_layer = logic_layer
-        self.title("graft")
+        self.title(app_name.APP_NAME)
         self.report_callback_exception = _log_exceptions
 
         self._tabs = Tabs(self, logic_layer)

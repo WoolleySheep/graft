@@ -11,7 +11,7 @@ class UnknownExceptionOperationFailedWindow(
     def __init__(self, master: tk.Misc, exception: Exception) -> None:
         super().__init__(master=master)
         self._restart_warning = ttk.Label(
-            self, text="TO PRESERVE DATA INTEGRITY, RECOMMEND RESTARTING GRAFT APP"
+            self, text="TO PRESERVE DATA INTEGRITY, RECOMMEND RESTARTING APP"
         )
         self._exception_type = ttk.Label(self, text=str(type(exception)))
         self._exception = ttk.Label(self, text=str(exception))
