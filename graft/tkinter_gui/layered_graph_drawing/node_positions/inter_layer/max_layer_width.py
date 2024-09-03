@@ -15,8 +15,7 @@ def _get_max_layer_width[T](
         max_layer_value = max(intra_layer_positions[node] for node in layer)
         min_layer_value = min(intra_layer_positions[node] for node in layer)
         layer_width = max_layer_value - min_layer_value
-        if layer_width > max_layer_width:
-            max_layer_width = layer_width
+        max_layer_width = max(max_layer_width, layer_width)
 
     return max_layer_width
 

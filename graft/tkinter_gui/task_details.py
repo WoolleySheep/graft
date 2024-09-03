@@ -96,7 +96,7 @@ class TaskDetails(tk.Frame):
             self._selected_importance,
             None,
             *importance_menu_options,
-            command=self._on_importance_selected_from_option_button,  # type: ignore
+            command=self._on_importance_selected_from_option_button,  # type: ignore[reportArgumentType]
         )
 
         self._decrement_progress_button = ttk.Button(

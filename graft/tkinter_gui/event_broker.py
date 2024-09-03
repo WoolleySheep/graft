@@ -11,6 +11,8 @@ logger = logging.getLogger(__name__)
 
 class Event(abc.ABC):
     def __eq__(self, other: object) -> bool:
+        # TODO: Work out why this is like this, and if it can be deleted without
+        # breaking things
         return isinstance(other, Self)
 
 
