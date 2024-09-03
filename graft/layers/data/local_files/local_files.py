@@ -312,6 +312,11 @@ class LocalFilesDataLayer(architecture.DataLayer):
         self, system: domain.ISystemView, unused_task: tasks.UID | None = None
     ) -> None:
         """Save the system and update the unused task file if necessary."""
+        # TODO: Make more efficient by comparing each savable segment (hierarchy
+        # graph, dependency graph, attributes register, etc) with a cached
+        # version from when it was last loaded. If they match, then no need to
+        # save that particular segment as it hasn't changed - skip writing that
+        # file.
         encoded_task_hierarchy_graph = _encode_as_versioned_file_contents(
             obj=system.task_system().network_graph().hierarchy_graph(),
             version=task_hierarchy_graph.CURRENT_VERSION,
