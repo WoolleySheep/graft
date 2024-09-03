@@ -15,7 +15,8 @@ def get_encoder(version: FileSchemaVersion) -> EncodeNextUnusedTaskFn:
         case FileSchemaVersion.V1:
             return v1.encode_next_unused_task
 
-    raise ValueError(f"Unsupported schema version: {version}")
+    msg = f"Unsupported schema version: {version}"
+    raise ValueError(msg)
 
 
 def get_decoder(version: FileSchemaVersion) -> DecodeNextUnusedTaskFn:
@@ -23,4 +24,5 @@ def get_decoder(version: FileSchemaVersion) -> DecodeNextUnusedTaskFn:
         case FileSchemaVersion.V1:
             return v1.decode_next_unused_task
 
-    raise ValueError(f"Unsupported schema version: {version}")
+    msg = f"Unsupported schema version: {version}"
+    raise ValueError(msg)

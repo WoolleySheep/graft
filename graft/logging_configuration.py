@@ -52,7 +52,8 @@ def _parse_level_from_environment_variable_value(level: str) -> int:
     if level == _LOGGING_LEVEL_ENVIRONMENT_VARIABLE_CRITICAL_VALUE:
         return logging.CRITICAL
 
-    raise ValueError(f"Unknown logging level: {level}")
+    msg = f"Unknown logging level: {level}"
+    raise ValueError(msg)
 
 
 def _get_level() -> int:
@@ -84,7 +85,8 @@ def _get_operating_system() -> OperatingSystem:
         case _:
             # TODO: Add Linux and Mac support
             # TODO: Raise proper exception
-            raise ValueError(f"OS [{operating_system}] not currently supported")
+            msg = f"OS [{operating_system}] not currently supported"
+            raise ValueError(msg)
 
 
 def _get_default_log_directory(operating_system: OperatingSystem) -> pathlib.Path:

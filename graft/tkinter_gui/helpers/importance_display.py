@@ -34,4 +34,5 @@ def parse(formatted_importance: str) -> tasks.Importance:
     if lowercase_formatted_importance == _FORMATTED_IMPORTANCE_HIGH:
         return tasks.Importance.HIGH
 
-    raise ValueError(f"Unknown importance: {formatted_importance}")
+    msg = f"Unknown importance: {formatted_importance}"
+    raise ValueError(msg)

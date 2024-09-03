@@ -31,7 +31,7 @@ class GUI(tk.Tk):
         exception_type: type[BaseException],
         exception: BaseException,
         traceback: TracebackType | None,
-    ):
+    ) -> None:
         logger.error(
             "Exception bubbled all the way to the top of the GUI",
             exc_info=(exception_type, exception, traceback),

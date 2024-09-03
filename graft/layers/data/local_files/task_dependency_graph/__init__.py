@@ -15,7 +15,8 @@ def get_encoder(version: FileSchemaVersion) -> EncodeDependencyGraphFn:
         case FileSchemaVersion.V1:
             return v1.encode_dependency_graph
 
-    raise ValueError(f"Unsupported schema version: {version}")
+    msg = f"Unsupported schema version: {version}"
+    raise ValueError(msg)
 
 
 def get_decoder(version: FileSchemaVersion) -> DecodeDependencyGraphFn:
@@ -23,4 +24,5 @@ def get_decoder(version: FileSchemaVersion) -> DecodeDependencyGraphFn:
         case FileSchemaVersion.V1:
             return v1.decode_dependency_graph
 
-    raise ValueError(f"Unsupported schema version: {version}")
+    msg = f"Unsupported schema version: {version}"
+    raise ValueError(msg)

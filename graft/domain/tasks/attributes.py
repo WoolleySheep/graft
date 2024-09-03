@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import enum
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
 from graft.domain.tasks.description import Description
-from graft.domain.tasks.importance import Importance
 from graft.domain.tasks.name import Name
 from graft.domain.tasks.progress import Progress
+
+if TYPE_CHECKING:
+    from graft.domain.tasks.importance import Importance
 
 
 class DefaultSentinel(enum.Enum):

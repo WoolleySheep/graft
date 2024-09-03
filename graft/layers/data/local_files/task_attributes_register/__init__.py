@@ -15,7 +15,8 @@ def get_encoder(version: FileSchemaVersion) -> EncodeAttributesRegisterFn:
         case FileSchemaVersion.V1:
             return v1.encode_attributes_register
 
-    raise ValueError(f"Unsupported schema version: {version}")
+    msg = f"Unsupported schema version: {version}"
+    raise ValueError(msg)
 
 
 def get_decoder(version: FileSchemaVersion) -> DecodeAttributesRegisterFn:
@@ -23,4 +24,5 @@ def get_decoder(version: FileSchemaVersion) -> DecodeAttributesRegisterFn:
         case FileSchemaVersion.V1:
             return v1.decode_attributes_register
 
-    raise ValueError(f"Unsupported schema version: {version}")
+    msg = f"Unsupported schema version: {version}"
+    raise ValueError(msg)

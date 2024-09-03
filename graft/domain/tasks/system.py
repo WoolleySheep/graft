@@ -4,19 +4,22 @@ from __future__ import annotations
 
 import collections
 import itertools
-from collections.abc import Generator, Iterable, Iterator, MutableMapping
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 from graft.domain.tasks.attributes_register import (
     AttributesRegister,
     AttributesRegisterView,
 )
-from graft.domain.tasks.description import Description
 from graft.domain.tasks.importance import Importance
-from graft.domain.tasks.name import Name
 from graft.domain.tasks.network_graph import NetworkGraph, NetworkGraphView
 from graft.domain.tasks.progress import Progress
 from graft.domain.tasks.uid import UID
+
+if TYPE_CHECKING:
+    from collections.abc import Generator, Iterable, Iterator, MutableMapping
+
+    from graft.domain.tasks.description import Description
+    from graft.domain.tasks.name import Name
 
 
 class MultipleImportancesInHierarchyError(Exception):

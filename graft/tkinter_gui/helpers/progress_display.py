@@ -34,4 +34,5 @@ def parse(formatted_progress: str) -> tasks.Progress:
     if lowercase_formatted_progress == _FORMATTED_PROGRESS_COMPLETED:
         return tasks.Progress.COMPLETED
 
-    raise ValueError(f"Unknown progress: {formatted_progress}")
+    msg = f"Unknown progress: {formatted_progress}"
+    raise ValueError(msg)

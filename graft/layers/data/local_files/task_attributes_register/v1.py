@@ -71,7 +71,8 @@ def _decode_progress(text: str) -> tasks.Progress:
     if text == _ENCODED_PROGRESS_COMPLETED:
         return tasks.Progress.COMPLETED
 
-    raise ValueError("Can't decode task progress [{text}]")
+    msg = "Can't decode task progress [{text}]"
+    raise ValueError(msg)
 
 
 def _encode_importance(importance: tasks.Importance) -> str:
@@ -95,7 +96,8 @@ def _decode_importance(text: str) -> tasks.Importance:
     if text == _ENCODED_IMPORTANCE_HIGH:
         return tasks.Importance.HIGH
 
-    raise ValueError(f"Can't decode task importance [{text}]")
+    msg = f"Can't decode task importance [{text}]"
+    raise ValueError(msg)
 
 
 def _convert_attributes_to_dict(

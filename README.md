@@ -44,6 +44,7 @@ pyright graft tests
 ### Lint
 ```
 ruff --fix graft tests
+ruff --unsafe-fixes graft tests (run in its own commit for easy rollback)
 pylint graft tests
 vulture graft tests
 autoflake -r graft tests

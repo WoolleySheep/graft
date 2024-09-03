@@ -131,7 +131,8 @@ class SystemGraph(tk.Frame, abc.ABC):
             additional_edges = set[Edge]()
 
         if any(edge in highlighted_edges for edge in additional_edges):
-            raise ValueError("highlighted_edges and additional_edges cannot overlap")
+            msg = "highlighted_edges and additional_edges cannot overlap"
+            raise ValueError(msg)
 
         super().__init__(master=master)
 

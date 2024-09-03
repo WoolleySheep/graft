@@ -37,13 +37,15 @@ def _get_progress_increment(progress: Progress) -> Progress:
         case tasks.Progress.IN_PROGRESS:
             return tasks.Progress.COMPLETED
         case tasks.Progress.COMPLETED:
-            raise ValueError("Cannot increment progress of completed task")
+            msg = "Cannot increment progress of completed task"
+            raise ValueError(msg)
 
 
 def _get_progress_decrement(progress: Progress) -> Progress:
     match progress:
         case tasks.Progress.NOT_STARTED:
-            raise ValueError("Cannot decrement progress of not started task")
+            msg = "Cannot decrement progress of not started task"
+            raise ValueError(msg)
         case tasks.Progress.IN_PROGRESS:
             return tasks.Progress.NOT_STARTED
         case tasks.Progress.COMPLETED:

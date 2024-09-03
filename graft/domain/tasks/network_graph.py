@@ -2,13 +2,15 @@ from __future__ import annotations
 
 import collections
 import itertools
-from collections.abc import Generator, Iterator
-from typing import Any, Protocol, Self
+from typing import TYPE_CHECKING, Any, Protocol, Self
 
 from graft.domain.tasks.dependency_graph import DependencyGraph, DependencyGraphView
 from graft.domain.tasks.helpers import TaskDoesNotExistError
 from graft.domain.tasks.hierarchy_graph import HierarchyGraph, HierarchyGraphView
 from graft.domain.tasks.uid import UID, UIDsView
+
+if TYPE_CHECKING:
+    from collections.abc import Generator, Iterator
 
 
 class DependencyPathAlreadyExistsFromSuperTaskToSubTaskError(Exception):

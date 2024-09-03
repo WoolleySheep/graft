@@ -47,7 +47,8 @@ def _decode_version(text: str) -> FileSchemaVersion:
     if text == _ENCODED_FILE_SCHEMA_VERSION_1:
         return FileSchemaVersion.V1
 
-    raise ValueError(f"Unknown file schema version: {text}")
+    msg = f"Unknown file schema version: {text}"
+    raise ValueError(msg)
 
 
 def _decode_versioned_file_contents[T](
@@ -96,7 +97,8 @@ def _get_operating_system() -> OperatingSystem:
         case _:
             # TODO: Add Linux and Max support
             # TODO: Raise proper exception
-            raise ValueError(f"OS [{operating_system}] and not currently supported")
+            msg = f"OS [{operating_system}] and not currently supported"
+            raise ValueError(msg)
 
 
 def _get_default_data_directory(operating_system: OperatingSystem) -> pathlib.Path:
@@ -301,7 +303,8 @@ class LocalFilesDataLayer(architecture.DataLayer):
 
         if used_task != current_unused_task:
             # TODO: Add better Exception
-            raise ValueError("Cannot save system with a different unused task UID")
+            msg = "Cannot save system with a different unused task UID"
+            raise ValueError(msg)
 
         new_unused_task = _generate_next_unused_task(
             current_unused_task=current_unused_task
