@@ -2,7 +2,26 @@
 
 from __future__ import annotations
 
+from typing import Protocol
+
 from graft.domain import tasks
+
+
+class ISystemView(Protocol):
+    """Interface for a view of a system."""
+
+    def task_system(self) -> tasks.SystemView:
+        """Return a view of the task system."""
+        ...
+
+    def get_active_concrete_tasks_in_order_of_descending_priority(
+        self,
+    ) -> list[tuple[tasks.UID, tasks.Importance | None]]:
+        """Return the active concrete tasks in order of descending priority.
+
+        Tasks are paired with the maximum importance of downstream tasks.
+        """
+        ...
 
 
 class System:
@@ -91,3 +110,30 @@ class System:
         Tasks are paired with the maximum importance of downstream tasks.
         """
         return self._task_system.get_active_concrete_tasks_in_order_of_descending_priority()
+
+
+class SystemView:
+    """View of a system."""
+
+    def __init__(self, system: ISystemView) -> None:
+        """Initialise SystemView."""
+        self._system = system
+
+    def __eq__(self, other: object) -> bool:
+        """Check if two systems are equal."""
+        return (
+            isinstance(other, SystemView) and self.task_system() == other.task_system()
+        )
+
+    def task_system(self) -> tasks.SystemView:
+        """Return a view of the task system."""
+        return self._system.task_system()
+
+    def get_active_concrete_tasks_in_order_of_descending_priority(
+        self,
+    ) -> list[tuple[tasks.UID, tasks.Importance | None]]:
+        """Return the active concrete tasks in order of descending priority.
+
+        Tasks are paired with the maximum importance of downstream tasks.
+        """
+        return self._system.get_active_concrete_tasks_in_order_of_descending_priority()

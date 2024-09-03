@@ -30,11 +30,11 @@ class DataLayer(abc.ABC):
         """Erase all data."""
 
     @abc.abstractmethod
-    def save_system(self, system: domain.System) -> None:
+    def save_system(self, system: domain.ISystemView) -> None:
         """Save the state of the system."""
 
     @abc.abstractmethod
     def save_system_and_indicate_task_used(
-        self, system: domain.System, used_task: tasks.UID
+        self, system: domain.ISystemView, used_task: tasks.UID
     ) -> None:
         """Save the state of the system and indicate that a new task has been added."""

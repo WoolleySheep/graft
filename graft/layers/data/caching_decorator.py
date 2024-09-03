@@ -63,14 +63,14 @@ class CachingDecoratorDataLayer(architecture.DataLayer):
         self._clear_cache()
 
     @override
-    def save_system(self, system: domain.System) -> None:
+    def save_system(self, system: domain.ISystemView) -> None:
         """Save the state of the system."""
         self._handler.save_system(system)
         self._clear_cache()
 
     @override
     def save_system_and_indicate_task_used(
-        self, system: domain.System, used_task: tasks.UID
+        self, system: domain.ISystemView, used_task: tasks.UID
     ) -> None:
         """Save the state of the system and indicate that a new task has been added."""
         self._handler.save_system_and_indicate_task_used(system, used_task)

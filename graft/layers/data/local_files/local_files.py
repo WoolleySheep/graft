@@ -20,7 +20,9 @@ from graft.layers.data.local_files import (
 )
 from graft.layers.data.local_files.file_schema_version import FileSchemaVersion
 
-_DATA_DIRECTORY_PATH_ENVIRONMENT_VARIABLE_KEY: Final = f"{app_name.APP_NAME}_DATA_DIRECTORY_PATH"
+_DATA_DIRECTORY_PATH_ENVIRONMENT_VARIABLE_KEY: Final = (
+    f"{app_name.APP_NAME}_DATA_DIRECTORY_PATH"
+)
 
 _FIRST_TASK: Final = tasks.UID(1)
 
@@ -288,12 +290,12 @@ class LocalFilesDataLayer(architecture.DataLayer):
         self._create_new_data_files()
 
     @override
-    def save_system(self, system: domain.System) -> None:
+    def save_system(self, system: domain.ISystemView) -> None:
         self._save_data(system=system)
 
     @override
     def save_system_and_indicate_task_used(
-        self, system: domain.System, used_task: tasks.UID
+        self, system: domain.ISystemView, used_task: tasks.UID
     ) -> None:
         current_unused_task = self.load_next_unused_task()
 
@@ -307,7 +309,7 @@ class LocalFilesDataLayer(architecture.DataLayer):
         self._save_data(system=system, unused_task=new_unused_task)
 
     def _save_data(
-        self, system: domain.System, unused_task: tasks.UID | None = None
+        self, system: domain.ISystemView, unused_task: tasks.UID | None = None
     ) -> None:
         """Save the system and update the unused task file if necessary."""
         encoded_task_hierarchy_graph = _encode_as_versioned_file_contents(

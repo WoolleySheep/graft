@@ -60,7 +60,7 @@ class LoggingDecoratorDataLayer(architecture.DataLayer):
         logger.info("Data erased")
 
     @override
-    def save_system(self, system: domain.System) -> None:
+    def save_system(self, system: domain.ISystemView) -> None:
         """Save the state of the system."""
         logger.info("Saving system")
         try:
@@ -72,13 +72,17 @@ class LoggingDecoratorDataLayer(architecture.DataLayer):
 
     @override
     def save_system_and_indicate_task_used(
-        self, system: domain.System, used_task: tasks.UID
+        self, system: domain.ISystemView, used_task: tasks.UID
     ) -> None:
         """Save the state of the system and indicate that a new task has been added."""
         logger.info("Saving system and indicating task with UID [%s] used", used_task)
         try:
             self._handler.save_system_and_indicate_task_used(system, used_task)
         except Exception as e:
-            logger.error("Failed to save system and indicate task with UID [%s] used, exception [%s]", used_task, e)
+            logger.error(
+                "Failed to save system and indicate task with UID [%s] used, exception [%s]",
+                used_task,
+                e,
+            )
             raise
         logger.info("System saved and task with UID [%s] marked as used", used_task)
