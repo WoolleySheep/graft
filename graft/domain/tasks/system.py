@@ -1087,14 +1087,14 @@ class System:
                     if task in upstream_tasks:
                         priority_score_card.add_downstream_importance(importance)
 
-        return list(
+        return [
             (task, score_card.highest_importance)
             for task, score_card in sorted(
                 active_concrete_tasks_priority_score_cards_map.items(),
                 key=lambda x: x[1],
                 reverse=True,
             )
-        )
+        ]
 
 
 class SystemView:
