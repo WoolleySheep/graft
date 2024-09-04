@@ -274,10 +274,6 @@ class IDependencyGraphView(Protocol):
         """Return number of tasks in graph."""
         ...
 
-    def __iter__(self) -> Iterator[UID]:
-        """Return generator over tasks in graph."""
-        ...
-
     def __str__(self) -> str:
         """Return string representation of graph."""
         ...
@@ -406,10 +402,6 @@ class DependencyGraph:
     def __bool__(self) -> bool:
         """Check if graph has any tasks."""
         return bool(self._dag)
-
-    def __iter__(self) -> Iterator[UID]:
-        """Return generator over tasks in graph."""
-        return iter(self._dag)
 
     def __len__(self) -> int:
         """Return number of tasks in graph."""
@@ -632,10 +624,6 @@ class DependencyGraphView:
     def __bool__(self) -> bool:
         """Check view has any tasks."""
         return bool(self._graph)
-
-    def __iter__(self) -> Iterator[UID]:
-        """Return generator over tasks in view."""
-        return iter(self._graph)
 
     def __len__(self) -> int:
         """Return number of tasks in view."""

@@ -138,7 +138,7 @@ class HierarchyCreationWindow(tk.Toplevel):
             return
         except tasks.HierarchyIntroducesCycleError as e:
             system = tasks.System.empty()
-            for task in e.connecting_subgraph:
+            for task in e.connecting_subgraph.tasks():
                 system.add_task(task)
                 system.set_name(
                     task,
@@ -157,7 +157,7 @@ class HierarchyCreationWindow(tk.Toplevel):
             return
         except tasks.HierarchyIntroducesRedundantHierarchyError as e:
             system = tasks.System.empty()
-            for task in e.connecting_subgraph:
+            for task in e.connecting_subgraph.tasks():
                 system.add_task(task)
                 system.set_name(
                     task,

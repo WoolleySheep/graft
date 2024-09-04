@@ -328,14 +328,12 @@ class SimpleDiGraph[T: Hashable]:
         """Check if item is a node in digraph."""
         return item in self.nodes()
 
-    def __iter__(self) -> Iterator[T]:
-        """Return iterator over digraph nodes."""
-        return iter(self.nodes())
-
     def __eq__(self, other: object) -> bool:
         """Check if digraph is equal to other."""
-        return isinstance(other, SimpleDiGraph) and set(self.edges()) == set(
-            other.edges()
+        return (
+            isinstance(other, SimpleDiGraph)
+            and self.nodes() == other.nodes()
+            and set(self.edges()) == set(other.edges())
         )
 
     def __str__(self) -> str:
@@ -659,7 +657,7 @@ class SimpleDiGraph[T: Hashable]:
         except NodeDoesNotExistError as e:
             raise NoConnectingSubgraphError(sources=sources2, targets=targets2) from e
 
-        for node in connecting_subgraph:
+        for node in connecting_subgraph.nodes():
             if node not in graph:
                 graph.add_node(node)
         for source, target in connecting_subgraph.edges():
@@ -672,7 +670,7 @@ class SimpleDiGraph[T: Hashable]:
 
     def roots(self) -> Generator[T, None, None]:
         """Yield all roots of the graph."""
-        for node in self:
+        for node in self.nodes():
             if self.is_root(node):
                 yield node
 
@@ -682,7 +680,7 @@ class SimpleDiGraph[T: Hashable]:
 
     def leaves(self) -> Generator[T, None, None]:
         """Yield all leaves of the graph."""
-        for node in self:
+        for node in self.nodes():
             if self.is_leaf(node):
                 yield node
 
@@ -692,13 +690,13 @@ class SimpleDiGraph[T: Hashable]:
 
     def isolated_nodes(self) -> Generator[T, None, None]:
         """Yield all isolated nodes."""
-        for node in self:
+        for node in self.nodes():
             if self.is_isolated(node):
                 yield node
 
     def node_successors_pairs(self) -> Generator[tuple[T, NodesView[T]], None, None]:
         """Yield all node-successors pairs."""
-        for node in self:
+        for node in self.nodes():
             yield node, self.successors(node)
 
     def has_cycle(self) -> bool:
@@ -725,5 +723,5 @@ class SimpleDiGraph[T: Hashable]:
         return any(
             node not in visited_nodes
             and process_node(node, visited_nodes, current_subgraph_nodes)
-            for node in self
+            for node in self.nodes()
         )

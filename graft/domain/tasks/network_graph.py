@@ -316,10 +316,6 @@ class INetworkGraphView(Protocol):
         """Return number of tasks in graph."""
         ...
 
-    def __iter__(self) -> Iterator[UID]:
-        """Return an iterator over the tasks in the graph."""
-        ...
-
     def __contains__(self, item: object) -> bool:
         """Check if item exists in the graph."""
         ...
@@ -426,10 +422,6 @@ class NetworkGraph:
     def __bool__(self) -> bool:
         """Check if graph has any tasks."""
         return bool(self._dependency_graph)
-
-    def __iter__(self) -> Iterator[UID]:
-        """Return generator over tasks in graph."""
-        return iter(self._dependency_graph)
 
     def __len__(self) -> int:
         """Return number of tasks in graph."""
@@ -978,7 +970,7 @@ class NetworkGraph:
 
     def isolated_tasks(self) -> Generator[UID, None, None]:
         """Return generator of isolated tasks."""
-        for task in self:
+        for task in self.tasks():
             if self.is_isolated(task):
                 yield task
 
@@ -1005,10 +997,6 @@ class NetworkGraphView:
             and self.hierarchy_graph() == other.hierarchy_graph()
             and self.dependency_graph() == other.dependency_graph()
         )
-
-    def __iter__(self) -> Iterator[UID]:
-        """Return an iterator over the tasks in the graph."""
-        return iter(self._graph)
 
     def __contains__(self, item: object) -> bool:
         """Check if the specified task exists in the graph."""

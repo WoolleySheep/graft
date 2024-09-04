@@ -296,10 +296,6 @@ class IHierarchyGraphView(Protocol):
         """Return number of tasks in graph."""
         ...
 
-    def __iter__(self) -> Iterator[UID]:
-        """Return generator over tasks in graph."""
-        ...
-
     def __str__(self) -> str:
         """Return string representation of graph."""
         ...
@@ -460,10 +456,6 @@ class HierarchyGraph:
     def __bool__(self) -> bool:
         """Check if graph has any tasks."""
         return bool(self._reduced_dag)
-
-    def __iter__(self) -> Iterator[UID]:
-        """Return generator over tasks in graph."""
-        return iter(self._reduced_dag)
 
     def __contains__(self, item: object) -> bool:
         """Check if item in graph."""
@@ -718,10 +710,6 @@ class HierarchyGraphView:
     def __bool__(self) -> bool:
         """Check view has any tasks."""
         return bool(self._graph)
-
-    def __iter__(self) -> Iterator[UID]:
-        """Return generator over tasks in view."""
-        return iter(self._graph)
 
     def __len__(self) -> int:
         """Return number of tasks in view."""
