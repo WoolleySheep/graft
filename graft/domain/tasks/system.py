@@ -13,10 +13,10 @@ from graft.domain.tasks.attributes_register import (
 from graft.domain.tasks.importance import Importance
 from graft.domain.tasks.network_graph import NetworkGraph, NetworkGraphView
 from graft.domain.tasks.progress import Progress
-from graft.domain.tasks.uid import UID
+from graft.domain.tasks.uid import UID, UIDsView
 
 if TYPE_CHECKING:
-    from collections.abc import Generator, Iterable, Iterator, MutableMapping
+    from collections.abc import Generator, Iterable, MutableMapping
 
     from graft.domain.tasks.description import Description
     from graft.domain.tasks.name import Name
@@ -378,19 +378,11 @@ class ISystemView(Protocol):
     """Interface for a view of a task system."""
 
     def __bool__(self) -> bool:
-        """Check if there are any tasks in the system."""
+        """Check if the system is not empty."""
         ...
 
-    def __len__(self) -> int:
-        """Return number of tasks in system."""
-        ...
-
-    def __iter__(self) -> Iterator[UID]:
-        """Return an iterator over the tasks in the system."""
-        ...
-
-    def __contains__(self, item: object) -> bool:
-        """Check if item exists in the system."""
+    def tasks(self) -> UIDsView:
+        """Return a view of the tasks in the system."""
         ...
 
     def attributes_register(self) -> AttributesRegisterView:
@@ -469,20 +461,8 @@ class System:
         self._network_graph = network_graph
 
     def __bool__(self) -> bool:
-        """Return True if the system is not empty."""
+        """Check if the system is not empty."""
         return bool(self._attributes_register)
-
-    def __contains__(self, item: object) -> bool:
-        """Return True if item is in the task system."""
-        return item in self._attributes_register
-
-    def __len__(self) -> int:
-        """Return the number of tasks in the system."""
-        return len(self._attributes_register)
-
-    def __iter__(self) -> Iterator[UID]:
-        """Iterate over the task UIDs in the system."""
-        return iter(self._attributes_register)
 
     def __eq__(self, other: object) -> bool:
         """Check if two systems are equal."""
@@ -491,6 +471,10 @@ class System:
             and self.attributes_register() == other.attributes_register()
             and self.network_graph() == other.network_graph()
         )
+
+    def tasks(self) -> UIDsView:
+        """Return a view of the tasks in the system."""
+        return self._network_graph.tasks()
 
     def attributes_register(self) -> AttributesRegisterView:
         """Return a view of the attributes register."""
@@ -1108,12 +1092,8 @@ class SystemView:
         self._system = system
 
     def __bool__(self) -> bool:
-        """Check if system has any tasks."""
+        """Check if the system is not empty."""
         return bool(self._system)
-
-    def __len__(self) -> int:
-        """Return number of tasks in system."""
-        return len(self._system)
 
     def __eq__(self, other: object) -> bool:
         """Check if system views are equal."""
@@ -1123,13 +1103,9 @@ class SystemView:
             and self.network_graph() == other.network_graph()
         )
 
-    def __iter__(self) -> Iterator[UID]:
-        """Return an iterator over the tasks in the system."""
-        return iter(self._system)
-
-    def __contains__(self, item: object) -> bool:
-        """Check if item exists in the system."""
-        return item in self._system
+    def tasks(self) -> UIDsView:
+        """Return a view of the tasks in the system."""
+        return self._system.tasks()
 
     def attributes_register(self) -> AttributesRegisterView:
         """Return a view of the attributes register."""

@@ -46,7 +46,7 @@ class DependencyGraph(tk.Frame):
 
         if (
             self._selected_task is not None
-            and self._selected_task not in self._logic_layer.get_task_system()
+            and self._selected_task not in self._logic_layer.get_task_system().tasks()
         ):
             self._selected_task = None
 

@@ -254,6 +254,10 @@ class EdgesView[T: Hashable](Set[tuple[T, T]]):
         """Check view has any edges."""
         return any(self._node_successors_map.values())
 
+    def __eq__(self, other: object) -> bool:
+        """Check if edgesview is equal to other."""
+        return isinstance(other, EdgesView) and set(self) == set(other)
+
     def __len__(self) -> int:
         """Return number of edges in view."""
         return sum(len(values) for values in self._node_successors_map.values())
@@ -321,19 +325,15 @@ class SimpleDiGraph[T: Hashable]:
                 raise UnderlyingDictHasLoopsError(dictionary=self._bidict)
 
     def __bool__(self) -> bool:
-        """Check if digraph has any nodes."""
+        """Check if digraph is not empty."""
         return bool(self.nodes())
-
-    def __contains__(self, item: object) -> bool:
-        """Check if item is a node in digraph."""
-        return item in self.nodes()
 
     def __eq__(self, other: object) -> bool:
         """Check if digraph is equal to other."""
         return (
             isinstance(other, SimpleDiGraph)
             and self.nodes() == other.nodes()
-            and set(self.edges()) == set(other.edges())
+            and self.edges() == other.edges()
         )
 
     def __str__(self) -> str:
@@ -347,10 +347,6 @@ class SimpleDiGraph[T: Hashable]:
             for node, successors in self.node_successors_pairs()
         )
         return f"{self.__class__.__name__}({{{', '.join(nodes_with_successors)}}})"
-
-    def __len__(self) -> int:
-        """Return number of nodes in digraph."""
-        return len(self.nodes())
 
     def in_degree(self, node: T, /) -> int:
         """Return number of incoming edges to node."""
@@ -366,7 +362,7 @@ class SimpleDiGraph[T: Hashable]:
 
     def add_node(self, node: T, /) -> None:
         """Add node to digraph."""
-        if node in self:
+        if node in self.nodes():
             raise NodeAlreadyExistsError(node=node)
 
         self._bidict.add(key=node)
@@ -411,14 +407,14 @@ class SimpleDiGraph[T: Hashable]:
 
     def successors(self, node: T, /) -> NodesView[T]:
         """Return successors of node."""
-        if node not in self:
+        if node not in self.nodes():
             raise NodeDoesNotExistError(node=node)
 
         return NodesView(self._bidict[node])
 
     def predecessors(self, node: T, /) -> NodesView[T]:
         """Return predecessors of node."""
-        if node not in self:
+        if node not in self.nodes():
             raise NodeDoesNotExistError(node=node)
 
         return NodesView(self._bidict.inverse[node])
@@ -437,7 +433,7 @@ class SimpleDiGraph[T: Hashable]:
         The starting node is not included in the yielded nodes, but it is
         checked against the stop condition.
         """
-        if node not in self:
+        if node not in self.nodes():
             raise NodeDoesNotExistError(node=node)
 
         return search(node, self._bidict, order=order, stop_condition=stop_condition)
@@ -485,9 +481,9 @@ class SimpleDiGraph[T: Hashable]:
         """
         nodes1, nodes2 = itertools.tee(nodes, 2)
         for node in nodes1:
-            if node not in self:
+            if node not in self.nodes():
                 raise NodeDoesNotExistError(node=node)
-            if node in graph:
+            if node in graph.nodes():
                 continue
             graph.add_node(node)
 
@@ -502,7 +498,7 @@ class SimpleDiGraph[T: Hashable]:
                 continue
             visited.add(node2)
             for successor in self.successors(node2):
-                if successor not in graph:
+                if successor not in graph.nodes():
                     graph.add_node(successor)
                 if (node2, successor) not in graph.edges():
                     graph.add_edge(node2, successor)
@@ -522,7 +518,7 @@ class SimpleDiGraph[T: Hashable]:
         The starting node is not included in the yielded nodes, but it is
         checked against the stop condition.
         """
-        if node not in self:
+        if node not in self.nodes():
             raise NodeDoesNotExistError(node=node)
 
         return search(
@@ -572,9 +568,9 @@ class SimpleDiGraph[T: Hashable]:
         """
         nodes1, nodes2 = itertools.tee(nodes, 2)
         for node in nodes1:
-            if node not in self:
+            if node not in self.nodes():
                 raise NodeDoesNotExistError(node=node)
-            if node in graph:
+            if node in graph.nodes():
                 continue
             graph.add_node(node)
 
@@ -589,7 +585,7 @@ class SimpleDiGraph[T: Hashable]:
             if stop_condition and stop_condition(node2):
                 continue
             for predecessor in self.predecessors(node2):
-                if predecessor not in graph:
+                if predecessor not in graph.nodes():
                     graph.add_node(predecessor)
                 if (predecessor, node2) not in graph.edges():
                     graph.add_edge(predecessor, node2)
@@ -602,7 +598,7 @@ class SimpleDiGraph[T: Hashable]:
         """
         # TODO: Add stop condition parameter
         for node in [source, target]:
-            if node not in self:
+            if node not in self.nodes():
                 raise NodeDoesNotExistError(node=node)
 
         if source == target:
@@ -646,7 +642,7 @@ class SimpleDiGraph[T: Hashable]:
         targets2 = list(targets)
 
         for node in itertools.chain(sources2, targets2):
-            if node not in self:
+            if node not in self.nodes():
                 raise NodeDoesNotExistError(node=node)
 
         sources_descendants_subgraph = self.descendants_subgraph_multi(sources2)
@@ -658,7 +654,7 @@ class SimpleDiGraph[T: Hashable]:
             raise NoConnectingSubgraphError(sources=sources2, targets=targets2) from e
 
         for node in connecting_subgraph.nodes():
-            if node not in graph:
+            if node not in graph.nodes():
                 graph.add_node(node)
         for source, target in connecting_subgraph.edges():
             if (source, target) not in graph.edges():

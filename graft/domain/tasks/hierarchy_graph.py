@@ -247,7 +247,7 @@ class HierarchiesView(Set[tuple[UID, UID]]):
         self._hierarchies = heirarchies
 
     def __bool__(self) -> bool:
-        """Check view has any hierarchies."""
+        """Check if view has any hierarchies."""
         return bool(self._hierarchies)
 
     def __len__(self) -> int:
@@ -286,14 +286,6 @@ class IHierarchyGraphView(Protocol):
 
     def __bool__(self) -> bool:
         """Check if graph has any tasks."""
-        ...
-
-    def __contains__(self, item: object) -> bool:
-        """Check if item in graph."""
-        ...
-
-    def __len__(self) -> int:
-        """Return number of tasks in graph."""
         ...
 
     def __str__(self) -> str:
@@ -454,16 +446,8 @@ class HierarchyGraph:
         self._reduced_dag = reduced_dag or graphs.ReducedDAG[UID]()
 
     def __bool__(self) -> bool:
-        """Check if graph has any tasks."""
+        """Check if graph is not empty."""
         return bool(self._reduced_dag)
-
-    def __contains__(self, item: object) -> bool:
-        """Check if item in graph."""
-        return item in self._reduced_dag
-
-    def __len__(self) -> int:
-        """Return number of tasks in graph."""
-        return len(self._reduced_dag)
 
     def __eq__(self, other: object) -> bool:
         """Check if two graphs are equal."""
@@ -708,12 +692,8 @@ class HierarchyGraphView:
         self._graph = hierarchy_graph
 
     def __bool__(self) -> bool:
-        """Check view has any tasks."""
+        """Check if view is not empty."""
         return bool(self._graph)
-
-    def __len__(self) -> int:
-        """Return number of tasks in view."""
-        return len(self._graph)
 
     def __eq__(self, other: object) -> bool:
         """Check if two hierarchy graph views are equal."""
@@ -722,10 +702,6 @@ class HierarchyGraphView:
             and self.tasks() == other.tasks()
             and self.hierarchies() == other.hierarchies()
         )
-
-    def __contains__(self, item: object) -> bool:
-        """Check if item in graph view."""
-        return item in self._graph
 
     def __str__(self) -> str:
         """Return string representation of graph."""

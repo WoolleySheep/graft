@@ -261,7 +261,7 @@ class TaskDetails(tk.Frame):
             return
 
         if isinstance(event, event_broker.SystemModified) and self._task:
-            if self._task not in self._logic_layer.get_task_system():
+            if self._task not in self._logic_layer.get_task_system().tasks():
                 self._task = None
                 self._update_with_no_task()
                 return

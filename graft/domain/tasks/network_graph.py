@@ -10,7 +10,7 @@ from graft.domain.tasks.hierarchy_graph import HierarchyGraph, HierarchyGraphVie
 from graft.domain.tasks.uid import UID, UIDsView
 
 if TYPE_CHECKING:
-    from collections.abc import Generator, Iterator
+    from collections.abc import Generator
 
 
 class DependencyPathAlreadyExistsFromSuperTaskToSubTaskError(Exception):
@@ -309,15 +309,7 @@ class INetworkGraphView(Protocol):
     """Interface for a view of a task network graph."""
 
     def __bool__(self) -> bool:
-        """Check if there are any tasks in the graph."""
-        ...
-
-    def __len__(self) -> int:
-        """Return number of tasks in graph."""
-        ...
-
-    def __contains__(self, item: object) -> bool:
-        """Check if item exists in the graph."""
+        """Check if graph is not empty."""
         ...
 
     def __str__(self) -> str:
@@ -420,16 +412,8 @@ class NetworkGraph:
         self._hierarchy_graph = hierarchy_graph
 
     def __bool__(self) -> bool:
-        """Check if graph has any tasks."""
+        """Check if graph is not empty."""
         return bool(self._dependency_graph)
-
-    def __len__(self) -> int:
-        """Return number of tasks in graph."""
-        return len(self._dependency_graph)
-
-    def __contains__(self, item: object) -> bool:
-        """Check if item is present in graph."""
-        return item in self._dependency_graph
 
     def __eq__(self, other: object) -> bool:
         """Check if two graphs are equal."""
@@ -438,10 +422,6 @@ class NetworkGraph:
             and self.dependency_graph() == other.dependency_graph()
             and self.hierarchy_graph() == other.hierarchy_graph()
         )
-
-    def __str__(self) -> str:
-        """Return string representation of graph."""
-        return f"network_graph({self._dependency_graph}, {self._hierarchy_graph})"
 
     def tasks(self) -> UIDsView:
         """Return view of tasks in graph."""
@@ -519,9 +499,9 @@ class NetworkGraph:
 
             return any(
                 task
-                in superior_tasks_of_dependency_linked_tasks_of_superior_tasks_of_supertask
+                in superior_tasks_of_dependency_linked_tasks_of_superior_tasks_of_supertask.tasks()
                 or task
-                in inferior_tasks_of_dependency_linked_tasks_of_superior_tasks_of_supertask
+                in inferior_tasks_of_dependency_linked_tasks_of_superior_tasks_of_supertask.tasks()
                 for task in dependency_linked_tasks_of_inferior_tasks_of_subtask
             )
 
@@ -776,7 +756,7 @@ class NetworkGraph:
         True.
         """
         for task in [source_task, target_task]:
-            if task not in self:
+            if task not in self.tasks():
                 raise TaskDoesNotExistError(task)
 
         return source_task == target_task or target_task in self.downstream_tasks(
@@ -848,7 +828,7 @@ class NetworkGraph:
                     tasks_with_subtasks_to_check.append(dependent_task)
                     tasks_with_supertasks_to_check.append(dependent_task)
 
-                    if dependent_task not in subgraph:
+                    if dependent_task not in subgraph.tasks():
                         subgraph.add_task(dependent_task)
                     subgraph.add_dependency(
                         task_with_dependents_to_check, dependent_task
@@ -867,7 +847,7 @@ class NetworkGraph:
                 tasks_with_subtasks_to_check.append(subtask)
                 tasks_with_supertasks_to_check.append(subtask)
 
-                if task not in subgraph:
+                if task not in subgraph.tasks():
                     subgraph.add_task(subtask)
                 subgraph.add_hierarchy(task_with_subtasks_to_check, subtask)
 
@@ -885,7 +865,7 @@ class NetworkGraph:
                 tasks_with_dependents_to_check.append(supertask)
                 tasks_with_supertasks_to_check.append(supertask)
 
-                if supertask not in subgraph:
+                if supertask not in subgraph.tasks():
                     subgraph.add_task(supertask)
                 subgraph.add_hierarchy(supertask, task_with_supertasks_to_check)
 
@@ -942,7 +922,7 @@ class NetworkGraph:
         the two. I'm calling these non-connecting tasks.
         """
         for task in [source_task, target_task]:
-            if task not in self:
+            if task not in self.tasks():
                 raise TaskDoesNotExistError(task=task)
 
         source_downstream_subgraph, non_downstream_tasks = self.downstream_subgraph(
@@ -983,12 +963,8 @@ class NetworkGraphView:
         self._graph = graph
 
     def __bool__(self) -> bool:
-        """Check if graph has any tasks."""
+        """Check if graph is not empty."""
         return bool(self._graph)
-
-    def __len__(self) -> int:
-        """Return number of tasks in graph."""
-        return len(self._graph)
 
     def __eq__(self, other: object) -> bool:
         """Check if graph views are equal."""
@@ -997,14 +973,6 @@ class NetworkGraphView:
             and self.hierarchy_graph() == other.hierarchy_graph()
             and self.dependency_graph() == other.dependency_graph()
         )
-
-    def __contains__(self, item: object) -> bool:
-        """Check if the specified task exists in the graph."""
-        return item in self._graph
-
-    def __str__(self) -> str:
-        """Return a string representation of the graph."""
-        raise NotImplementedError
 
     def tasks(self) -> UIDsView:
         """Return a view of the tasks in the graph."""

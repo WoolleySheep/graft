@@ -124,10 +124,11 @@ class ImportanceBoard(tk.Frame):
         }
         tasks_no_importance = list[tasks.UID]()
 
-        task_system = self._logic_layer.get_task_system()
         for task, importance in zip(
-            task_system,
-            self._logic_layer.get_task_system().get_importances(task_system),
+            self._logic_layer.get_task_system().tasks(),
+            self._logic_layer.get_task_system().get_importances(
+                self._logic_layer.get_task_system().tasks()
+            ),
         ):
             match importance:
                 case Importance.HIGH | Importance.MEDIUM | Importance.LOW:

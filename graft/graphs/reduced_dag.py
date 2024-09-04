@@ -73,7 +73,7 @@ class ReducedDAG[T: Hashable](directed_acyclic_graph.DirectedAcyclicGraph[T]):
             target_predecessors_in_subgraph = [
                 predecessor
                 for predecessor in target_predecessors
-                if predecessor in source_ancestors_subgraph
+                if predecessor in source_ancestors_subgraph.nodes()
             ]
             subgraph = source_ancestors_subgraph.descendants_subgraph_multi(
                 target_predecessors_in_subgraph
@@ -96,7 +96,7 @@ class ReducedDAG[T: Hashable](directed_acyclic_graph.DirectedAcyclicGraph[T]):
             source_successors_in_subgraph = [
                 successor
                 for successor in source_successors
-                if successor in target_descendants_subgraph
+                if successor in target_descendants_subgraph.nodes()
             ]
             subgraph = target_descendants_subgraph.ancestors_subgraph_multi(
                 source_successors_in_subgraph

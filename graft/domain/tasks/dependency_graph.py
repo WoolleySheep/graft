@@ -221,7 +221,7 @@ class DependenciesView(Set[tuple[UID, UID]]):
         self._dependencies = dependencies
 
     def __bool__(self) -> bool:
-        """Check view has any dependencies."""
+        """Check if view has any dependencies."""
         return bool(self._dependencies)
 
     def __len__(self) -> int:
@@ -263,15 +263,7 @@ class IDependencyGraphView(Protocol):
     """Interface for a view of a graph of task dependencies."""
 
     def __bool__(self) -> bool:
-        """Check if graph has any tasks."""
-        ...
-
-    def __contains__(self, item: object) -> bool:
-        """Check if item in graph."""
-        ...
-
-    def __len__(self) -> int:
-        """Return number of tasks in graph."""
+        """Check if graph is not empty."""
         ...
 
     def __str__(self) -> str:
@@ -400,12 +392,8 @@ class DependencyGraph:
         self._dag = dag or graphs.DirectedAcyclicGraph[UID]()
 
     def __bool__(self) -> bool:
-        """Check if graph has any tasks."""
+        """Check if graph is not empty."""
         return bool(self._dag)
-
-    def __len__(self) -> int:
-        """Return number of tasks in graph."""
-        return len(self._dag)
 
     def __eq__(self, other: object) -> bool:
         """Check if two graphs are equal."""
@@ -414,10 +402,6 @@ class DependencyGraph:
             and self.tasks() == other.tasks()
             and self.dependencies() == other.dependencies()
         )
-
-    def __contains__(self, item: object) -> bool:
-        """Check if item in graph."""
-        return item in self._dag
 
     def __str__(self) -> str:
         """Return string representation of graph."""
@@ -622,12 +606,8 @@ class DependencyGraphView:
         self._graph = dependency_graph
 
     def __bool__(self) -> bool:
-        """Check view has any tasks."""
+        """Check if view is not empty."""
         return bool(self._graph)
-
-    def __len__(self) -> int:
-        """Return number of tasks in view."""
-        return len(self._graph)
 
     def __eq__(self, other: object) -> bool:
         """Check if two views are equal."""
@@ -636,10 +616,6 @@ class DependencyGraphView:
             and self.tasks() == other.tasks()
             and self.dependencies() == other.dependencies()
         )
-
-    def __contains__(self, item: object) -> bool:
-        """Check if item in graph view."""
-        return item in self._graph
 
     def __str__(self) -> str:
         """Return string representation of graph."""

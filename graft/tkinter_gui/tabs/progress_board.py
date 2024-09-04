@@ -110,7 +110,7 @@ class ProgressBoard(tk.Frame):
             },
         }
 
-        for task in self._logic_layer.get_task_system():
+        for task in self._logic_layer.get_task_system().tasks():
             progress_type_tasks_map[
                 self._logic_layer.get_task_system().get_progress(task)
             ][self._get_progress_type(task)].tasks.append(task)
