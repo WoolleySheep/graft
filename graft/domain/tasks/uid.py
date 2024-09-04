@@ -50,7 +50,7 @@ class UID:
 
     def __repr__(self) -> str:
         """Return string representation of UID."""
-        return f"uid({self._number})"
+        return f"uid({self._number!r})"
 
 
 class UIDsView(Set[UID]):

@@ -73,7 +73,7 @@ class Attributes:
 
     def __repr__(self) -> str:
         """Return string representation of attributes."""
-        return f"{self.__class__.__name__}(name={self.name}, description={self.description}, progress={self.progress.name if self.progress else None}, importance={self.importance.name if self.importance else None})"
+        return f"{self.__class__.__name__}(name={self.name!r}, description={self.description!r}, progress={(self.progress.name if self.progress else None)!r}, importance={(self.importance.name if self.importance else None)!r})"
 
     @property
     def name(self) -> Name:
@@ -142,7 +142,7 @@ class AttributesView:
 
     def __repr__(self) -> str:
         """Return string representation of attributes."""
-        return f"{self.__class__.__name__}(name={self.name}, description={self.description}, progress={self.progress.name if self.progress else None}, importance={self.importance.name if self.importance else None})"
+        return f"{self.__class__.__name__}(name={self.name!r}, description={self.description!r}, progress={(self.progress.name if self.progress else None)!r}, importance={(self.importance.name if self.importance else None)!r})"
 
     @property
     def name(self) -> Name:

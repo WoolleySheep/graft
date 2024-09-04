@@ -357,7 +357,7 @@ class EdgesView[T: Hashable](Set[tuple[T, T]]):
     def __repr__(self) -> str:
         """Return string representation of edges."""
         node_successor_pairs = (
-            f"({node!r}, {successor!r})" for node, successor in iter(self)
+            f"({node!r}, {successor!r})" for node, successor in self
         )
         return f"{self.__class__.__name__}({{{', '.join(node_successor_pairs)}}})"
 

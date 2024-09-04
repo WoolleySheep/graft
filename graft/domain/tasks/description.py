@@ -26,4 +26,4 @@ class Description:
 
     def __repr__(self) -> str:
         """Return description as a string for developers."""
-        return f"{self.__class__.__name__}({self._text})"
+        return f"{self.__class__.__name__}({self._text!r})"
