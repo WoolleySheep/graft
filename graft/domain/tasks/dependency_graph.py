@@ -294,7 +294,7 @@ class IDependencyGraphView(Protocol):
         self,
         task: UID,
         /,
-        order: graphs.SearchOrder = graphs.SearchOrder.BREADTH_FIRST,
+        order: graphs.TraversalOrder = graphs.TraversalOrder.BREADTH_FIRST,
         stop_condition: Callable[[UID], bool] | None = None,
     ) -> Generator[UID, None, None]:
         """Yield following tasks of task, following the specified search order."""
@@ -304,7 +304,7 @@ class IDependencyGraphView(Protocol):
         self,
         task: UID,
         /,
-        order: graphs.SearchOrder = graphs.SearchOrder.BREADTH_FIRST,
+        order: graphs.TraversalOrder = graphs.TraversalOrder.BREADTH_FIRST,
         stop_condition: Callable[[UID], bool] | None = None,
     ) -> Generator[UID, None, None]:
         """Yield proceeding tasks of task, following the specified search order."""
@@ -480,7 +480,7 @@ class DependencyGraph:
         self,
         task: UID,
         /,
-        order: graphs.SearchOrder = graphs.SearchOrder.BREADTH_FIRST,
+        order: graphs.TraversalOrder = graphs.TraversalOrder.BREADTH_FIRST,
         stop_condition: Callable[[UID], bool] | None = None,
     ) -> Generator[UID, None, None]:
         """Yield following tasks of task, following the specified search order."""
@@ -491,7 +491,7 @@ class DependencyGraph:
         self,
         task: UID,
         /,
-        order: graphs.SearchOrder = graphs.SearchOrder.BREADTH_FIRST,
+        order: graphs.TraversalOrder = graphs.TraversalOrder.BREADTH_FIRST,
         stop_condition: Callable[[UID], bool] | None = None,
     ) -> Generator[UID, None, None]:
         """Yield proceeding tasks of task, following the specified search order."""
@@ -653,7 +653,7 @@ class DependencyGraphView:
         self,
         task: UID,
         /,
-        order: graphs.SearchOrder = graphs.SearchOrder.BREADTH_FIRST,
+        order: graphs.TraversalOrder = graphs.TraversalOrder.BREADTH_FIRST,
         stop_condition: Callable[[UID], bool] | None = None,
     ) -> Generator[UID, None, None]:
         """Yield following tasks of task, following the specified search order."""
@@ -665,7 +665,7 @@ class DependencyGraphView:
         self,
         task: UID,
         /,
-        order: graphs.SearchOrder = graphs.SearchOrder.BREADTH_FIRST,
+        order: graphs.TraversalOrder = graphs.TraversalOrder.BREADTH_FIRST,
         stop_condition: Callable[[UID], bool] | None = None,
     ) -> Generator[UID, None, None]:
         """Yield proceeding tasks of task, following the specified search order."""

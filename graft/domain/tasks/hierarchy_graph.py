@@ -316,7 +316,7 @@ class IHierarchyGraphView(Protocol):
         self,
         task: UID,
         /,
-        order: graphs.SearchOrder = graphs.SearchOrder.BREADTH_FIRST,
+        order: graphs.TraversalOrder = graphs.TraversalOrder.BREADTH_FIRST,
         stop_condition: Callable[[UID], bool] | None = None,
     ) -> Generator[UID, None, None]:
         """Yield inferior tasks of task, following the specified search order."""
@@ -326,7 +326,7 @@ class IHierarchyGraphView(Protocol):
         self,
         task: UID,
         /,
-        order: graphs.SearchOrder = graphs.SearchOrder.BREADTH_FIRST,
+        order: graphs.TraversalOrder = graphs.TraversalOrder.BREADTH_FIRST,
         stop_condition: Callable[[UID], bool] | None = None,
     ) -> Generator[UID, None, None]:
         """Yield superior tasks of task, following the specified search order."""
@@ -494,7 +494,7 @@ class HierarchyGraph:
         self,
         task: UID,
         /,
-        order: graphs.SearchOrder = graphs.SearchOrder.BREADTH_FIRST,
+        order: graphs.TraversalOrder = graphs.TraversalOrder.BREADTH_FIRST,
         stop_condition: Callable[[UID], bool] | None = None,
     ) -> Generator[UID, None, None]:
         """Yield inferior tasks of task, following the specified search order."""
@@ -507,7 +507,7 @@ class HierarchyGraph:
         self,
         task: UID,
         /,
-        order: graphs.SearchOrder = graphs.SearchOrder.BREADTH_FIRST,
+        order: graphs.TraversalOrder = graphs.TraversalOrder.BREADTH_FIRST,
         stop_condition: Callable[[UID], bool] | None = None,
     ) -> Generator[UID, None, None]:
         """Yield superior tasks of task, following the specified search order."""
@@ -739,7 +739,7 @@ class HierarchyGraphView:
         self,
         task: UID,
         /,
-        order: graphs.SearchOrder = graphs.SearchOrder.BREADTH_FIRST,
+        order: graphs.TraversalOrder = graphs.TraversalOrder.BREADTH_FIRST,
         stop_condition: Callable[[UID], bool] | None = None,
     ) -> Generator[UID, None, None]:
         """Yield inferior tasks of task, following the specified search order."""
@@ -751,7 +751,7 @@ class HierarchyGraphView:
         self,
         task: UID,
         /,
-        order: graphs.SearchOrder = graphs.SearchOrder.BREADTH_FIRST,
+        order: graphs.TraversalOrder = graphs.TraversalOrder.BREADTH_FIRST,
         stop_condition: Callable[[UID], bool] | None = None,
     ) -> Generator[UID, None, None]:
         """Yield superior tasks of task, following the specified search order."""

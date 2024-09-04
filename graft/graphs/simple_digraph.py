@@ -19,20 +19,20 @@ from typing import Any, TypeGuard
 from graft.graphs import bidict as bd
 
 
-class SearchOrder(enum.Enum):
+class TraversalOrder(enum.Enum):
     DEPTH_FIRST = enum.auto()
     BREADTH_FIRST = enum.auto()
 
 
-def search[T: Hashable](
+def traverse[T: Hashable](
     node: T,
     graph: Mapping[T, Set[T]],
-    order: SearchOrder,
+    order: TraversalOrder,
     stop_condition: Callable[[T], bool] | None = None,
 ) -> Generator[T, None, None]:
-    """Search the graph from a given node, following the given search order.
+    """Traverse the graph from a given node, following the given traversal order.
 
-    Stop searching beyond a specific node if the stop condition is met.
+    Stop traversing beyond a specific node if the stop condition is met.
 
     The starting node is not included in the yielded nodes, but it is checked
     against the stop condition.
@@ -47,9 +47,9 @@ def search[T: Hashable](
     visited = set[T]([node])
 
     match order:
-        case SearchOrder.DEPTH_FIRST:
+        case TraversalOrder.DEPTH_FIRST:
             pop_next_node = deque.pop  # Stack
-        case SearchOrder.BREADTH_FIRST:
+        case TraversalOrder.BREADTH_FIRST:
             pop_next_node = deque.popleft  # Queue
 
     while deque:
@@ -423,7 +423,7 @@ class SimpleDiGraph[T: Hashable]:
         self,
         node: T,
         /,
-        order: SearchOrder = SearchOrder.BREADTH_FIRST,
+        order: TraversalOrder = TraversalOrder.BREADTH_FIRST,
         stop_condition: Callable[[T], bool] | None = None,
     ) -> Generator[T, None, None]:
         """Yield descendants of node, following the specified search order.
@@ -436,7 +436,7 @@ class SimpleDiGraph[T: Hashable]:
         if node not in self.nodes():
             raise NodeDoesNotExistError(node=node)
 
-        return search(node, self._bidict, order=order, stop_condition=stop_condition)
+        return traverse(node, self._bidict, order=order, stop_condition=stop_condition)
 
     def descendants_subgraph(
         self, node: T, /, stop_condition: Callable[[T], bool] | None = None
@@ -508,7 +508,7 @@ class SimpleDiGraph[T: Hashable]:
         self,
         node: T,
         /,
-        order: SearchOrder = SearchOrder.BREADTH_FIRST,
+        order: TraversalOrder = TraversalOrder.BREADTH_FIRST,
         stop_condition: Callable[[T], bool] | None = None,
     ) -> Generator[T, None, None]:
         """Yield ancestors of node, following the specified search order.
@@ -521,7 +521,7 @@ class SimpleDiGraph[T: Hashable]:
         if node not in self.nodes():
             raise NodeDoesNotExistError(node=node)
 
-        return search(
+        return traverse(
             node, self._bidict.inverse, order=order, stop_condition=stop_condition
         )
 
