@@ -43,7 +43,7 @@ pyright graft tests
 
 ### Lint
 ```
-ruff --unsafe-fixes --show-fixes graft tests
+ruff --unsafe-fixes --show-fixes --fix graft tests
 pylint graft tests
 vulture graft tests
 autoflake -r graft tests

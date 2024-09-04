@@ -24,7 +24,58 @@ class TraversalOrder(enum.Enum):
     BREADTH_FIRST = enum.auto()
 
 
+class TraversalDirection(enum.Enum):
+    ANCESTORS = enum.auto()
+    DESCENDANTS = enum.auto()
+
+
 def traverse[T: Hashable](
+    node: T,
+    graph: SimpleDiGraph[T],
+    direction: TraversalDirection,
+    order: TraversalOrder,
+    stop_condition: Callable[[T], bool] | None = None,
+) -> Generator[T, None, None]:
+    """Traverse the graph from a given node, following the given traversal order.
+
+    Stop traversing beyond a specific node if the stop condition is met.
+
+    The starting node is not included in the yielded nodes, but it is checked
+    against the stop condition.
+
+    Extracted out into its own function due to the commonalities between
+    DFS/BFS and descendants/ancestors.
+    """
+    if stop_condition is not None and stop_condition(node):
+        return
+
+    match direction:
+        case TraversalDirection.ANCESTORS:
+            get_neighbours = graph.ancestors
+        case TraversalDirection.DESCENDANTS:
+            get_neighbours = graph.descendants
+
+    visited = set[T]([node])
+    deque = collections.deque[T](get_neighbours(node))
+
+    match order:
+        case TraversalOrder.DEPTH_FIRST:
+            pop_next_node = deque.pop  # Stack
+        case TraversalOrder.BREADTH_FIRST:
+            pop_next_node = deque.popleft  # Queue
+
+    while deque:
+        node2 = pop_next_node()
+        if node2 in visited:
+            continue
+        visited.add(node2)
+        yield node2
+        if stop_condition is not None and stop_condition(node2):
+            continue
+        deque.extend(get_neighbours(node2))
+
+
+def traverse_old[T: Hashable](
     node: T,
     graph: Mapping[T, Set[T]],
     order: TraversalOrder,
@@ -232,7 +283,7 @@ class NodesView[T: Hashable](Set[T]):
 
     def __eq__(self, other: object) -> bool:
         """Check if nodeview is equal to other."""
-        return isinstance(other, NodesView) and set(self._nodes) == set(other)
+        return isinstance(other, NodesView) and set(self) == set(other)
 
     def __str__(self) -> str:
         """Return string representation of the nodes."""
@@ -309,6 +360,125 @@ class EdgesView[T: Hashable](Set[tuple[T, T]]):
             f"({node!r}, {successor!r})" for node, successor in iter(self)
         )
         return f"{self.__class__.__name__}({{{', '.join(node_successor_pairs)}}})"
+
+
+class DescendantNodesView[T: Hashable](NodesView[T]):
+    """View of a set of descendant nodes."""
+
+    def __init__(
+        self,
+        node: T,
+        graph: SimpleDiGraph[T],
+        stop_condition: Callable[[T], bool] | None = None,
+    ) -> None:
+        """Initialise DescendantsToNodeViewAdapter."""
+        if node not in graph.nodes():
+            raise NodeDoesNotExistError(node)
+
+        self._node = node
+        self._graph = graph
+        self._stop_condition = stop_condition
+
+    def __bool__(self) -> bool:
+        """Check if any descendant nodes."""
+        return (
+            self._stop_condition is None or not self._stop_condition(self._node)
+        ) and bool(self._graph.successors(self._node))
+
+    def __contains__(self, item: object) -> bool:
+        """Check if item is a descendant node."""
+        if self._stop_condition is not None and self._stop_condition(self._node):
+            return False
+
+        visited_nodes = set[T]()
+        deque = collections.deque[T]([self._node])
+
+        while deque:
+            node = deque.popleft()
+            if node in visited_nodes:
+                continue
+            visited_nodes.add(node)
+            if self._stop_condition is not None and self._stop_condition(node):
+                continue
+            if item in self._graph.successors(node):
+                return True
+            deque.extend(self._graph.successors(node))
+
+        return False
+
+    def __len__(self) -> int:
+        """Return number of descendant nodes."""
+        return sum(1 for _ in self)
+
+    def __iter__(self) -> Generator[T, None, None]:
+        """Return generator over descendant nodes."""
+        return traverse(
+            node=self._node,
+            graph=self._graph,
+            direction=TraversalDirection.DESCENDANTS,
+            order=TraversalOrder.BREADTH_FIRST,
+            stop_condition=self._stop_condition,
+        )
+
+    def __str__(self) -> str:
+        """Return string representation of the descendant nodes."""
+        return f"{{{', '.join(str(node) for node in self)}}}"
+
+    def __repr__(self) -> str:
+        """Return string representation of the descendant nodes."""
+        return f"{self.__class__.__name__}{{{', '.join(repr(node) for node in self)}}}"
+
+
+class DescendantsView[T: Hashable]:
+    """View of the descendants of a node."""
+
+    def __init__(
+        self,
+        node: T,
+        graph: SimpleDiGraph[T],
+        stop_condition: Callable[[T], bool] | None = None,
+    ) -> None:
+        """Initialise DescendantsView."""
+        if node not in graph.nodes():
+            raise NodeDoesNotExistError(node)
+
+        self._node = node
+        self._graph = graph
+        self._stop_condition = stop_condition
+
+    def __bool__(self) -> bool:
+        """Check if the descendants view is not empty."""
+        if self._stop_condition is not None and self._stop_condition(self._node):
+            return False
+
+        return bool(self._graph.successors(self._node))
+
+    def __eq__(self, other: object) -> bool:
+        """Check if descendants view is equal to other."""
+        raise NotImplementedError
+
+    def nodes(self) -> NodesView[T]:
+        """Return view of the nodes."""
+        return NodesView(
+            DescendantNodesView(self._node, self._graph, self._stop_condition)
+        )
+
+    def edges(self) -> EdgesView[T]:
+        """Return view of the edges."""
+        raise NotImplementedError
+
+    def traverse(
+        self, order: TraversalOrder = TraversalOrder.BREADTH_FIRST
+    ) -> Generator[T, None, None]:
+        """Return generator that traverses nodes in view in order."""
+        raise NotImplementedError
+
+    def subgraph(self) -> SimpleDiGraph[T]:
+        """Return subgraph of the descendants of the node.
+
+        The original node is part of the subgraph.
+        """
+        raise NotImplementedError
 
 
 class SimpleDiGraph[T: Hashable]:
@@ -436,7 +606,9 @@ class SimpleDiGraph[T: Hashable]:
         if node not in self.nodes():
             raise NodeDoesNotExistError(node=node)
 
-        return traverse(node, self._bidict, order=order, stop_condition=stop_condition)
+        return traverse_old(
+            node, self._bidict, order=order, stop_condition=stop_condition
+        )
 
     def descendants_subgraph(
         self, node: T, /, stop_condition: Callable[[T], bool] | None = None
@@ -521,7 +693,7 @@ class SimpleDiGraph[T: Hashable]:
         if node not in self.nodes():
             raise NodeDoesNotExistError(node=node)
 
-        return traverse(
+        return traverse_old(
             node, self._bidict.inverse, order=order, stop_condition=stop_condition
         )
 
