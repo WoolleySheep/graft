@@ -500,11 +500,13 @@ class NetworkGraph:
                 )
 
             return any(
-                task
-                in superior_tasks_of_dependency_linked_tasks_of_superior_tasks_of_supertask.tasks()
-                or task
-                in inferior_tasks_of_dependency_linked_tasks_of_superior_tasks_of_supertask.tasks()
-                for task in dependency_linked_tasks_of_inferior_tasks_of_subtask
+                superior_tasks_of_dependency_linked_tasks_of_superior_tasks_of_supertask.tasks().contains(
+                    dependency_linked_tasks_of_inferior_tasks_of_subtask
+                )
+            ) or any(
+                inferior_tasks_of_dependency_linked_tasks_of_superior_tasks_of_supertask.tasks().contains(
+                    dependency_linked_tasks_of_inferior_tasks_of_subtask
+                )
             )
 
         self._hierarchy_graph.validate_hierarchy_can_be_added(supertask, subtask)

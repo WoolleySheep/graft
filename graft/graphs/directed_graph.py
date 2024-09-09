@@ -380,6 +380,30 @@ class SubgraphNodesView[T: Hashable](Set[T]):
 
             nodes_to_check.extend(self._node_neighbours_map[node])
 
+    def contains(self, nodes: Iterable[T]) -> Generator[bool, None, None]:
+        """Check if nodes are in the subgraph."""
+        visited_nodes = set[T]()
+        subgraph_nodes_iter = iter(self)
+        is_iter_exhausted = False
+        for node in nodes:
+            if node in visited_nodes:
+                yield True
+                continue
+
+            if is_iter_exhausted:
+                yield False
+                continue
+
+            for node2 in subgraph_nodes_iter:
+                visited_nodes.add(node2)
+
+                if node == node2:
+                    yield True
+                    break
+            else:
+                yield False
+                is_iter_exhausted = True
+
 
 class SubgraphEdgesView[T: Hashable](Set[tuple[T, T]]):
     """View of the edges in the subgraph."""

@@ -1,6 +1,6 @@
 """UID and associated classes/exceptions."""
 
-from collections.abc import Iterator, Set
+from collections.abc import Generator, Iterable, Iterator, Set
 from typing import Any
 
 from graft import graphs
@@ -115,3 +115,7 @@ class SubgraphTasksView(Set[UID]):
     def __eq__(self, other: object) -> bool:
         """Check if two views are equal."""
         return isinstance(other, SubgraphTasksView) and set(self) == set(other)
+
+    def contains(self, tasks: Iterable[UID]) -> Generator[bool, None, None]:
+        """Check if tasks are in the subgraph."""
+        return self._subgraph_nodes.contains(tasks)
