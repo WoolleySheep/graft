@@ -288,6 +288,17 @@ class DependencySubgraphDependenciesView(Set[tuple[UID, UID]]):
         """Return number of dependencies in view."""
         return len(self._dependencies)
 
+    def contains(
+        self, tasks_: Iterable[tuple[UID, UID]]
+    ) -> Generator[bool, None, None]:
+        """Check if dependencies are in the subgraph.
+
+        Theoretically faster than checking if the subgraph contains multiple
+        dependencies one at a time, as can cache the parts of the subgraph
+        already searched.
+        """
+        return self._dependencies.contains(edges=tasks_)
+
 
 class MultipleStartingTasksDependencySubgraphView:
     """View of a dependency subgraph with multiple starting tasks."""

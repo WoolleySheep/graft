@@ -381,28 +381,53 @@ class SubgraphNodesView[T: Hashable](Set[T]):
             nodes_to_check.extend(self._node_neighbours_map[node])
 
     def contains(self, nodes: Iterable[T]) -> Generator[bool, None, None]:
-        """Check if nodes are in the subgraph."""
-        visited_nodes = set[T]()
-        subgraph_nodes_iter = iter(self)
-        is_iter_exhausted = False
-        for node in nodes:
-            if node in visited_nodes:
-                yield True
-                continue
+        """Check if nodes are in the subgraph.
 
-            if is_iter_exhausted:
-                yield False
-                continue
+        Theoretically faster than checking if the subgraph contains multiple nodes
+        one at a time, as can cache the parts of the subgraph already searched.
+        """
 
-            for node2 in subgraph_nodes_iter:
+        def contains_recursive(
+            node: T,
+            nodes_in_subgraph: set[T],
+            visited_nodes: set[T],
+            nodes_to_check: collections.deque[T],
+        ) -> bool:
+            if node not in self._node_neighbours_map:
+                return False
+
+            if node in self._starting_nodes:
+                return False
+
+            if node in nodes_in_subgraph:
+                return True
+
+            while nodes_to_check:
+                node2 = nodes_to_check.popleft()
+
+                if node2 in visited_nodes:
+                    continue
                 visited_nodes.add(node2)
 
-                if node == node2:
-                    yield True
-                    break
-            else:
-                yield False
-                is_iter_exhausted = True
+                if self._stop_condition is not None and self._stop_condition(node2):
+                    continue
+
+                nodes_to_check.extend(self._node_neighbours_map[node2])
+                nodes_in_subgraph.update(self._node_neighbours_map[node2])
+
+                if node in self._node_neighbours_map[node2]:
+                    return True
+
+            return False
+
+        nodes_in_subgraph = set[T]()
+        visited_nodes = set[T]()
+        nodes_to_check = collections.deque[T](self._starting_nodes)
+
+        for node in nodes:
+            yield contains_recursive(
+                node, nodes_in_subgraph, visited_nodes, nodes_to_check
+            )
 
 
 class SubgraphEdgesView[T: Hashable](Set[tuple[T, T]]):
@@ -523,6 +548,55 @@ class SubgraphEdgesView[T: Hashable](Set[tuple[T, T]]):
     def __len__(self) -> int:
         """Return number of edges in the subgraph."""
         return sum(1 for _ in self)
+
+    def contains(self, edges: Iterable[tuple[T, T]]) -> Generator[bool, None, None]:
+        """Check if edges are in the subgraph.
+
+        Theoretically faster than checking if the subgraph contains multiple edges
+        one at a time, as can cache the parts of the subgraph already searched.
+        """
+
+        def contains_recursive(
+            edge: tuple[T, T],
+            node_neighbours_in_subgraph: dict[T, set[T]],
+            visited_nodes: set[T],
+            nodes_to_check: collections.deque[T],
+        ) -> bool:
+            source, target = edge
+            if source not in self._node_neighbours_map:
+                return False
+
+            if source in node_neighbours_in_subgraph:
+                return target in node_neighbours_in_subgraph[source]
+
+            while nodes_to_check:
+                node = nodes_to_check.popleft()
+
+                if node in visited_nodes:
+                    continue
+                visited_nodes.add(node)
+
+                neighbours = (
+                    set(self._node_neighbours_map[node])
+                    if self._stop_condition is None or self._stop_condition(node)
+                    else set[T]()
+                )
+                node_neighbours_in_subgraph[node] = neighbours
+                nodes_to_check.extend(neighbours)
+
+                if node == source:
+                    return target in neighbours
+
+            return False
+
+        node_neighbours_in_subgraph = dict[T, set[T]]()
+        visited_nodes = set[T]()
+        nodes_to_check = collections.deque[T](self._starting_nodes)
+
+        for edge in edges:
+            yield contains_recursive(
+                edge, node_neighbours_in_subgraph, visited_nodes, nodes_to_check
+            )
 
 
 class MultipleStartingNodesSubgraphView[T: Hashable]:

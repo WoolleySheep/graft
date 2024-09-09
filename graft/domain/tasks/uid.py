@@ -117,5 +117,9 @@ class SubgraphTasksView(Set[UID]):
         return isinstance(other, SubgraphTasksView) and set(self) == set(other)
 
     def contains(self, tasks: Iterable[UID]) -> Generator[bool, None, None]:
-        """Check if tasks are in the subgraph."""
+        """Check if tasks are in the subgraph.
+
+        Theoretically faster than checking if the subgraph contains multiple tasks
+        one at a time, as can cache the parts of the subgraph already searched.
+        """
         return self._subgraph_nodes.contains(tasks)

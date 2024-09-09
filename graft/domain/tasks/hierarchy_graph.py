@@ -311,6 +311,17 @@ class HierarchySubgraphHierarchyView(Set[tuple[UID, UID]]):
         """Return number of hierarchies in view."""
         return len(self._hierarchies)
 
+    def contains(
+        self, tasks_: Iterable[tuple[UID, UID]]
+    ) -> Generator[bool, None, None]:
+        """Check if hierarchies are in the subgraph.
+
+        Theoretically faster than checking if the subgraph contains multiple
+        hierarchies one at a time, as can cache the parts of the subgraph
+        already searched.
+        """
+        return self._hierarchies.contains(edges=tasks_)
+
 
 class MultipleStartingTasksHierarchySubgraphView:
     """View of a hierarchy subgraph with multiple starting tasks."""
