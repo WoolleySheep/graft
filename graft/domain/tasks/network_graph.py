@@ -465,7 +465,7 @@ class NetworkGraph:
             """
             dependency_linked_tasks_of_superior_tasks_of_supertask = set[UID]()
             for superior_task in itertools.chain(
-                [supertask], self._hierarchy_graph.superior_tasks(supertask)
+                [supertask], self._hierarchy_graph.superior_tasks(supertask).tasks()
             ):
                 dependency_linked_tasks_of_superior_tasks_of_supertask.update(
                     self._dependency_graph.dependee_tasks(superior_task)
@@ -488,7 +488,7 @@ class NetworkGraph:
 
             dependency_linked_tasks_of_inferior_tasks_of_subtask = set[UID]()
             for inferior_task in itertools.chain(
-                [subtask], self._hierarchy_graph.inferior_tasks(subtask)
+                [subtask], self._hierarchy_graph.inferior_tasks(subtask).tasks()
             ):
                 dependency_linked_tasks_of_inferior_tasks_of_subtask.update(
                     self._dependency_graph.dependee_tasks(inferior_task)
@@ -582,8 +582,8 @@ class NetworkGraph:
             dependency_linked_tasks_of_dependee_task_hierarchical_line = set[UID]()
             for task in itertools.chain(
                 [dependee_task],
-                self._hierarchy_graph.superior_tasks(dependee_task),
-                self._hierarchy_graph.inferior_tasks(dependee_task),
+                self._hierarchy_graph.superior_tasks(dependee_task).tasks(),
+                self._hierarchy_graph.inferior_tasks(dependee_task).tasks(),
             ):
                 dependee_tasks = self._dependency_graph.dependee_tasks(task)
                 dependency_linked_tasks_of_dependee_task_hierarchical_line.update(
@@ -596,8 +596,8 @@ class NetworkGraph:
 
             dependent_task_hierarchical_line = itertools.chain(
                 [dependent_task],
-                self._hierarchy_graph.superior_tasks(dependent_task),
-                self._hierarchy_graph.inferior_tasks(dependent_task),
+                self._hierarchy_graph.superior_tasks(dependent_task).tasks(),
+                self._hierarchy_graph.inferior_tasks(dependent_task).tasks(),
             )
 
             return any(
@@ -768,7 +768,7 @@ class NetworkGraph:
     ) -> bool:
         """Check if there is a stream path from source-task to an inferior task of target-task."""
         inferior_tasks_of_target = set(
-            self._hierarchy_graph.inferior_tasks(target_task)
+            self._hierarchy_graph.inferior_tasks(target_task).tasks()
         )
         return any(
             downstream_task in inferior_tasks_of_target
@@ -780,7 +780,7 @@ class NetworkGraph:
     ) -> bool:
         """Check if there is a stream path from an inferior task of source-task to target-task."""
         inferior_tasks_of_source = set(
-            self._hierarchy_graph.inferior_tasks(source_task)
+            self._hierarchy_graph.inferior_tasks(source_task).tasks()
         )
         return any(
             upstream_task in inferior_tasks_of_source

@@ -8,8 +8,8 @@ from graft.domain import tasks
 
 def convert_hierarchy_to_reduced_dag(
     graph: tasks.IHierarchyGraphView,
-) -> graphs.ReducedDAG[tasks.UID]:
-    reduced_dag = graphs.ReducedDAG[tasks.UID]()
+) -> graphs.ReducedDirectedAcyclicGraph[tasks.UID]:
+    reduced_dag = graphs.ReducedDirectedAcyclicGraph[tasks.UID]()
     for task in graph.tasks():
         reduced_dag.add_node(task)
     for parent, child in graph.hierarchies():
@@ -28,8 +28,8 @@ def convert_dependency_to_dag(
     return dag
 
 
-def convert_simple_digraph_to_nx_digraph[T: Hashable](
-    graph: graphs.SimpleDiGraph[T],
+def convert_directed_graph_to_nx_digraph[T: Hashable](
+    graph: graphs.DirectedGraph[T],
 ) -> nx.DiGraph:
     nx_digraph = nx.DiGraph()
     for node in graph.nodes():

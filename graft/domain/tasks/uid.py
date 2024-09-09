@@ -3,6 +3,8 @@
 from collections.abc import Iterator, Set
 from typing import Any
 
+from graft import graphs
+
 
 class InvalidUIDNumberError(Exception):
     """Invalid ID number error."""
@@ -87,3 +89,31 @@ class UIDsView(Set[UID]):
     def __repr__(self) -> str:
         """Return string representation of view."""
         return f"uids_view({', '.join(repr(task) for task in self._tasks)})"
+
+
+class SubgraphUIDsView(Set[UID]):
+    """View of a set of task UIDs in a subgraph."""
+
+    def __init__(self, subgraph_nodes: graphs.SubgraphNodesView[UID]) -> None:
+        """Initialise UIDsView."""
+        self._subgraph_nodes = subgraph_nodes
+
+    def __bool__(self) -> bool:
+        """Check if subgraph has any tasks."""
+        return bool(self._subgraph_nodes)
+
+    def __len__(self) -> int:
+        """Return number of tasks in subgraph."""
+        return len(self._subgraph_nodes)
+
+    def __contains__(self, item: object) -> bool:
+        """Check if item is a task in the subgraph."""
+        return item in self._subgraph_nodes
+
+    def __iter__(self) -> Iterator[UID]:
+        """Return iterator over tasks in view."""
+        return iter(self._subgraph_nodes)
+
+    def __eq__(self, other: object) -> bool:
+        """Check if two views are equal."""
+        return isinstance(other, SubgraphUIDsView) and set(self) == set(other)

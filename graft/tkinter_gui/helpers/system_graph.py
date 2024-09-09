@@ -24,7 +24,7 @@ type Edge = tuple[tasks.UID, tasks.UID]
 
 def _get_reduced_dag_from_hierarchy(
     system: tasks.System,
-) -> graphs.ReducedDAG[tasks.UID]:
+) -> graphs.ReducedDirectedAcyclicGraph[tasks.UID]:
     """Return a reduced DAG from the system's hierarchy."""
     return graph_conversion.convert_hierarchy_to_reduced_dag(
         graph=system.network_graph().hierarchy_graph()
@@ -151,7 +151,7 @@ class SystemGraph(tk.Frame, abc.ABC):
         canvas.get_tk_widget().grid()
 
         graph = get_graph(system)
-        nx_graph = graph_conversion.convert_simple_digraph_to_nx_digraph(graph=graph)
+        nx_graph = graph_conversion.convert_directed_graph_to_nx_digraph(graph=graph)
 
         pos = layered_graph_drawing.calculate_node_positions_sugiyama_method(
             graph=graph, orientation=orientation

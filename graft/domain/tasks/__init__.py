@@ -7,13 +7,13 @@ from graft.domain.tasks.attributes_register import (
     IAttributesRegisterView,
 )
 from graft.domain.tasks.dependency_graph import (
-    DependenciesView,
     DependencyAlreadyExistsError,
     DependencyDoesNotExistError,
     DependencyGraph,
     DependencyGraphView,
     DependencyIntroducesCycleError,
     DependencyLoopError,
+    GraphDependenciesView,
     HasDependeeTasksError,
     HasDependentTasksError,
     IDependencyGraphView,

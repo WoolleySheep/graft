@@ -47,7 +47,7 @@ def decode_hierarchy_graph(text: str) -> tasks.HierarchyGraph:
         text, object_hook=_convert_dict_to_task_relationships
     )
     return tasks.HierarchyGraph(
-        reduced_dag=graphs.ReducedDAG(
+        reduced_dag=graphs.ReducedDirectedAcyclicGraph(
             bidict=graphs.BiDirectionalSetDict(forward=hierarchy_relationships)
         )
     )

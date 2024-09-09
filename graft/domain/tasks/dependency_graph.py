@@ -9,7 +9,7 @@ from typing import Any, ParamSpec, Protocol, TypeVar
 from graft import graphs
 from graft.domain.tasks import helpers
 from graft.domain.tasks.helpers import TaskDoesNotExistError
-from graft.domain.tasks.uid import UID, UIDsView
+from graft.domain.tasks.uid import UID, SubgraphUIDsView, UIDsView
 
 
 class HasDependeeTasksError(Exception):
@@ -213,7 +213,7 @@ def _reraise_node_removing_exceptions_as_corresponding_task_removing_exceptions(
     return wrapper
 
 
-class DependenciesView(Set[tuple[UID, UID]]):
+class GraphDependenciesView(Set[tuple[UID, UID]]):
     """View of the dependencies in a graph."""
 
     def __init__(self, dependencies: Set[tuple[UID, UID]], /) -> None:
@@ -230,7 +230,7 @@ class DependenciesView(Set[tuple[UID, UID]]):
 
     def __eq__(self, other: object) -> bool:
         """Check if two views are equal."""
-        return isinstance(other, DependenciesView) and set(self) == set(other)
+        return isinstance(other, GraphDependenciesView) and set(self) == set(other)
 
     def __contains__(self, item: object) -> bool:
         """Check if item in DependenciesView."""
@@ -259,6 +259,77 @@ class DependenciesView(Set[tuple[UID, UID]]):
         return f"{self.__class__.__name__}({{{', '.join(task_dependent_pairs)}}})"
 
 
+class DependencySubgraphDependenciesView(Set[tuple[UID, UID]]):
+    """View of subgraph dependencies."""
+
+    def __init__(self, dependencies: graphs.SubgraphEdgesView[UID], /) -> None:
+        """Initialise SubgraphDependenciesView."""
+        self._dependencies = dependencies
+
+    def __bool__(self) -> bool:
+        """Check if view has any dependencies."""
+        return bool(self._dependencies)
+
+    def __eq__(self, other: object) -> bool:
+        """Check if subgraph dependencies view is equal to other."""
+        return isinstance(other, DependencySubgraphDependenciesView) and set(
+            self
+        ) == set(other)
+
+    def __contains__(self, item: object) -> bool:
+        """Check if item is a dependency in the subgraph."""
+        return item in self._dependencies
+
+    def __iter__(self) -> Iterator[tuple[UID, UID]]:
+        """Return iterator over dependencies in view."""
+        return iter(self._dependencies)
+
+    def __len__(self) -> int:
+        """Return number of dependencies in view."""
+        return len(self._dependencies)
+
+
+class DependencySubgraphView:
+    """View of a dependency subgraph."""
+
+    def __init__(self, subgraph: graphs.DirectedAcyclicSubgraphView[UID]) -> None:
+        """Initialise SubgraphView."""
+        self._subgraph = subgraph
+
+    def __bool__(self) -> bool:
+        """Check if subgraph is not empty."""
+        return bool(self._subgraph)
+
+    def __eq__(self, other: object) -> bool:
+        """Check if dependency subgraph view is equal to other."""
+        return (
+            isinstance(other, DependencySubgraphView)
+            and self.tasks() == other.tasks()
+            and self.dependencies() == other.dependencies()
+        )
+
+    def tasks(self) -> SubgraphUIDsView:
+        """Return view of tasks in subgraph."""
+        return SubgraphUIDsView(self._subgraph.nodes())
+
+    def dependencies(self) -> DependencySubgraphDependenciesView:
+        """Return view of dependencies in subgraph."""
+        return DependencySubgraphDependenciesView(self._subgraph.edges())
+
+    def traverse(
+        self, order: graphs.TraversalOrder = graphs.TraversalOrder.BREADTH_FIRST
+    ) -> Generator[UID, None, None]:
+        """Return generator over tasks in subgraph in order.
+
+        Starts from the starting node, but does not include it.
+        """
+        return iter(self._subgraph.traverse(order=order))
+
+    def subgraph(self, include_starting_task: bool = False) -> DependencyGraph:
+        """Create a concrete copy of the subgraph."""
+        return DependencyGraph(self._subgraph.subgraph(include_starting_task))
+
+
 class IDependencyGraphView(Protocol):
     """Interface for a view of a graph of task dependencies."""
 
@@ -278,7 +349,7 @@ class IDependencyGraphView(Protocol):
         """Return view of tasks in graph."""
         ...
 
-    def dependencies(self) -> DependenciesView:
+    def dependencies(self) -> GraphDependenciesView:
         """Return view of dependencies in graph."""
         ...
 
@@ -294,26 +365,16 @@ class IDependencyGraphView(Protocol):
         self,
         task: UID,
         /,
-        order: graphs.TraversalOrder = graphs.TraversalOrder.BREADTH_FIRST,
         stop_condition: Callable[[UID], bool] | None = None,
-    ) -> Generator[UID, None, None]:
-        """Yield following tasks of task, following the specified search order."""
+    ) -> DependencySubgraphView:
         ...
 
     def proceeding_tasks(
         self,
         task: UID,
         /,
-        order: graphs.TraversalOrder = graphs.TraversalOrder.BREADTH_FIRST,
         stop_condition: Callable[[UID], bool] | None = None,
-    ) -> Generator[UID, None, None]:
-        """Yield proceeding tasks of task, following the specified search order."""
-        ...
-
-    def following_tasks_subgraph(
-        self, task: UID, /, stop_condition: Callable[[UID], bool] | None = None
-    ) -> DependencyGraph:
-        """Return subgraph of following tasks of task."""
+    ) -> DependencySubgraphView:
         ...
 
     def following_tasks_subgraph_multi(
@@ -323,12 +384,6 @@ class IDependencyGraphView(Protocol):
         stop_condition: Callable[[UID], bool] | None = None,
     ) -> DependencyGraph:
         """Return subgraph of following tasks of multiple tasks."""
-        ...
-
-    def proceeding_tasks_subgraph(
-        self, task: UID, /, stop_condition: Callable[[UID], bool] | None = None
-    ) -> DependencyGraph:
-        """Return subgraph of proceeding tasks of task."""
         ...
 
     def proceeding_tasks_subgraph_multi(
@@ -459,9 +514,9 @@ class DependencyGraph:
         """Return a view of the tasks."""
         return UIDsView(self._dag.nodes())
 
-    def dependencies(self) -> DependenciesView:
+    def dependencies(self) -> GraphDependenciesView:
         """Return a view of the dependencies."""
-        return DependenciesView(self._dag.edges())
+        return GraphDependenciesView(self._dag.edges())
 
     def dependee_tasks(self, task: UID, /) -> UIDsView:
         """Return a view of the dependee-tasks of a task."""
@@ -475,37 +530,26 @@ class DependencyGraph:
             dependent_tasks = self._dag.successors(task)
         return UIDsView(dependent_tasks)
 
-    @helpers.reraise_node_does_not_exist_as_task_does_not_exist()
     def following_tasks(
         self,
         task: UID,
         /,
-        order: graphs.TraversalOrder = graphs.TraversalOrder.BREADTH_FIRST,
         stop_condition: Callable[[UID], bool] | None = None,
-    ) -> Generator[UID, None, None]:
-        """Yield following tasks of task, following the specified search order."""
-        return self._dag.descendants(task, order=order, stop_condition=stop_condition)
+    ) -> DependencySubgraphView:
+        with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
+            descendants = self._dag.descendants(task, stop_condition=stop_condition)
+        return DependencySubgraphView(descendants)
 
     @helpers.reraise_node_does_not_exist_as_task_does_not_exist()
     def proceeding_tasks(
         self,
         task: UID,
         /,
-        order: graphs.TraversalOrder = graphs.TraversalOrder.BREADTH_FIRST,
         stop_condition: Callable[[UID], bool] | None = None,
-    ) -> Generator[UID, None, None]:
-        """Yield proceeding tasks of task, following the specified search order."""
-        return self._dag.ancestors(task, order=order, stop_condition=stop_condition)
-
-    def following_tasks_subgraph(
-        self, task: UID, /, stop_condition: Callable[[UID], bool] | None = None
-    ) -> DependencyGraph:
-        """Return subgraph of following tasks of task."""
+    ) -> DependencySubgraphView:
         with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
-            following_tasks_subgraph = self._dag.descendants_subgraph(
-                task, stop_condition=stop_condition
-            )
-        return DependencyGraph(dag=following_tasks_subgraph)
+            ancestors = self._dag.ancestors(task, stop_condition=stop_condition)
+        return DependencySubgraphView(ancestors)
 
     def following_tasks_subgraph_multi(
         self,
@@ -519,16 +563,6 @@ class DependencyGraph:
                 tasks, stop_condition=stop_condition
             )
         return DependencyGraph(dag=following_tasks_subgraph)
-
-    def proceeding_tasks_subgraph(
-        self, task: UID, /, stop_condition: Callable[[UID], bool] | None = None
-    ) -> DependencyGraph:
-        """Return subgraph of proceeding tasks of task."""
-        with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
-            proceeding_tasks_subgraph = self._dag.ancestors_subgraph(
-                task, stop_condition=stop_condition
-            )
-        return DependencyGraph(dag=proceeding_tasks_subgraph)
 
     def proceeding_tasks_subgraph_multi(
         self,
@@ -637,7 +671,7 @@ class DependencyGraphView:
         """Return view of tasks in graph."""
         return self._graph.tasks()
 
-    def dependencies(self) -> DependenciesView:
+    def dependencies(self) -> GraphDependenciesView:
         """Return view of dependencies in graph."""
         return self._graph.dependencies()
 
@@ -653,31 +687,19 @@ class DependencyGraphView:
         self,
         task: UID,
         /,
-        order: graphs.TraversalOrder = graphs.TraversalOrder.BREADTH_FIRST,
         stop_condition: Callable[[UID], bool] | None = None,
-    ) -> Generator[UID, None, None]:
+    ) -> DependencySubgraphView:
         """Yield following tasks of task, following the specified search order."""
-        return self._graph.following_tasks(
-            task, order=order, stop_condition=stop_condition
-        )
+        return self._graph.following_tasks(task, stop_condition=stop_condition)
 
     def proceeding_tasks(
         self,
         task: UID,
         /,
-        order: graphs.TraversalOrder = graphs.TraversalOrder.BREADTH_FIRST,
         stop_condition: Callable[[UID], bool] | None = None,
-    ) -> Generator[UID, None, None]:
+    ) -> DependencySubgraphView:
         """Yield proceeding tasks of task, following the specified search order."""
-        return self._graph.proceeding_tasks(
-            task, order=order, stop_condition=stop_condition
-        )
-
-    def following_tasks_subgraph(
-        self, task: UID, /, stop_condition: Callable[[UID], bool] | None = None
-    ) -> DependencyGraph:
-        """Return subgraph of following tasks of task."""
-        return self._graph.following_tasks_subgraph(task, stop_condition=stop_condition)
+        return self._graph.proceeding_tasks(task, stop_condition=stop_condition)
 
     def following_tasks_subgraph_multi(
         self,
@@ -688,14 +710,6 @@ class DependencyGraphView:
         """Return subgraph of following tasks of multiple tasks."""
         return self._graph.following_tasks_subgraph_multi(
             tasks, stop_condition=stop_condition
-        )
-
-    def proceeding_tasks_subgraph(
-        self, task: UID, /, stop_condition: Callable[[UID], bool] | None = None
-    ) -> DependencyGraph:
-        """Return subgraph of proceeding tasks of task."""
-        return self._graph.proceeding_tasks_subgraph(
-            task, stop_condition=stop_condition
         )
 
     def proceeding_tasks_subgraph_multi(

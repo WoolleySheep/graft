@@ -7,7 +7,7 @@ from collections.abc import Callable, Generator, Hashable, Iterable, Mapping, Se
 from typing import Any, Literal, override
 
 from graft.graphs import bidict as bd
-from graft.graphs import simple_digraph
+from graft.graphs import directed_graph, simple_directed_graph
 
 
 class UnderlyingDictHasCycleError[T: Hashable](Exception):
@@ -41,7 +41,21 @@ class IntroducesCycleError[T: Hashable, G: "DirectedAcyclicGraph"](Exception):
         )
 
 
-class DirectedAcyclicGraph[T: Hashable](simple_digraph.SimpleDiGraph[T]):
+class DirectedAcyclicSubgraphView[T: Hashable](
+    simple_directed_graph.SimpleDirectedSubgraphView[T]
+):
+    """Simple digraph subgraph view."""
+
+    @override
+    def subgraph(self, include_starting_node: bool = False) -> DirectedAcyclicGraph[T]:
+        subgraph = DirectedAcyclicGraph[T]()
+        self._populate_graph(
+            graph=subgraph, include_starting_node=include_starting_node
+        )
+        return subgraph
+
+
+class DirectedAcyclicGraph[T: Hashable](simple_directed_graph.SimpleDirectedGraph[T]):
     """Simple Digraph with no cycles."""
 
     def __init__(self, bidict: bd.BiDirectionalSetDict[T] | None = None) -> None:
@@ -63,6 +77,25 @@ class DirectedAcyclicGraph[T: Hashable](simple_digraph.SimpleDiGraph[T]):
                 target=target,
                 connecting_subgraph=connecting_subgraph,
             )
+
+    @override
+    def descendants(
+        self, node: T, /, stop_condition: Callable[[T], bool] | None = None
+    ) -> DirectedAcyclicSubgraphView[T]:
+        return DirectedAcyclicSubgraphView(
+            node, self._bidict, directed_graph.SubgraphType.DESCENDANTS, stop_condition
+        )
+
+    @override
+    def ancestors(
+        self, node: T, /, stop_condition: Callable[[T], bool] | None = None
+    ) -> DirectedAcyclicSubgraphView[T]:
+        return DirectedAcyclicSubgraphView(
+            node,
+            self._bidict.inverse,
+            directed_graph.SubgraphType.ANCESTORS,
+            stop_condition,
+        )
 
     @override
     def has_cycle(self) -> Literal[False]:
@@ -115,18 +148,6 @@ class DirectedAcyclicGraph[T: Hashable](simple_digraph.SimpleDiGraph[T]):
         return False
 
     @override
-    def descendants_subgraph(
-        self, node: T, /, stop_condition: Callable[[T], bool] | None = None
-    ) -> DirectedAcyclicGraph[T]:
-        """Return a subgraph of the descendants of node.
-
-        The original node is part of the subgraph.
-
-        Stop searching beyond a specific node if the stop condition is met.
-        """
-        return self.descendants_subgraph_multi([node], stop_condition=stop_condition)
-
-    @override
     def descendants_subgraph_multi(
         self, nodes: Iterable[T], /, stop_condition: Callable[[T], bool] | None = None
     ) -> DirectedAcyclicGraph[T]:
@@ -144,18 +165,6 @@ class DirectedAcyclicGraph[T: Hashable](simple_digraph.SimpleDiGraph[T]):
             graph=subgraph, nodes=nodes, stop_condition=stop_condition
         )
         return subgraph
-
-    @override
-    def ancestors_subgraph(
-        self, node: T, /, stop_condition: Callable[[T], bool] | None = None
-    ) -> DirectedAcyclicGraph[T]:
-        """Return a subgraph of the ancestors of node.
-
-        The original node is part of the subgraph.
-
-        Stop searching beyond a specific node if the stop condition is met.
-        """
-        return self.ancestors_subgraph_multi([node], stop_condition=stop_condition)
 
     @override
     def ancestors_subgraph_multi(

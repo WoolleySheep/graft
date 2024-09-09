@@ -75,7 +75,7 @@ class DependencyGraph(tk.Frame):
             self._logic_layer.get_task_system().network_graph().dependency_graph()
         )
         digraph = graph_conversion.convert_dependency_to_dag(graph=dependency_graph)
-        networkx_graph = graph_conversion.convert_simple_digraph_to_nx_digraph(digraph)
+        networkx_graph = graph_conversion.convert_directed_graph_to_nx_digraph(digraph)
         self._tasks_in_path_order: list[tasks.UID] = list(networkx_graph)
 
         self._task_positions = (

@@ -509,7 +509,9 @@ class System:
     ) -> Generator[UID, None, None]:
         """Get all the dependent tasks of all the superior tasks of the specified task."""
         visited_dependent_tasks = set[UID]()
-        for superior_task in self._network_graph.hierarchy_graph().superior_tasks(task):
+        for superior_task in (
+            self._network_graph.hierarchy_graph().superior_tasks(task).tasks()
+        ):
             for (
                 dependent_task
             ) in self._network_graph.dependency_graph().dependent_tasks(superior_task):
@@ -523,7 +525,9 @@ class System:
     ) -> Generator[UID, None, None]:
         """Get all the dependee tasks of all the superior tasks of the specified task."""
         visited_dependee_tasks = set[UID]()
-        for superior_task in self._network_graph.hierarchy_graph().superior_tasks(task):
+        for superior_task in (
+            self._network_graph.hierarchy_graph().superior_tasks(task).tasks()
+        ):
             for dependee_task in self._network_graph.dependency_graph().dependee_tasks(
                 superior_task
             ):
@@ -630,9 +634,9 @@ class System:
 
         if any(
             self._attributes_register[superior_task].importance is not None
-            for superior_task in self._network_graph.hierarchy_graph().superior_tasks(
-                task
-            )
+            for superior_task in self._network_graph.hierarchy_graph()
+            .superior_tasks(task)
+            .tasks()
         ):
             # TODO: Get subgraph and importances
             raise SuperiorTaskHasImportanceError(task=task)
@@ -653,9 +657,9 @@ class System:
 
         if any(
             self._attributes_register[inferior_task].importance is not None
-            for inferior_task in self._network_graph.hierarchy_graph().inferior_tasks(
-                task
-            )
+            for inferior_task in self._network_graph.hierarchy_graph()
+            .inferior_tasks(task)
+            .tasks()
         ):
             # TODO: Get subgraph and importances
             raise InferiorTaskHasImportanceError(task=task)
@@ -670,17 +674,17 @@ class System:
             self._attributes_register[supertask].importance is not None
             or any(
                 self._attributes_register[superior_task].importance is not None
-                for superior_task in self._network_graph.hierarchy_graph().superior_tasks(
-                    supertask
-                )
+                for superior_task in self._network_graph.hierarchy_graph()
+                .superior_tasks(supertask)
+                .tasks()
             )
         ) and (
             self._attributes_register[subtask].importance is not None
             or any(
                 self._attributes_register[inferior_task].importance is not None
-                for inferior_task in self._network_graph.hierarchy_graph().inferior_tasks(
-                    subtask
-                )
+                for inferior_task in self._network_graph.hierarchy_graph()
+                .inferior_tasks(subtask)
+                .tasks()
             )
         ):
             # TODO: Get relevant subgraph and return as part of exception
@@ -878,9 +882,9 @@ class System:
         """
         return self._attributes_register[task].importance is None and any(
             self._attributes_register[superior_task].importance is not None
-            for superior_task in self._network_graph.hierarchy_graph().superior_tasks(
-                task
-            )
+            for superior_task in self._network_graph.hierarchy_graph()
+            .superior_tasks(task)
+            .tasks()
         )
 
     def get_importance(self, task: UID, /) -> Importance | None:

@@ -77,7 +77,7 @@ class HierarchyGraph(tk.Frame):
         digraph = graph_conversion.convert_hierarchy_to_reduced_dag(
             graph=hierarchy_graph
         )
-        networkx_graph = graph_conversion.convert_simple_digraph_to_nx_digraph(digraph)
+        networkx_graph = graph_conversion.convert_directed_graph_to_nx_digraph(digraph)
         self._tasks_in_path_order: list[tasks.UID] = list(networkx_graph)
 
         self._task_positions = (
