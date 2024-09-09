@@ -24,7 +24,7 @@ class TaskEventDependencyRegister:
         """Add dependency between task and event."""
         raise NotImplementedError
 
-    def tasks_due_by(self, event: events.UID) -> tasks.UIDsView:
+    def tasks_due_by(self, event: events.UID) -> tasks.TasksView:
         """Tasks due by the specified event."""
         raise NotImplementedError
 

@@ -38,19 +38,27 @@ class IntroducesRedundantEdgeError[T: Hashable](Exception):
         )
 
 
-class ReducedDirectedAcyclicSubgraphView[T: Hashable](
-    directed_acyclic_graph.DirectedAcyclicSubgraphView[T]
+class MultipleStartingNodesReducedDirectedAcyclicSubgraphView[T: Hashable](
+    directed_acyclic_graph.MultipleStartingNodesDirectedAcyclicSubgraphView[T]
 ):
-    """Simple digraph subgraph view."""
+    """Reduced directed acyclic subgraph view with multiple starting nodes."""
 
     @override
-    def subgraph(
-        self, include_starting_node: bool = False
-    ) -> ReducedDirectedAcyclicGraph[T]:
+    def subgraph(self) -> ReducedDirectedAcyclicGraph[T]:
         subgraph = ReducedDirectedAcyclicGraph[T]()
-        self._populate_graph(
-            graph=subgraph, include_starting_node=include_starting_node
-        )
+        self._populate_graph(graph=subgraph)
+        return subgraph
+
+
+class SingleStartingNodeReducedDirectedAcyclicSubgraphView[T: Hashable](
+    directed_acyclic_graph.SingleStartingNodeDirectedAcyclicSubgraphView[T]
+):
+    """Reduced directed acyclic subgraph view with a single starting node."""
+
+    @override
+    def subgraph(self) -> ReducedDirectedAcyclicGraph[T]:
+        subgraph = ReducedDirectedAcyclicGraph[T]()
+        self._populate_graph(graph=subgraph)
         return subgraph
 
 
@@ -87,15 +95,15 @@ class ReducedDirectedAcyclicGraph[T: Hashable](
         ):
             source_ancestors_subgraph = self.ancestors(
                 source, stop_condition=lambda node: node in target_predecessors
-            ).subgraph(include_starting_node=True)
+            ).subgraph()
             target_predecessors_in_subgraph = [
                 predecessor
                 for predecessor in target_predecessors
                 if predecessor in source_ancestors_subgraph.nodes()
             ]
-            subgraph = source_ancestors_subgraph.descendants_subgraph_multi(
+            subgraph = source_ancestors_subgraph.descendants_multi(
                 target_predecessors_in_subgraph
-            )
+            ).subgraph()
             subgraph.add_node(target)
             for target_predecessor in target_predecessors_in_subgraph:
                 subgraph.add_edge(target_predecessor, target)
@@ -110,15 +118,15 @@ class ReducedDirectedAcyclicGraph[T: Hashable](
         ):
             target_descendants_subgraph = self.descendants(
                 target, stop_condition=lambda node: node in source_successors
-            ).subgraph(include_starting_node=True)
+            ).subgraph()
             source_successors_in_subgraph = [
                 successor
                 for successor in source_successors
                 if successor in target_descendants_subgraph.nodes()
             ]
-            subgraph = target_descendants_subgraph.ancestors_subgraph_multi(
+            subgraph = target_descendants_subgraph.ancestors_multi(
                 source_successors_in_subgraph
-            )
+            ).subgraph()
             subgraph.add_node(source)
             for source_successor in source_successors_in_subgraph:
                 subgraph.add_edge(source, source_successor)
@@ -129,20 +137,42 @@ class ReducedDirectedAcyclicGraph[T: Hashable](
     @override
     def descendants(
         self, node: T, /, stop_condition: Callable[[T], bool] | None = None
-    ) -> ReducedDirectedAcyclicSubgraphView[T]:
-        return ReducedDirectedAcyclicSubgraphView(
+    ) -> SingleStartingNodeReducedDirectedAcyclicSubgraphView[T]:
+        return SingleStartingNodeReducedDirectedAcyclicSubgraphView(
             node, self._bidict, directed_graph.SubgraphType.DESCENDANTS, stop_condition
+        )
+
+    @override
+    def descendants_multi(
+        self,
+        nodes: Iterable[T],
+        /,
+        stop_condition: Callable[[T], bool] | None = None,
+    ) -> MultipleStartingNodesReducedDirectedAcyclicSubgraphView[T]:
+        return MultipleStartingNodesReducedDirectedAcyclicSubgraphView(
+            nodes, self._bidict, directed_graph.SubgraphType.DESCENDANTS, stop_condition
         )
 
     @override
     def ancestors(
         self, node: T, /, stop_condition: Callable[[T], bool] | None = None
-    ) -> ReducedDirectedAcyclicSubgraphView[T]:
-        return ReducedDirectedAcyclicSubgraphView(
+    ) -> SingleStartingNodeReducedDirectedAcyclicSubgraphView[T]:
+        return SingleStartingNodeReducedDirectedAcyclicSubgraphView(
             node,
-            self._bidict.inverse,
+            self._bidict,
             directed_graph.SubgraphType.ANCESTORS,
             stop_condition,
+        )
+
+    @override
+    def ancestors_multi(
+        self,
+        nodes: Iterable[T],
+        /,
+        stop_condition: Callable[[T], bool] | None = None,
+    ) -> MultipleStartingNodesReducedDirectedAcyclicSubgraphView[T]:
+        return MultipleStartingNodesReducedDirectedAcyclicSubgraphView(
+            nodes, self._bidict, directed_graph.SubgraphType.ANCESTORS, stop_condition
         )
 
     @override
@@ -152,44 +182,6 @@ class ReducedDirectedAcyclicGraph[T: Hashable](
         Will always return False for a reduced DAG.
         """
         return False
-
-    @override
-    def descendants_subgraph_multi(
-        self, nodes: Iterable[T], /, stop_condition: Callable[[T], bool] | None = None
-    ) -> ReducedDirectedAcyclicGraph[T]:
-        """Return a subgraph of the descendants of multiple nodes.
-
-        This effectively OR's together the descendant subgraphs of several
-        nodes.
-
-        The original nodes are part of the subgraph.
-
-        Stop searching beyond a specific node if the stop condition is met.
-        """
-        subgraph = ReducedDirectedAcyclicGraph[T]()
-        self._populate_graph_with_descendants(
-            graph=subgraph, nodes=nodes, stop_condition=stop_condition
-        )
-        return subgraph
-
-    @override
-    def ancestors_subgraph_multi(
-        self, nodes: Iterable[T], /, stop_condition: Callable[[T], bool] | None = None
-    ) -> ReducedDirectedAcyclicGraph[T]:
-        """Return a subgraph of the ancestors of multiple nodes.
-
-        This effectively OR's together the ancestor subgraphs of several
-        nodes.
-
-        The original nodes are part of the subgraph.
-
-        Stop searching beyond a specific node if the stop condition is met.
-        """
-        subgraph = ReducedDirectedAcyclicGraph[T]()
-        self._populate_graph_with_ancestors(
-            graph=subgraph, nodes=nodes, stop_condition=stop_condition
-        )
-        return subgraph
 
     @override
     def connecting_subgraph(

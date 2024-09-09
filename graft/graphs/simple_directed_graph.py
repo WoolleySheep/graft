@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import (
     Hashable,
+    Iterable,
     Mapping,
     Set,
 )
@@ -40,15 +41,27 @@ class LoopError[T: Hashable](Exception):
         super().__init__(f"loop [{node}]", *args, **kwargs)
 
 
-class SimpleDirectedSubgraphView[T: Hashable](directed_graph.SubgraphView[T]):
-    """Simple digraph subgraph view."""
+class MultipleStartingNodesSimpleDirectedSubgraphView[T: Hashable](
+    directed_graph.MultipleStartingNodesSubgraphView[T]
+):
+    """Simple digraph subgraph view with multiple starting nodes."""
 
     @override
-    def subgraph(self, include_starting_node: bool = False) -> SimpleDirectedGraph[T]:
+    def subgraph(self) -> SimpleDirectedGraph[T]:
         subgraph = SimpleDirectedGraph[T]()
-        self._populate_graph(
-            graph=subgraph, include_starting_node=include_starting_node
-        )
+        self._populate_graph(graph=subgraph)
+        return subgraph
+
+
+class SingleStartingNodeSimpleDirectedSubgraphView[T: Hashable](
+    directed_graph.SingleStartingNodeSubgraphView[T]
+):
+    """Simple digraph subgraph view with a single starting node."""
+
+    @override
+    def subgraph(self) -> SimpleDirectedGraph[T]:
+        subgraph = SimpleDirectedGraph[T]()
+        self._populate_graph(graph=subgraph)
         return subgraph
 
 
@@ -68,20 +81,42 @@ class SimpleDirectedGraph[T: Hashable](directed_graph.DirectedGraph[T]):
     @override
     def descendants(
         self, node: T, /, stop_condition: Callable[[T], bool] | None = None
-    ) -> SimpleDirectedSubgraphView[T]:
-        return SimpleDirectedSubgraphView(
+    ) -> SingleStartingNodeSimpleDirectedSubgraphView[T]:
+        return SingleStartingNodeSimpleDirectedSubgraphView(
             node, self._bidict, directed_graph.SubgraphType.DESCENDANTS, stop_condition
+        )
+
+    @override
+    def descendants_multi(
+        self,
+        nodes: Iterable[T],
+        /,
+        stop_condition: Callable[[T], bool] | None = None,
+    ) -> MultipleStartingNodesSimpleDirectedSubgraphView[T]:
+        return MultipleStartingNodesSimpleDirectedSubgraphView(
+            nodes, self._bidict, directed_graph.SubgraphType.DESCENDANTS, stop_condition
         )
 
     @override
     def ancestors(
         self, node: T, /, stop_condition: Callable[[T], bool] | None = None
-    ) -> SimpleDirectedSubgraphView[T]:
-        return SimpleDirectedSubgraphView(
+    ) -> SingleStartingNodeSimpleDirectedSubgraphView[T]:
+        return SingleStartingNodeSimpleDirectedSubgraphView(
             node,
-            self._bidict.inverse,
+            self._bidict,
             directed_graph.SubgraphType.ANCESTORS,
             stop_condition,
+        )
+
+    @override
+    def ancestors_multi(
+        self,
+        nodes: Iterable[T],
+        /,
+        stop_condition: Callable[[T], bool] | None = None,
+    ) -> MultipleStartingNodesSimpleDirectedSubgraphView[T]:
+        return MultipleStartingNodesSimpleDirectedSubgraphView(
+            nodes, self._bidict, directed_graph.SubgraphType.ANCESTORS, stop_condition
         )
 
     @override
@@ -109,3 +144,17 @@ class SimpleDirectedGraph[T: Hashable](directed_graph.DirectedGraph[T]):
                 raise LoopError(node=e.source) from e
 
             raise
+
+    @override
+    def connecting_subgraph(self, source: T, target: T) -> SimpleDirectedGraph[T]:
+        return self.connecting_subgraph_multi([source], [target])
+
+    @override
+    def connecting_subgraph_multi(
+        self, sources: Iterable[T], targets: Iterable[T]
+    ) -> SimpleDirectedGraph[T]:
+        subgraph = SimpleDirectedGraph[T]()
+        self._populate_graph_with_connecting(
+            graph=subgraph, sources=sources, targets=targets
+        )
+        return subgraph

@@ -55,11 +55,10 @@ class UID:
         return f"uid({self._number!r})"
 
 
-class UIDsView(Set[UID]):
-    """View of a set of task UIDs."""
+class TasksView(Set[UID]):
+    """View of a set of tasks."""
 
     def __init__(self, tasks: Set[UID], /) -> None:
-        """Initialise UIDsView."""
         self._tasks = tasks
 
     def __bool__(self) -> bool:
@@ -80,7 +79,7 @@ class UIDsView(Set[UID]):
 
     def __eq__(self, other: object) -> bool:
         """Check if two views are equal."""
-        return isinstance(other, UIDsView) and set(self) == set(other)
+        return isinstance(other, TasksView) and set(self) == set(other)
 
     def __str__(self) -> str:
         """Return string representation of view."""
@@ -91,11 +90,10 @@ class UIDsView(Set[UID]):
         return f"uids_view({', '.join(repr(task) for task in self._tasks)})"
 
 
-class SubgraphUIDsView(Set[UID]):
+class SubgraphTasksView(Set[UID]):
     """View of a set of task UIDs in a subgraph."""
 
     def __init__(self, subgraph_nodes: graphs.SubgraphNodesView[UID]) -> None:
-        """Initialise UIDsView."""
         self._subgraph_nodes = subgraph_nodes
 
     def __bool__(self) -> bool:
@@ -116,4 +114,4 @@ class SubgraphUIDsView(Set[UID]):
 
     def __eq__(self, other: object) -> bool:
         """Check if two views are equal."""
-        return isinstance(other, SubgraphUIDsView) and set(self) == set(other)
+        return isinstance(other, SubgraphTasksView) and set(self) == set(other)

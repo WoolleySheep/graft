@@ -3,30 +3,36 @@
 from graft.graphs.bidict import BiDirectionalSetDict, SetView
 from graft.graphs.directed_acyclic_graph import (
     DirectedAcyclicGraph,
-    DirectedAcyclicSubgraphView,
     IntroducesCycleError,
+    MultipleStartingNodesDirectedAcyclicSubgraphView,
+    SingleStartingNodeDirectedAcyclicSubgraphView,
 )
 from graft.graphs.directed_graph import (
     DirectedGraph,
     EdgeAlreadyExistsError,
     EdgeDoesNotExistError,
+    GraphEdgesView,
     HasPredecessorsError,
     HasSuccessorsError,
+    MultipleStartingNodesSubgraphView,
     NoConnectingSubgraphError,
     NodeAlreadyExistsError,
     NodeDoesNotExistError,
+    NodesView,
+    SingleStartingNodeSubgraphView,
     SubgraphEdgesView,
     SubgraphNodesView,
-    SubgraphView,
     TraversalOrder,
 )
 from graft.graphs.reduced_directed_acyclic_graph import (
     IntroducesRedundantEdgeError,
+    MultipleStartingNodesReducedDirectedAcyclicSubgraphView,
     ReducedDirectedAcyclicGraph,
-    ReducedDirectedAcyclicSubgraphView,
+    SingleStartingNodeReducedDirectedAcyclicSubgraphView,
 )
 from graft.graphs.simple_directed_graph import (
     LoopError,
+    MultipleStartingNodesSimpleDirectedSubgraphView,
     SimpleDirectedGraph,
-    SimpleDirectedSubgraphView,
+    SingleStartingNodeSimpleDirectedSubgraphView,
 )

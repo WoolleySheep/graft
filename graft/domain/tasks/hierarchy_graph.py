@@ -14,8 +14,8 @@ from graft.domain.tasks.helpers import (
 )
 from graft.domain.tasks.uid import (
     UID,
-    SubgraphUIDsView,
-    UIDsView,
+    SubgraphTasksView,
+    TasksView,
 )
 
 
@@ -312,11 +312,12 @@ class HierarchySubgraphHierarchyView(Set[tuple[UID, UID]]):
         return len(self._hierarchies)
 
 
-class HierarchySubgraphView:
-    """View of a hierarchy subgraph."""
+class MultipleStartingTasksHierarchySubgraphView:
+    """View of a hierarchy subgraph with multiple starting tasks."""
 
     def __init__(
-        self, subgraph: graphs.ReducedDirectedAcyclicSubgraphView[UID]
+        self,
+        subgraph: graphs.MultipleStartingNodesReducedDirectedAcyclicSubgraphView[UID],
     ) -> None:
         """Initialise SubgraphView."""
         self._subgraph = subgraph
@@ -328,18 +329,34 @@ class HierarchySubgraphView:
     def __eq__(self, other: object) -> bool:
         """Check if hierarchy subgraph view is equal to other."""
         return (
-            isinstance(other, HierarchySubgraphView)
+            isinstance(other, MultipleStartingTasksHierarchySubgraphView)
             and self.tasks() == other.tasks()
             and self.hierarchies() == other.hierarchies()
         )
 
-    def tasks(self) -> SubgraphUIDsView:
+    def tasks(self) -> SubgraphTasksView:
         """Return view of tasks in subgraph."""
-        return SubgraphUIDsView(self._subgraph.nodes())
+        return SubgraphTasksView(self._subgraph.nodes())
 
     def hierarchies(self) -> HierarchySubgraphHierarchyView:
         """Return view of dependencies in subgraph."""
         return HierarchySubgraphHierarchyView(self._subgraph.edges())
+
+    def subgraph(self) -> HierarchyGraph:
+        """Create a concrete copy of the subgraph."""
+        return HierarchyGraph(self._subgraph.subgraph())
+
+
+class SingleStartingTaskHierarchySubgraphView(
+    MultipleStartingTasksHierarchySubgraphView
+):
+    """View of a hierarchy subgraph with a single starting task."""
+
+    def __init__(
+        self, subgraph: graphs.SingleStartingNodeDirectedAcyclicSubgraphView[UID]
+    ) -> None:
+        """Initialise SubgraphView."""
+        self._subgraph = subgraph
 
     def traverse(
         self, order: graphs.TraversalOrder = graphs.TraversalOrder.BREADTH_FIRST
@@ -349,10 +366,6 @@ class HierarchySubgraphView:
         Starts from the starting node, but does not include it.
         """
         return iter(self._subgraph.traverse(order=order))
-
-    def subgraph(self, include_starting_task: bool = False) -> HierarchyGraph:
-        """Create a concrete copy of the subgraph."""
-        return HierarchyGraph(self._subgraph.subgraph(include_starting_task))
 
 
 class IHierarchyGraphView(Protocol):
@@ -370,7 +383,7 @@ class IHierarchyGraphView(Protocol):
         """Return string representation of graph."""
         ...
 
-    def tasks(self) -> UIDsView:
+    def tasks(self) -> TasksView:
         """Return view of tasks in graph."""
         ...
 
@@ -378,11 +391,11 @@ class IHierarchyGraphView(Protocol):
         """Return a view of the hierarchies."""
         ...
 
-    def supertasks(self, task: UID, /) -> UIDsView:
+    def supertasks(self, task: UID, /) -> TasksView:
         """Return view of supertasks of task."""
         ...
 
-    def subtasks(self, task: UID, /) -> UIDsView:
+    def subtasks(self, task: UID, /) -> TasksView:
         """Return view of subtasks of task."""
         ...
 
@@ -391,7 +404,7 @@ class IHierarchyGraphView(Protocol):
         task: UID,
         /,
         stop_condition: Callable[[UID], bool] | None = None,
-    ) -> HierarchySubgraphView:
+    ) -> SingleStartingTaskHierarchySubgraphView:
         ...
 
     def superior_tasks(
@@ -399,43 +412,23 @@ class IHierarchyGraphView(Protocol):
         task: UID,
         /,
         stop_condition: Callable[[UID], bool] | None = None,
-    ) -> HierarchySubgraphView:
+    ) -> SingleStartingTaskHierarchySubgraphView:
         ...
 
-    def inferior_tasks_subgraph_multi(
+    def inferior_tasks_multi(
         self,
         tasks: Iterable[UID],
         /,
         stop_condition: Callable[[UID], bool] | None = None,
-    ) -> HierarchyGraph:
-        """Return subgraph of inferior tasks of multiple tasks.
-
-        This effectively OR's together the superior-task subgraphs of several
-        tasks.
-
-        The original tasks are part of the subgraph.
-
-        Stop searching beyond a specific task if the stop condition is met. If
-        the starting task meets the stop condition, this will be ignored.
-        """
+    ) -> MultipleStartingTasksHierarchySubgraphView:
         ...
 
-    def superior_tasks_subgraph_multi(
+    def superior_tasks_multi(
         self,
         tasks: Iterable[UID],
         /,
         stop_condition: Callable[[UID], bool] | None = None,
-    ) -> HierarchyGraph:
-        """Return subgraph of superior tasks of multiple tasks.
-
-        This effectively OR's together the inferior-task subgraphs of several
-        tasks.
-
-        The original tasks are part of the subgraph.
-
-        Stop searching beyond a specific task if the stop condition is met. If
-        the starting task meets the stop condition, this will be ignored.
-        """
+    ) -> MultipleStartingTasksHierarchySubgraphView:
         ...
 
     def has_path(
@@ -454,10 +447,16 @@ class IHierarchyGraphView(Protocol):
     def connecting_subgraph(
         self, source_task: UID, target_task: UID, /
     ) -> HierarchyGraph:
+        """Return subgraph of tasks between the source and target task."""
+        ...
+
+    def connecting_subgraph_multi(
+        self, source_tasks: Iterable[UID], target_tasks: Iterable[UID], /
+    ) -> HierarchyGraph:
         """Return subgraph of tasks between source and target tasks."""
         ...
 
-    def task_subtasks_pairs(self) -> Generator[tuple[UID, UIDsView], None, None]:
+    def task_subtasks_pairs(self) -> Generator[tuple[UID, TasksView], None, None]:
         """Return generator over task-subtasks pairs."""
         ...
 
@@ -530,37 +529,37 @@ class HierarchyGraph:
         )
         return f"{self.__class__.__name__}({{{', '.join(tasks_with_subtasks)}}})"
 
-    def tasks(self) -> UIDsView:
+    def tasks(self) -> TasksView:
         """Return view of tasks in graph."""
-        return UIDsView(self._reduced_dag.nodes())
+        return TasksView(self._reduced_dag.nodes())
 
     def hierarchies(self) -> HierarchiesView:
         """Return a view of the hierarchies."""
         return HierarchiesView(self._reduced_dag.edges())
 
-    def supertasks(self, task: UID, /) -> UIDsView:
+    def supertasks(self, task: UID, /) -> TasksView:
         """Return view of supertasks of task."""
         with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
             supertasks = self._reduced_dag.predecessors(task)
-        return UIDsView(supertasks)
+        return TasksView(supertasks)
 
-    def subtasks(self, task: UID, /) -> UIDsView:
+    def subtasks(self, task: UID, /) -> TasksView:
         """Return view of subtasks of task."""
         with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
             subtasks = self._reduced_dag.successors(task)
-        return UIDsView(subtasks)
+        return TasksView(subtasks)
 
     def inferior_tasks(
         self,
         task: UID,
         /,
         stop_condition: Callable[[UID], bool] | None = None,
-    ) -> HierarchySubgraphView:
+    ) -> SingleStartingTaskHierarchySubgraphView:
         with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
             descendants = self._reduced_dag.descendants(
                 task, stop_condition=stop_condition
             )
-        return HierarchySubgraphView(descendants)
+        return SingleStartingTaskHierarchySubgraphView(descendants)
 
     @helpers.reraise_node_does_not_exist_as_task_does_not_exist()
     def superior_tasks(
@@ -568,54 +567,34 @@ class HierarchyGraph:
         task: UID,
         /,
         stop_condition: Callable[[UID], bool] | None = None,
-    ) -> HierarchySubgraphView:
+    ) -> SingleStartingTaskHierarchySubgraphView:
         with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
             ancestors = self._reduced_dag.ancestors(task, stop_condition=stop_condition)
-        return HierarchySubgraphView(ancestors)
+        return SingleStartingTaskHierarchySubgraphView(ancestors)
 
-    def inferior_tasks_subgraph_multi(
+    def inferior_tasks_multi(
         self,
         tasks: Iterable[UID],
         /,
         stop_condition: Callable[[UID], bool] | None = None,
-    ) -> HierarchyGraph:
-        """Return subgraph of inferior tasks of multiple tasks.
-
-        This effectively OR's together the superior-task subgraphs of several
-        tasks.
-
-        The original tasks are part of the subgraph.
-
-        Stop searching beyond a specific task if the stop condition is met. If
-        the starting task meets the stop condition, this will be ignored.
-        """
+    ) -> MultipleStartingTasksHierarchySubgraphView:
         with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
-            inferior_tasks_subgraph = self._reduced_dag.descendants_subgraph_multi(
+            inferior_tasks = self._reduced_dag.descendants_multi(
                 tasks, stop_condition=stop_condition
             )
-        return HierarchyGraph(reduced_dag=inferior_tasks_subgraph)
+        return MultipleStartingTasksHierarchySubgraphView(subgraph=inferior_tasks)
 
-    def superior_tasks_subgraph_multi(
+    def superior_tasks_multi(
         self,
         tasks: Iterable[UID],
         /,
         stop_condition: Callable[[UID], bool] | None = None,
-    ) -> HierarchyGraph:
-        """Return subgraph of superior tasks of multiple tasks.
-
-        This effectively OR's together the inferior-task subgraphs of several
-        tasks.
-
-        The original tasks are part of the subgraph.
-
-        Stop searching beyond a specific task if the stop condition is met. If
-        the starting task meets the stop condition, this will be ignored.
-        """
+    ) -> MultipleStartingTasksHierarchySubgraphView:
         with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
-            superior_tasks_subgraph = self._reduced_dag.ancestors_subgraph_multi(
+            superior_tasks = self._reduced_dag.ancestors_multi(
                 tasks, stop_condition=stop_condition
             )
-        return HierarchyGraph(reduced_dag=superior_tasks_subgraph)
+        return MultipleStartingTasksHierarchySubgraphView(subgraph=superior_tasks)
 
     @helpers.reraise_node_does_not_exist_as_task_does_not_exist()
     def has_path(
@@ -633,22 +612,28 @@ class HierarchyGraph:
             source=source_task, target=target_task, stop_condition=stop_condition
         )
 
-    def connecting_subgraph(
-        self, source_task: UID, target_task: UID, /
+    def connecting_subgraph_multi(
+        self, source_tasks: Iterable[UID], target_tasks: Iterable[UID], /
     ) -> HierarchyGraph:
         """Return subgraph of tasks between source and target tasks."""
         try:
-            connecting_subgraph = self._reduced_dag.connecting_subgraph(
-                source=source_task, target=target_task
+            connecting_subgraph = self._reduced_dag.connecting_subgraph_multi(
+                sources=source_tasks, targets=target_tasks
             )
         except graphs.NodeDoesNotExistError as e:
             raise TaskDoesNotExistError(task=e.node) from e
         except graphs.NoConnectingSubgraphError as e:
             raise NoConnectingHierarchySubgraphError(
-                sources=[source_task], targets=[target_task]
+                sources=e.sources, targets=e.targets
             ) from e
 
         return HierarchyGraph(reduced_dag=connecting_subgraph)
+
+    def connecting_subgraph(
+        self, source_task: UID, target_task: UID, /
+    ) -> HierarchyGraph:
+        """Return subgraph of tasks between the source and target task."""
+        return self.connecting_subgraph_multi([source_task], [target_task])
 
     @reraise_node_already_exists_as_task_already_exists()
     def add_task(self, task: UID, /) -> None:
@@ -719,10 +704,10 @@ class HierarchyGraph:
         """Return generator over isolated tasks."""
         return self._reduced_dag.isolated_nodes()
 
-    def task_subtasks_pairs(self) -> Generator[tuple[UID, UIDsView], None, None]:
+    def task_subtasks_pairs(self) -> Generator[tuple[UID, TasksView], None, None]:
         """Return generator over task-subtasks pairs."""
         for task, subtasks in self._reduced_dag.node_successors_pairs():
-            yield task, UIDsView(subtasks)
+            yield task, TasksView(subtasks)
 
 
 class HierarchyGraphView:
@@ -760,7 +745,7 @@ class HierarchyGraphView:
         )
         return f"{self.__class__.__name__}({{{', '.join(tasks_with_subtasks)}}})"
 
-    def tasks(self) -> UIDsView:
+    def tasks(self) -> TasksView:
         """Return tasks in view."""
         return self._graph.tasks()
 
@@ -768,11 +753,11 @@ class HierarchyGraphView:
         """Return hierarchies in view."""
         return self._graph.hierarchies()
 
-    def subtasks(self, task: UID) -> UIDsView:
+    def subtasks(self, task: UID) -> TasksView:
         """Return view of subtasks of task."""
         return self._graph.subtasks(task)
 
-    def supertasks(self, task: UID) -> UIDsView:
+    def supertasks(self, task: UID) -> TasksView:
         """Return view of supertasks of task."""
         return self._graph.supertasks(task)
 
@@ -781,7 +766,7 @@ class HierarchyGraphView:
         task: UID,
         /,
         stop_condition: Callable[[UID], bool] | None = None,
-    ) -> HierarchySubgraphView:
+    ) -> SingleStartingTaskHierarchySubgraphView:
         return self._graph.inferior_tasks(task, stop_condition=stop_condition)
 
     def superior_tasks(
@@ -789,49 +774,24 @@ class HierarchyGraphView:
         task: UID,
         /,
         stop_condition: Callable[[UID], bool] | None = None,
-    ) -> HierarchySubgraphView:
-        """Yield superior tasks of task, following the specified search order."""
+    ) -> SingleStartingTaskHierarchySubgraphView:
         return self._graph.superior_tasks(task, stop_condition=stop_condition)
 
-    def inferior_tasks_subgraph_multi(
+    def inferior_tasks_multi(
         self,
         tasks: Iterable[UID],
         /,
         stop_condition: Callable[[UID], bool] | None = None,
-    ) -> HierarchyGraph:
-        """Return subgraph of inferior tasks of multiple tasks.
+    ) -> MultipleStartingTasksHierarchySubgraphView:
+        return self._graph.inferior_tasks_multi(tasks, stop_condition=stop_condition)
 
-        This effectively OR's together the superior-task subgraphs of several
-        tasks.
-
-        The original tasks are part of the subgraph.
-
-        Stop searching beyond a specific task if the stop condition is met. If
-        the starting task meets the stop condition, this will be ignored.
-        """
-        return self._graph.inferior_tasks_subgraph_multi(
-            tasks, stop_condition=stop_condition
-        )
-
-    def superior_tasks_subgraph_multi(
+    def superior_tasks_multi(
         self,
         tasks: Iterable[UID],
         /,
         stop_condition: Callable[[UID], bool] | None = None,
-    ) -> HierarchyGraph:
-        """Return subgraph of superior tasks of multiple tasks.
-
-        This effectively OR's together the inferior-task subgraphs of several
-        tasks.
-
-        The original tasks are part of the subgraph.
-
-        Stop searching beyond a specific task if the stop condition is met. If
-        the starting task meets the stop condition, this will be ignored.
-        """
-        return self._graph.superior_tasks_subgraph_multi(
-            tasks, stop_condition=stop_condition
-        )
+    ) -> MultipleStartingTasksHierarchySubgraphView:
+        return self._graph.superior_tasks_multi(tasks, stop_condition=stop_condition)
 
     def has_path(
         self,
@@ -849,10 +809,16 @@ class HierarchyGraphView:
     def connecting_subgraph(
         self, source_task: UID, target_task: UID, /
     ) -> HierarchyGraph:
-        """Return subgraph of tasks between source and target tasks."""
+        """Return subgraph of tasks between the source and target task."""
         return self._graph.connecting_subgraph(source_task, target_task)
 
-    def task_subtasks_pairs(self) -> Generator[tuple[UID, UIDsView], None, None]:
+    def connecting_subgraph_multi(
+        self, source_tasks: Iterable[UID], target_tasks: Iterable[UID], /
+    ) -> HierarchyGraph:
+        """Return subgraph of tasks between source and target tasks."""
+        return self._graph.connecting_subgraph_multi(source_tasks, target_tasks)
+
+    def task_subtasks_pairs(self) -> Generator[tuple[UID, TasksView], None, None]:
         """Return generator over task-subtasks pairs."""
         return self._graph.task_subtasks_pairs()
 

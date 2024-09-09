@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Protocol, Self
 from graft.domain.tasks.dependency_graph import DependencyGraph, DependencyGraphView
 from graft.domain.tasks.helpers import TaskDoesNotExistError
 from graft.domain.tasks.hierarchy_graph import HierarchyGraph, HierarchyGraphView
-from graft.domain.tasks.uid import UID, UIDsView
+from graft.domain.tasks.uid import UID, TasksView
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -316,7 +316,7 @@ class INetworkGraphView(Protocol):
         """Return a string representation of the graph."""
         ...
 
-    def tasks(self) -> UIDsView:
+    def tasks(self) -> TasksView:
         """Return a view of the tasks in the graph."""
         ...
 
@@ -423,7 +423,7 @@ class NetworkGraph:
             and self.hierarchy_graph() == other.hierarchy_graph()
         )
 
-    def tasks(self) -> UIDsView:
+    def tasks(self) -> TasksView:
         """Return view of tasks in graph."""
         return self._dependency_graph.tasks()
 
@@ -474,14 +474,16 @@ class NetworkGraph:
                     self._dependency_graph.dependent_tasks(superior_task)
                 )
 
+            if not dependency_linked_tasks_of_superior_tasks_of_supertask:
+                return False
+
             superior_tasks_of_dependency_linked_tasks_of_superior_tasks_of_supertask = (
-                self._hierarchy_graph.superior_tasks_subgraph_multi(
+                self._hierarchy_graph.superior_tasks_multi(
                     dependency_linked_tasks_of_superior_tasks_of_supertask
                 )
             )
-
             inferior_tasks_of_dependency_linked_tasks_of_superior_tasks_of_supertask = (
-                self._hierarchy_graph.inferior_tasks_subgraph_multi(
+                self._hierarchy_graph.inferior_tasks_multi(
                     dependency_linked_tasks_of_superior_tasks_of_supertask
                 )
             )
@@ -974,7 +976,7 @@ class NetworkGraphView:
             and self.dependency_graph() == other.dependency_graph()
         )
 
-    def tasks(self) -> UIDsView:
+    def tasks(self) -> TasksView:
         """Return a view of the tasks in the graph."""
         return self._graph.tasks()
 

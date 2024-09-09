@@ -41,17 +41,27 @@ class IntroducesCycleError[T: Hashable, G: "DirectedAcyclicGraph"](Exception):
         )
 
 
-class DirectedAcyclicSubgraphView[T: Hashable](
-    simple_directed_graph.SimpleDirectedSubgraphView[T]
+class MultipleStartingNodesDirectedAcyclicSubgraphView[T: Hashable](
+    simple_directed_graph.MultipleStartingNodesSimpleDirectedSubgraphView[T]
 ):
-    """Simple digraph subgraph view."""
+    """Directed acyclic subgraph view with multiple starting nodes."""
 
     @override
-    def subgraph(self, include_starting_node: bool = False) -> DirectedAcyclicGraph[T]:
+    def subgraph(self) -> DirectedAcyclicGraph[T]:
         subgraph = DirectedAcyclicGraph[T]()
-        self._populate_graph(
-            graph=subgraph, include_starting_node=include_starting_node
-        )
+        self._populate_graph(graph=subgraph)
+        return subgraph
+
+
+class SingleStartingNodeDirectedAcyclicSubgraphView[T: Hashable](
+    simple_directed_graph.SingleStartingNodeSimpleDirectedSubgraphView[T]
+):
+    """Directed acyclic subgraph view with a single starting node."""
+
+    @override
+    def subgraph(self) -> DirectedAcyclicGraph[T]:
+        subgraph = DirectedAcyclicGraph[T]()
+        self._populate_graph(graph=subgraph)
         return subgraph
 
 
@@ -81,20 +91,42 @@ class DirectedAcyclicGraph[T: Hashable](simple_directed_graph.SimpleDirectedGrap
     @override
     def descendants(
         self, node: T, /, stop_condition: Callable[[T], bool] | None = None
-    ) -> DirectedAcyclicSubgraphView[T]:
-        return DirectedAcyclicSubgraphView(
+    ) -> SingleStartingNodeDirectedAcyclicSubgraphView[T]:
+        return SingleStartingNodeDirectedAcyclicSubgraphView(
             node, self._bidict, directed_graph.SubgraphType.DESCENDANTS, stop_condition
+        )
+
+    @override
+    def descendants_multi(
+        self,
+        nodes: Iterable[T],
+        /,
+        stop_condition: Callable[[T], bool] | None = None,
+    ) -> MultipleStartingNodesDirectedAcyclicSubgraphView[T]:
+        return MultipleStartingNodesDirectedAcyclicSubgraphView(
+            nodes, self._bidict, directed_graph.SubgraphType.DESCENDANTS, stop_condition
         )
 
     @override
     def ancestors(
         self, node: T, /, stop_condition: Callable[[T], bool] | None = None
-    ) -> DirectedAcyclicSubgraphView[T]:
-        return DirectedAcyclicSubgraphView(
+    ) -> SingleStartingNodeDirectedAcyclicSubgraphView[T]:
+        return SingleStartingNodeDirectedAcyclicSubgraphView(
             node,
-            self._bidict.inverse,
+            self._bidict,
             directed_graph.SubgraphType.ANCESTORS,
             stop_condition,
+        )
+
+    @override
+    def ancestors_multi(
+        self,
+        nodes: Iterable[T],
+        /,
+        stop_condition: Callable[[T], bool] | None = None,
+    ) -> MultipleStartingNodesDirectedAcyclicSubgraphView[T]:
+        return MultipleStartingNodesDirectedAcyclicSubgraphView(
+            nodes, self._bidict, directed_graph.SubgraphType.ANCESTORS, stop_condition
         )
 
     @override
@@ -146,44 +178,6 @@ class DirectedAcyclicGraph[T: Hashable](simple_directed_graph.SimpleDirectedGrap
                     return True
 
         return False
-
-    @override
-    def descendants_subgraph_multi(
-        self, nodes: Iterable[T], /, stop_condition: Callable[[T], bool] | None = None
-    ) -> DirectedAcyclicGraph[T]:
-        """Return a subgraph of the descendants of multiple nodes.
-
-        This effectively OR's together the descendant subgraphs of several
-        nodes.
-
-        The original nodes are part of the subgraph.
-
-        Stop searching beyond a specific node if the stop condition is met.
-        """
-        subgraph = DirectedAcyclicGraph[T]()
-        self._populate_graph_with_descendants(
-            graph=subgraph, nodes=nodes, stop_condition=stop_condition
-        )
-        return subgraph
-
-    @override
-    def ancestors_subgraph_multi(
-        self, nodes: Iterable[T], /, stop_condition: Callable[[T], bool] | None = None
-    ) -> DirectedAcyclicGraph[T]:
-        """Return a subgraph of the ancestors of multiple nodes.
-
-        This effectively OR's together the descendant subgraphs of several
-        nodes.
-
-        The original nodes are part of the subgraph.
-
-        Stop searching beyond a specific node if the stop condition is met.
-        """
-        subgraph = DirectedAcyclicGraph[T]()
-        self._populate_graph_with_ancestors(
-            graph=subgraph, nodes=nodes, stop_condition=stop_condition
-        )
-        return subgraph
 
     @override
     def connecting_subgraph(self, source: T, target: T) -> DirectedAcyclicGraph[T]:

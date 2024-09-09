@@ -13,7 +13,7 @@ from graft.domain.tasks.attributes_register import (
 from graft.domain.tasks.importance import Importance
 from graft.domain.tasks.network_graph import NetworkGraph, NetworkGraphView
 from graft.domain.tasks.progress import Progress
-from graft.domain.tasks.uid import UID, UIDsView
+from graft.domain.tasks.uid import UID, TasksView
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Iterable, MutableMapping
@@ -381,7 +381,7 @@ class ISystemView(Protocol):
         """Check if the system is not empty."""
         ...
 
-    def tasks(self) -> UIDsView:
+    def tasks(self) -> TasksView:
         """Return a view of the tasks in the system."""
         ...
 
@@ -472,7 +472,7 @@ class System:
             and self.network_graph() == other.network_graph()
         )
 
-    def tasks(self) -> UIDsView:
+    def tasks(self) -> TasksView:
         """Return a view of the tasks in the system."""
         return self._network_graph.tasks()
 
@@ -1107,7 +1107,7 @@ class SystemView:
             and self.network_graph() == other.network_graph()
         )
 
-    def tasks(self) -> UIDsView:
+    def tasks(self) -> TasksView:
         """Return a view of the tasks in the system."""
         return self._system.tasks()
 

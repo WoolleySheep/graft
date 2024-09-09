@@ -78,5 +78,5 @@ from graft.domain.tasks.system import (
 from graft.domain.tasks.uid import (
     UID,
     InvalidUIDNumberError,
-    UIDsView,
+    TasksView,
 )
