@@ -438,8 +438,17 @@ class IHierarchyGraphView(Protocol):
         """
         ...
 
-    def has_path(self, source_task: UID, target_task: UID, /) -> bool:
-        """Check if there is a path from source to target tasks."""
+    def has_path(
+        self,
+        source_task: UID,
+        target_task: UID,
+        /,
+        stop_condition: Callable[[UID], bool] | None = None,
+    ) -> bool:
+        """Check if there is a path from source to target tasks.
+
+        Stop searching beyond a specific task if the stop condition is met.
+        """
         ...
 
     def connecting_subgraph(
@@ -609,9 +618,20 @@ class HierarchyGraph:
         return HierarchyGraph(reduced_dag=superior_tasks_subgraph)
 
     @helpers.reraise_node_does_not_exist_as_task_does_not_exist()
-    def has_path(self, source_task: UID, target_task: UID, /) -> bool:
-        """Check if there is a path from source to target tasks."""
-        return self._reduced_dag.has_path(source=source_task, target=target_task)
+    def has_path(
+        self,
+        source_task: UID,
+        target_task: UID,
+        /,
+        stop_condition: Callable[[UID], bool] | None = None,
+    ) -> bool:
+        """Check if there is a path from source to target tasks.
+
+        Stop searching beyond a specific task if the stop condition is met.
+        """
+        return self._reduced_dag.has_path(
+            source=source_task, target=target_task, stop_condition=stop_condition
+        )
 
     def connecting_subgraph(
         self, source_task: UID, target_task: UID, /
@@ -813,9 +833,18 @@ class HierarchyGraphView:
             tasks, stop_condition=stop_condition
         )
 
-    def has_path(self, source_task: UID, target_task: UID, /) -> bool:
-        """Check if there is a path from source to target tasks."""
-        return self._graph.has_path(source_task, target_task)
+    def has_path(
+        self,
+        source_task: UID,
+        target_task: UID,
+        /,
+        stop_condition: Callable[[UID], bool] | None = None,
+    ) -> bool:
+        """Check if there is a path from source to target tasks.
+
+        Stop searching beyond a specific task if the stop condition is met.
+        """
+        return self._graph.has_path(source_task, target_task, stop_condition)
 
     def connecting_subgraph(
         self, source_task: UID, target_task: UID, /

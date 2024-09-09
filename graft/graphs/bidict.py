@@ -119,7 +119,7 @@ class BiDirectionalSetDict[T: Hashable](MutableMapping[T, SetView[T]]):
         """Initialize bidict."""
         self._forward = (
             {key: set(values) for (key, values) in forward}
-            if forward
+            if forward is not None
             else dict[T, set[T]]()
         )
         self._backward = invert_bidirectional_mapping(self._forward)

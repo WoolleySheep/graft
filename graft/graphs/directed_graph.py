@@ -31,7 +31,7 @@ class SubgraphType(enum.Enum):
     DESCENDANTS = enum.auto()
 
 
-def traverse[T: Hashable](
+def _traverse[T: Hashable](
     node: T,
     node_neighbour_map: Mapping[T, Set[T]],
     order: TraversalOrder,
@@ -71,46 +71,6 @@ def traverse[T: Hashable](
         if stop_condition is not None and stop_condition(node2):
             continue
         nodes_to_check.extend(node_neighbour_map[node2])
-
-
-def traverse_old[T: Hashable](
-    node: T,
-    graph: Mapping[T, Set[T]],
-    order: TraversalOrder,
-    stop_condition: Callable[[T], bool] | None = None,
-) -> Generator[T, None, None]:
-    """Traverse the graph from a given node, following the given traversal order.
-
-    Stop traversing beyond a specific node if the stop condition is met.
-
-    The starting node is not included in the yielded nodes, but it is checked
-    against the stop condition.
-
-    Extracted out into its own function due to the commonalities between
-    DFS/BFS and descendants/ancestors.
-    """
-    # TODO: Delete once new traverse implemented
-    if stop_condition is not None and stop_condition(node):
-        return
-
-    deque = collections.deque[T](graph[node])
-    visited = set[T]([node])
-
-    match order:
-        case TraversalOrder.DEPTH_FIRST:
-            pop_next_node = deque.pop  # Stack
-        case TraversalOrder.BREADTH_FIRST:
-            pop_next_node = deque.popleft  # Queue
-
-    while deque:
-        node2 = pop_next_node()
-        if node2 in visited:
-            continue
-        visited.add(node2)
-        yield node2
-        if stop_condition is not None and stop_condition(node2):
-            continue
-        deque.extend(graph[node2])
 
 
 class NodeAlreadyExistsError[T: Hashable](Exception):
@@ -357,7 +317,7 @@ class SubgraphNodesView[T: Hashable](Set[T]):
         ) and bool(self._node_neighbours_map[self._starting_node])
 
     def __eq__(self, other: object) -> bool:
-        """Check if descendant nodes view is equal to other."""
+        """Check if subgraph nodes view is equal to other."""
         return isinstance(other, SubgraphNodesView) and set(self) == set(other)
 
     def __contains__(self, item: object) -> bool:
@@ -389,7 +349,7 @@ class SubgraphNodesView[T: Hashable](Set[T]):
 
     def __iter__(self) -> Generator[T, None, None]:
         """Return generator over nodes."""
-        return traverse(
+        return _traverse(
             node=self._starting_node,
             node_neighbour_map=self._node_neighbours_map,
             order=TraversalOrder.BREADTH_FIRST,
@@ -430,7 +390,7 @@ class SubgraphEdgesView[T: Hashable](Set[tuple[T, T]]):
     def __contains__(self, item: object) -> bool:
         """Check if item is an edge in the subgraph.
 
-        Note that this method will return false if one or another of the nodes
+        Note that this method will return false if either of the nodes
         is not present in the graph. It could be argued this should throw a
         TaskNotExist exception. Not sure yet.
         """
@@ -567,7 +527,7 @@ class SubgraphView[T: Hashable]:
 
         Starts from the starting node, but does not include it.
         """
-        return traverse(
+        return _traverse(
             node=self._starting_node,
             node_neighbour_map=self._node_neighbours_map,
             order=order,
