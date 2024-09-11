@@ -2,7 +2,7 @@
 
 import logging
 
-from graft.layers import data, display, logic
+from graft.layers import data, logic, presentation
 
 logger = logging.getLogger(__name__)
 
@@ -16,5 +16,5 @@ def run() -> None:
     logic_layer = logic.LoggingDecoratorLogicLayer(
         handler=logic.StandardLogicLayer(data_layer=data_layer)
     )
-    display.run_gui(logic_layer=logic_layer)
+    presentation.run_gui(logic_layer=logic_layer)
     logger.info("Shutting down graft application")
