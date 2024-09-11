@@ -29,9 +29,10 @@ class TaskTreeView(ttk.Treeview):
     def _publish_task_selected_event(self) -> None:
         item_id = self.focus()
 
-        # TODO: Fix this hack. When deleting all the items in the tree, a
-        # TreeviewSelect event is generated. To stop this running again (when no
-        # item is selected, this method fails) added this guard clause here.
+        # TODO: Fix this hack. When deleting all the items in the tree (as is
+        # done in update_tasks), a TreeviewSelect event is generated. To stop
+        # this running again (when no item is selected, this method fails) added
+        # this guard clause here.
         if not item_id:
             return
 

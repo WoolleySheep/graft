@@ -2,7 +2,7 @@ import logging
 import tkinter as tk
 from types import TracebackType
 
-from graft import app_name, architecture
+from graft import app_name, architecture, version
 from graft.layers.display.tkinter_gui.tabs.tabs import Tabs
 from graft.layers.display.tkinter_gui.task_details import TaskDetails
 from graft.layers.display.tkinter_gui.unknown_exception_failed_operation_window import (
@@ -16,7 +16,7 @@ class GUI(tk.Tk):
     def __init__(self, logic_layer: architecture.LogicLayer) -> None:
         super().__init__()
         self._logic_layer = logic_layer
-        self.title(app_name.APP_NAME)
+        self.title(f"{app_name.APP_NAME} v{version.MAJOR_VERSION}.{version.MINOR_VERSION}.{version.PATCH_VERSION}")
         self.report_callback_exception = self._log_exception_and_show_error_window
 
         self._tabs = Tabs(self, logic_layer)
