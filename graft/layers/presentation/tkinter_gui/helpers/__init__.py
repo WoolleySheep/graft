@@ -20,4 +20,14 @@ from graft.layers.presentation.tkinter_gui.helpers.static_graph import (
 from graft.layers.presentation.tkinter_gui.helpers.static_hierarchy_graph import (
     StaticHierarchyGraph,
 )
-from graft.layers.presentation.tkinter_gui.helpers.task_table import TaskTable
+from graft.layers.presentation.tkinter_gui.helpers.task_table import (
+    AdjustableTaskTable,
+    TaskTableWithName,
+    adapt_sort_rows,
+)
+from graft.layers.presentation.tkinter_gui.helpers.task_table import (
+    ColumnParameters as TaskTableColumnParameters,
+)
+from graft.layers.presentation.tkinter_gui.helpers.task_table import (
+    sort_by_task_id as sort_rows_by_task_id,
+)

@@ -17,19 +17,19 @@ from graft.layers.presentation.tkinter_gui.helpers import (
 
 _NEIGHBOURING_TASK_TABLES_ID_COLUMN_WIDTH_PIXELS = 30
 _NEIGHBOURING_TASK_TABLES_NAME_COLUMN_WIDTH_PIXELS = 150
-_NEIGHBOURING_TASK_TABLES_HEIGHT_ROWS = 5
+_NEIGHBOURING_TASK_TABLES_NUMBER_OF_DISPLAYED_ROWS = 5
 
 P = ParamSpec("P")
 
 logger: Final = logging.getLogger(__name__)
 
 
-def _create_nieghbouring_task_table(master: tk.Misc) -> helpers.TaskTable:
-    return helpers.TaskTable(
+def _create_nieghbouring_task_table(master: tk.Misc) -> helpers.TaskTableWithName:
+    return helpers.TaskTableWithName(
         master=master,
         id_column_width_pixels=_NEIGHBOURING_TASK_TABLES_ID_COLUMN_WIDTH_PIXELS,
         name_column_width_pixels=_NEIGHBOURING_TASK_TABLES_NAME_COLUMN_WIDTH_PIXELS,
-        height_rows=_NEIGHBOURING_TASK_TABLES_HEIGHT_ROWS,
+        number_of_rows_displayed=_NEIGHBOURING_TASK_TABLES_NUMBER_OF_DISPLAYED_ROWS,
     )
 
 

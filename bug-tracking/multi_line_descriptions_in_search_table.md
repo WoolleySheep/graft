@@ -1,0 +1,1 @@
+If a description has multiple lines, when it shows in the search table the formatting is cooked. Come up with a solution.

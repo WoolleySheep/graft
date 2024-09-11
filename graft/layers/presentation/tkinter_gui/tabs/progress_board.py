@@ -6,19 +6,19 @@ from graft import architecture
 from graft.domain import tasks
 from graft.domain.tasks.progress import Progress
 from graft.layers.presentation.tkinter_gui import event_broker
-from graft.layers.presentation.tkinter_gui.helpers import TaskTable
+from graft.layers.presentation.tkinter_gui.helpers import TaskTableWithName
 
 _TASK_TABLES_ID_COLUMN_WIDTH_PIXELS = 30
 _TASK_TABLES_NAME_COLUMN_WIDTH_PIXELS = 130
-_TASK_TABLES_HEIGHT_ROWS = 10
+_TASK_TABLES_NUMBER_OF_DISPLAYED_ROWS = 10
 
 
-def _create_task_table(master: tk.Misc) -> TaskTable:
-    return TaskTable(
+def _create_task_table(master: tk.Misc) -> TaskTableWithName:
+    return TaskTableWithName(
         master=master,
         id_column_width_pixels=_TASK_TABLES_ID_COLUMN_WIDTH_PIXELS,
         name_column_width_pixels=_TASK_TABLES_NAME_COLUMN_WIDTH_PIXELS,
-        height_rows=_TASK_TABLES_HEIGHT_ROWS,
+        number_of_rows_displayed=_TASK_TABLES_NUMBER_OF_DISPLAYED_ROWS,
     )
 
 
@@ -81,7 +81,7 @@ class ProgressBoard(tk.Frame):
         @dataclasses.dataclass
         class TasksAndTable:
             tasks: list[tasks.UID]
-            table: TaskTable
+            table: TaskTableWithName
 
         progress_type_tasks_map = {
             Progress.NOT_STARTED: {
