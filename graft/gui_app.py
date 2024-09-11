@@ -2,8 +2,7 @@
 
 import logging
 
-from graft import tkinter_gui
-from graft.layers import data, logic
+from graft.layers import data, display, logic
 
 logger = logging.getLogger(__name__)
 
@@ -17,5 +16,5 @@ def run() -> None:
     logic_layer = logic.LoggingDecoratorLogicLayer(
         handler=logic.StandardLogicLayer(data_layer=data_layer)
     )
-    tkinter_gui.run(logic_layer=logic_layer)
+    display.run_gui(logic_layer=logic_layer)
     logger.info("Shutting down graft application")
