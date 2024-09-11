@@ -37,10 +37,12 @@ from graft.domain.tasks.importance import Importance
 from graft.domain.tasks.name import Name
 from graft.domain.tasks.network_graph import (
     DependencyIntroducesHierarchyClashError,
+    DependencyIntroducesNetworkCycleError,
     DependencyIntroducesStreamCycleError,
     DependencyPathAlreadyExistsFromSubTaskToSuperTaskError,
     DependencyPathAlreadyExistsFromSuperTaskToSubTaskError,
     HierarchyIntroducesDependencyClashError,
+    HierarchyIntroducesNetworkCycleError,
     HierarchyPathAlreadyExistsFromDependeeTaskToDependentTaskError,
     HierarchyPathAlreadyExistsFromDependentTaskToDependeeTaskError,
     INetworkGraphView,

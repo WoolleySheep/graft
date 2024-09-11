@@ -140,7 +140,7 @@ class NoConnectingDependencySubgraphError(Exception):
 
 
 class DependencyIntroducesCycleError(Exception):
-    """Adding the dependency introduces a cycle to the graph."""
+    """Raised when adding the dependency introduces a cycle to the graph."""
 
     def __init__(
         self,

@@ -13,6 +13,48 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
 
+class DependencyIntroducesNetworkCycleError(Exception):
+    """Raised when adding the dependency introduces a cycle to the network graph."""
+
+    def __init__(
+        self,
+        dependee_task: UID,
+        dependent_task: UID,
+        connecting_subgraph: NetworkGraph,
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
+        self.dependee_task = dependee_task
+        self.dependent_task = dependent_task
+        self.connecting_subgraph = connecting_subgraph
+        super().__init__(
+            f"Dependency from dependee-task [{dependee_task}] to dependent-task [{dependent_task}] introduces cycle into network graph",
+            *args,
+            **kwargs,
+        )
+
+
+class HierarchyIntroducesNetworkCycleError(Exception):
+    """Raised when adding the hierarchy introduces a cycle to the network graph."""
+
+    def __init__(
+        self,
+        supertask: UID,
+        subtask: UID,
+        connecting_subgraph: NetworkGraph,
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
+        self.supertask = supertask
+        self.subtask = subtask
+        self.connecting_subgraph = connecting_subgraph
+        super().__init__(
+            f"Hierarchy from supertask [{supertask}] to subtask [{subtask}] introduces cycle into network graph",
+            *args,
+            **kwargs,
+        )
+
+
 class DependencyPathAlreadyExistsFromSuperTaskToSubTaskError(Exception):
     """Raised when there is already a dependency path from supertask to subtask."""
 

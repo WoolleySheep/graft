@@ -27,11 +27,7 @@ _MOTION_NOTIFY_EVENT_NAME = "motion_notify_event"
 _BUTTON_RELEASE_EVENT_NAME = "button_release_event"
 
 
-def _get_none_one_argument(_: Any) -> Literal[None]:
-    return None
-
-
-def _get_none_two_arguments(x: Any, y: Any) -> Literal[None]:
+def _return_none(*_: tuple[Any, ...]) -> Literal[None]:
     return None
 
 
@@ -79,11 +75,11 @@ class StaticGraph[T: Hashable](tk.Frame):
         self._get_node_annotation_text = get_node_annotation_text
 
         self._get_node_colour = (
-            get_node_colour if get_node_colour is not None else _get_none_one_argument
+            get_node_colour if get_node_colour is not None else _return_none
         )
 
         self._get_edge_colour = (
-            get_edge_colour if get_edge_colour is not None else _get_none_two_arguments
+            get_edge_colour if get_edge_colour is not None else _return_none
         )
 
         self._additional_edges = (
@@ -93,7 +89,7 @@ class StaticGraph[T: Hashable](tk.Frame):
         self._get_additional_edge_colour = (
             get_additional_edge_colour
             if get_additional_edge_colour is not None
-            else _get_none_two_arguments
+            else _return_none
         )
 
         if not self._additional_edges.isdisjoint(graph.edges()):
@@ -150,16 +146,12 @@ class StaticGraph[T: Hashable](tk.Frame):
 
         if get_node_colour is not DefaultSentinel.DEFAULT:
             self._get_node_colour = (
-                get_node_colour
-                if get_node_colour is not None
-                else _get_none_one_argument
+                get_node_colour if get_node_colour is not None else _return_none
             )
 
         if get_edge_colour is not DefaultSentinel.DEFAULT:
             self._get_edge_colour = (
-                get_edge_colour
-                if get_edge_colour is not None
-                else _get_none_two_arguments
+                get_edge_colour if get_edge_colour is not None else _return_none
             )
 
         if on_node_left_click is not DefaultSentinel.DEFAULT:
@@ -174,7 +166,7 @@ class StaticGraph[T: Hashable](tk.Frame):
             self._get_additional_edge_colour = (
                 get_additional_edge_colour
                 if get_additional_edge_colour is not None
-                else _get_none_two_arguments
+                else _return_none
             )
 
         self._update_figure()

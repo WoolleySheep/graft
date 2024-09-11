@@ -281,11 +281,7 @@ class TaskDetails(tk.Frame):
         formatted_name = self._task_name.get()
         name = tasks.Name(formatted_name)
 
-        try:
-            self._logic_layer.update_task_name(task=self._task, name=name)
-        except Exception:
-            # TODO: Add error popup. For now, letting it propegate
-            raise
+        self._logic_layer.update_task_name(task=self._task, name=name)
 
         broker = event_broker.get_singleton()
         broker.publish(event=event_broker.SystemModified())
@@ -300,11 +296,7 @@ class TaskDetails(tk.Frame):
         formatted_description = self._task_description_scrolled_text.get(1.0, "end-1c")
         description = tasks.Description(formatted_description)
 
-        try:
-            self._logic_layer.update_task_description(self._task, description)
-        except Exception:
-            # TODO: Add error popup. For now, letting it propegate
-            raise
+        self._logic_layer.update_task_description(self._task, description)
 
         broker = event_broker.get_singleton()
         broker.publish(event_broker.SystemModified())

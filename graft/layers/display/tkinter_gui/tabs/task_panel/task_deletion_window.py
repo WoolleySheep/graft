@@ -136,9 +136,6 @@ class TaskDeletionWindow(tk.Toplevel):
                 highlighted_tasks={e.task},
             )
             return
-        except Exception:
-            # TODO: Add error popup. For now, letting it propegate
-            raise
 
         broker = event_broker.get_singleton()
         broker.publish(event_broker.SystemModified())

@@ -49,17 +49,6 @@ class NotConcreteTaskError(Exception):
         super().__init__(f"Task [{task}] is not concrete.", *args, **kwargs)
 
 
-class ConcreteTaskError(Exception):
-    """Raised when a task is concrete, and therefore has no inferred progress."""
-
-    def __init__(
-        self, task: UID, *args: tuple[Any, ...], **kwargs: dict[str, Any]
-    ) -> None:
-        """Initialise ConcreteTaskError."""
-        self.task = task
-        super().__init__(f"Task [{task}] is concrete.", *args, **kwargs)
-
-
 class StartedDependentTasksError(Exception):
     """Raised when a task has started dependent tasks.
 
@@ -966,34 +955,6 @@ class System:
             importance_tasks_map[importance].append(task)
 
         return importance_tasks_map
-
-    def _get_incomplete_concrete_tasks_in_order_of_ascending_importance(
-        self,
-    ) -> Generator[set[UID], None, None]:
-        """Return the incomplete concrete tasks in order of ascending importance."""
-        # TODO: Work out if this is actually used anywhere
-        no_priority_tasks = set[UID]()
-        importance_tasks_map = collections.defaultdict[Importance, set[UID]](set)
-
-        for task in self._network_graph.hierarchy_graph().concrete_tasks():
-            if self._get_progress_of_concrete_task(task) is Progress.COMPLETED:
-                continue
-            importance = self.get_importance(task)
-            if importance is None:
-                no_priority_tasks.add(task)
-                continue
-            importance_tasks_map[importance].add(task)
-
-        for tasks in itertools.chain(
-            [no_priority_tasks],
-            (
-                importance_tasks_map[importance]
-                for importance in sorted(importance_tasks_map.keys())
-            ),
-        ):
-            if not tasks:
-                continue
-            yield tasks
 
     def get_active_concrete_tasks_in_order_of_descending_priority(
         self,

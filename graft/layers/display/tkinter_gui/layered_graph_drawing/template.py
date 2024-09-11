@@ -2,7 +2,6 @@ from collections.abc import (
     Hashable,
     Mapping,
 )
-from typing import Protocol
 
 from graft import graphs
 from graft.layers.display.tkinter_gui.layered_graph_drawing.dummy_node import (
@@ -22,13 +21,6 @@ from graft.layers.display.tkinter_gui.layered_graph_drawing.orientation import (
     GraphOrientation,
     get_place_nodes_fn,
 )
-
-
-class CalculateNodePositionsFn(Protocol):
-    def __call__[T: Hashable](
-        self, graph: graphs.DirectedAcyclicGraph[T]
-    ) -> dict[T, tuple[float, float]]:
-        ...
 
 
 def _remove_dummy_nodes[T: Hashable, V](

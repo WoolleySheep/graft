@@ -5,7 +5,8 @@ from tkinter import ttk
 
 from graft import architecture
 from graft.domain import tasks
-from graft.layers.display.tkinter_gui import event_broker
+from graft.layers.display.tkinter_gui import event_broker, helpers
+from graft.layers.display.tkinter_gui.helpers import format_task_name_for_annotation
 
 logger = logging.getLogger(__name__)
 
@@ -107,6 +108,47 @@ class DependencyCreationWindow(tk.Toplevel):
         )
         try:
             self._logic_layer.create_task_dependency(dependee_task, dependent_task)
+        except tasks.DependencyLoopError as e:
+            dependency_graph = tasks.DependencyGraph()
+            dependency_graph.add_task(e.task)
+            helpers.DependencyGraphOperationFailedWindow(
+                master=self,
+                description_text="Cannot create a dependency between a task and itself",
+                dependency_graph=dependency_graph,
+                get_task_annotation_text=lambda task: format_task_name_for_annotation(
+                    self._logic_layer.get_task_system().attributes_register()[task].name
+                ),
+                highlighted_tasks={e.task},
+                additional_dependencies={(e.task, e.task)},
+            )
+            return
+        except tasks.DependencyAlreadyExistsError as e:
+            dependency_graph = tasks.DependencyGraph()
+            for task in [e.dependent_task, e.dependee_task]:
+                dependency_graph.add_task(task)
+            dependency_graph.add_dependency(e.dependee_task, e.dependent_task)
+            helpers.DependencyGraphOperationFailedWindow(
+                master=self,
+                description_text="Dependency already exists",
+                dependency_graph=dependency_graph,
+                get_task_annotation_text=lambda task: format_task_name_for_annotation(
+                    self._logic_layer.get_task_system().attributes_register()[task].name
+                ),
+                additional_dependencies={(e.dependent_task, e.dependee_task)},
+            )
+            return
+        except tasks.DependencyIntroducesCycleError as e:
+            helpers.DependencyGraphOperationFailedWindow(
+                master=self,
+                description_text="Introduces dependency cycle",
+                dependency_graph=e.connecting_subgraph,
+                get_task_annotation_text=lambda task: format_task_name_for_annotation(
+                    self._logic_layer.get_task_system().attributes_register()[task].name
+                ),
+                highlighted_tasks={e.dependee_task, e.dependent_task},
+                additional_dependencies={(e.dependee_task, e.dependent_task)},
+            )
+            return
         except Exception:
             # TODO: Add error popup. For now, letting it propegate
             raise
