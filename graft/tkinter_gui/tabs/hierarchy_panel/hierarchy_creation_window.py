@@ -6,6 +6,9 @@ from tkinter import ttk
 from graft import architecture
 from graft.domain import tasks
 from graft.tkinter_gui import event_broker, helpers
+from graft.tkinter_gui.helpers import (
+    format_task_name_for_annotation,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -104,79 +107,60 @@ class HierarchyCreationWindow(tk.Toplevel):
         try:
             self._logic_layer.create_task_hierarchy(supertask, subtask)
         except tasks.HierarchyLoopError as e:
-            system = tasks.System.empty()
-            system.add_task(e.task)
-            system.set_name(
-                e.task,
-                self._logic_layer.get_task_system().attributes_register()[e.task].name,
-            )
+            hierarchy_graph = tasks.HierarchyGraph()
+            hierarchy_graph.add_task(e.task)
             helpers.HierarchyGraphOperationFailedWindow(
                 master=self,
-                text="Cannot create a hierarchy between a task and itself",
-                system=system,
+                description_text="Cannot create a hierarchy between a task and itself",
+                hierarchy_graph=hierarchy_graph,
+                get_task_annotation_text=lambda task: format_task_name_for_annotation(
+                    self._logic_layer.get_task_system().attributes_register()[task].name
+                ),
                 highlighted_tasks={e.task},
                 additional_hierarchies={(e.task, e.task)},
             )
             return
         except tasks.HierarchyAlreadyExistsError as e:
-            system = tasks.System.empty()
+            hierarchy_graph = tasks.HierarchyGraph()
             for task in [e.subtask, e.supertask]:
-                system.add_task(task)
-                system.set_name(
-                    task,
-                    self._logic_layer.get_task_system()
-                    .attributes_register()[task]
-                    .name,
-                )
-            system.add_hierarchy(e.supertask, e.subtask)
+                hierarchy_graph.add_task(task)
+            hierarchy_graph.add_hierarchy(e.supertask, e.subtask)
             helpers.HierarchyGraphOperationFailedWindow(
                 master=self,
-                text="Hierarchy already exists",
-                system=system,
-                highlighted_hierarchies={(e.supertask, e.subtask)},
+                description_text="Hierarchy already exists",
+                hierarchy_graph=hierarchy_graph,
+                get_task_annotation_text=lambda task: format_task_name_for_annotation(
+                    self._logic_layer.get_task_system().attributes_register()[task].name
+                ),
+                additional_hierarchies={(e.subtask, e.supertask)},
             )
             return
         except tasks.HierarchyIntroducesCycleError as e:
-            system = tasks.System.empty()
-            for task in e.connecting_subgraph.tasks():
-                system.add_task(task)
-                system.set_name(
-                    task,
-                    self._logic_layer.get_task_system()
-                    .attributes_register()[task]
-                    .name,
-                )
-            for supertask, subtask in e.connecting_subgraph.hierarchies():
-                system.add_hierarchy(supertask, subtask)
             helpers.HierarchyGraphOperationFailedWindow(
                 master=self,
-                text="Introduces hierarchy cycle",
-                system=system,
-                additional_hierarchies=[(e.supertask, e.subtask)],
+                description_text="Introduces hierarchy cycle",
+                hierarchy_graph=e.connecting_subgraph,
+                get_task_annotation_text=lambda task: format_task_name_for_annotation(
+                    self._logic_layer.get_task_system().attributes_register()[task].name
+                ),
+                highlighted_tasks={e.supertask, e.subtask},
+                additional_hierarchies={(e.supertask, e.subtask)},
             )
             return
         except tasks.HierarchyIntroducesRedundantHierarchyError as e:
-            system = tasks.System.empty()
-            for task in e.connecting_subgraph.tasks():
-                system.add_task(task)
-                system.set_name(
-                    task,
-                    self._logic_layer.get_task_system()
-                    .attributes_register()[task]
-                    .name,
-                )
-            for supertask, subtask in e.connecting_subgraph.hierarchies():
-                system.add_hierarchy(supertask, subtask)
             helpers.HierarchyGraphOperationFailedWindow(
                 master=self,
-                text="Introduces redundant hierarchy",
-                system=system,
-                additional_hierarchies=[(e.supertask, e.subtask)],
+                description_text="Introduces redundant hierarchy",
+                hierarchy_graph=e.connecting_subgraph,
+                get_task_annotation_text=lambda task: format_task_name_for_annotation(
+                    self._logic_layer.get_task_system().attributes_register()[task].name
+                ),
+                highlighted_hierarchies={(e.supertask, e.subtask)},
+                additional_hierarchies={(e.supertask, e.subtask)},
             )
             return
-        except Exception as e:
-            helpers.UnknownExceptionOperationFailedWindow(self, exception=e)
-            # Raise so it gets logged further up the chain
+        except Exception:
+            # TODO: Add error popup. For now, letting it propegate
             raise
 
         broker = event_broker.get_singleton()

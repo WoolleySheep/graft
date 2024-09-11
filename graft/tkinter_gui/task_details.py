@@ -280,9 +280,8 @@ class TaskDetails(tk.Frame):
 
         try:
             self._logic_layer.update_task_name(task=self._task, name=name)
-        except Exception as e:
-            helpers.UnknownExceptionOperationFailedWindow(self, e)
-            # Raise so it gets logged further up the chain
+        except Exception:
+            # TODO: Add error popup. For now, letting it propegate
             raise
 
         broker = event_broker.get_singleton()
@@ -300,9 +299,8 @@ class TaskDetails(tk.Frame):
 
         try:
             self._logic_layer.update_task_description(self._task, description)
-        except Exception as e:
-            helpers.UnknownExceptionOperationFailedWindow(self, e)
-            # Raise so it gets logged further up the chain
+        except Exception:
+            # TODO: Add error popup. For now, letting it propegate
             raise
 
         broker = event_broker.get_singleton()
@@ -326,9 +324,8 @@ class TaskDetails(tk.Frame):
             self._logic_layer.update_task_importance(
                 task=self._task, importance=importance
             )
-        except Exception as e:
-            helpers.UnknownExceptionOperationFailedWindow(self, e)
-            # Raise so it gets logged further up the chain
+        except Exception:
+            # TODO: Add error popup. For now, letting it propegate
             raise
 
         broker = event_broker.get_singleton()
@@ -348,9 +345,8 @@ class TaskDetails(tk.Frame):
             self._logic_layer.update_concrete_task_progress(
                 self._task, incremented_progress
             )
-        except Exception as e:
-            helpers.UnknownExceptionOperationFailedWindow(self, exception=e)
-            # Raise so it gets logged further up the chain
+        except Exception:
+            # TODO: Add error popup. For now, letting it propegate
             raise
 
         broker = event_broker.get_singleton()
@@ -370,9 +366,8 @@ class TaskDetails(tk.Frame):
             self._logic_layer.update_concrete_task_progress(
                 self._task, decremented_progress
             )
-        except Exception as e:
-            helpers.UnknownExceptionOperationFailedWindow(self, exception=e)
-            # Raise so it gets logged further up the chain
+        except Exception:
+            # TODO: Add error popup. For now, letting it propegate
             raise
 
         broker = event_broker.get_singleton()

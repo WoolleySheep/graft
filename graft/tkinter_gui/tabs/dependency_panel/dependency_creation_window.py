@@ -5,7 +5,7 @@ from tkinter import ttk
 
 from graft import architecture
 from graft.domain import tasks
-from graft.tkinter_gui import event_broker, helpers
+from graft.tkinter_gui import event_broker
 
 logger = logging.getLogger(__name__)
 
@@ -107,10 +107,10 @@ class DependencyCreationWindow(tk.Toplevel):
         )
         try:
             self._logic_layer.create_task_dependency(dependee_task, dependent_task)
-        except Exception as e:
-            helpers.UnknownExceptionOperationFailedWindow(master=self, exception=e)
-            # Raise so it gets logged further up the chain
+        except Exception:
+            # TODO: Add error popup. For now, letting it propegate
             raise
+
         broker = event_broker.get_singleton()
         broker.publish(event_broker.SystemModified())
         self.destroy()

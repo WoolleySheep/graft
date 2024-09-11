@@ -3,9 +3,11 @@ import tkinter as tk
 from types import TracebackType
 
 from graft import app_name, architecture
-from graft.tkinter_gui.helpers import UnknownExceptionOperationFailedWindow
 from graft.tkinter_gui.tabs.tabs import Tabs
 from graft.tkinter_gui.task_details import TaskDetails
+from graft.tkinter_gui.unknown_exception_failed_operation_window import (
+    UnknownExceptionOperationFailedWindow,
+)
 
 logger = logging.getLogger(__name__)
 
