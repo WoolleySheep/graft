@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 
 from graft import architecture
-from graft.layers.presentation.tkinter_gui.tabs.task_panel.task_tree_view import (
+from graft.layers.presentation.tkinter_gui.tabs.task_panel.task_table.task_tree_view import (
     TaskTreeView,
 )
 

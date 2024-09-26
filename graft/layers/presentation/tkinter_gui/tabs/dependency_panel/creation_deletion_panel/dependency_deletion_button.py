@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 
 from graft import architecture
-from graft.layers.presentation.tkinter_gui.tabs.dependency_panel.dependency_deletion_window import (
+from graft.layers.presentation.tkinter_gui.tabs.dependency_panel.creation_deletion_panel.dependency_deletion_window import (
     DependencyDeletionWindow,
 )
 

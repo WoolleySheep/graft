@@ -2,10 +2,10 @@ import tkinter as tk
 from tkinter import ttk
 
 from graft import architecture
-from graft.layers.presentation.tkinter_gui.tabs.task_panel.task_creation_button import (
+from graft.layers.presentation.tkinter_gui.tabs.task_panel.creation_deletion_panel.task_creation_button import (
     TaskCreationButton,
 )
-from graft.layers.presentation.tkinter_gui.tabs.task_panel.task_deletion_button import (
+from graft.layers.presentation.tkinter_gui.tabs.task_panel.creation_deletion_panel.task_deletion_button import (
     TaskDeletionButton,
 )
 

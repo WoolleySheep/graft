@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 
 from graft import architecture
-from graft.layers.presentation.tkinter_gui.tabs.hierarchy_panel.hierarchy_deletion_window import (
+from graft.layers.presentation.tkinter_gui.tabs.hierarchy_panel.creation_deletion_panel.hierarchy_deletion_window import (
     HierarchyDeletionWindow,
 )
 
