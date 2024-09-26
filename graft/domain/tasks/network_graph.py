@@ -915,6 +915,8 @@ class NetworkGraph:
                     subgraph.add_task(supertask)
                 subgraph.add_hierarchy(supertask, task_with_supertasks_to_check)
 
+        non_downstream_tasks.difference_update(downstream_tasks)
+
         # Trim off any tasks that don't have dependee/dependent tasks, nor a
         # superior task with dependee/dependent tasks. These aren't part of the
         # subsystem
@@ -922,6 +924,9 @@ class NetworkGraph:
         visited_tasks = set[UID]()
         while tasks_to_check:
             task_with_dependencies_to_check = tasks_to_check.popleft()
+
+            if task_with_dependencies_to_check not in non_downstream_tasks:
+                continue
 
             if task_with_dependencies_to_check in visited_tasks:
                 continue
@@ -932,20 +937,15 @@ class NetworkGraph:
             ):
                 continue
 
-            non_downstream_tasks.remove(task_with_dependencies_to_check)
-
-            hierarchies_to_remove = list[tuple[UID, UID]]()
-            for subtask in subgraph.hierarchy_graph().subtasks(
-                task_with_dependencies_to_check
-            ):
-                tasks_to_check.append(subtask)
-                hierarchies_to_remove.append((task_with_dependencies_to_check, subtask))
-
-            for supertask, subtask in hierarchies_to_remove:
-                subgraph.remove_hierarchy(supertask, subtask)
+            # Get a concrete copy of the subtasks, as you'll be removing
+            # hierarchies and don't want to modify what you're iterating over
+            for subtask in list(subgraph.hierarchy_graph().subtasks(task_with_dependencies_to_check)):
+                subgraph.remove_hierarchy(task_with_dependencies_to_check, subtask)
+                if subgraph.hierarchy_graph().is_top_level(subtask):
+                    tasks_to_check.append(subtask)
             subgraph.remove_task(task_with_dependencies_to_check)
 
-        non_downstream_tasks.difference_update(downstream_tasks)
+            non_downstream_tasks.remove(task_with_dependencies_to_check)
 
         return subgraph, non_downstream_tasks
 
@@ -956,7 +956,114 @@ class NetworkGraph:
         of the task, but are required to connect all upstream tasks
         correctly. I'm calling these non-upstream tasks.
         """
-        raise NotImplementedError
+        subgraph = NetworkGraph.empty()
+        subgraph.add_task(task)
+
+        upstream_tasks = set[UID]([task])
+        non_upstream_tasks = set[UID]()
+
+        tasks_with_dependees_to_check = collections.deque[UID]([task])
+        tasks_with_supertasks_to_check = collections.deque[UID]([task])
+        tasks_with_subtasks_to_check = collections.deque[UID]()
+
+        tasks_with_checked_dependees = set[UID]()
+        tasks_with_checked_subtasks = set[UID]()
+        tasks_with_checked_supertasks = set[UID]()
+
+        while (
+            tasks_with_dependees_to_check
+            or tasks_with_subtasks_to_check
+            or tasks_with_supertasks_to_check
+        ):
+             while tasks_with_dependees_to_check:
+                task_with_dependees_to_check = tasks_with_dependees_to_check.popleft()
+
+                if task_with_dependees_to_check in tasks_with_checked_dependees:
+                    continue
+                tasks_with_checked_dependees.add(task_with_dependees_to_check)
+
+                for dependee_task in self._dependency_graph.dependee_tasks(
+                    task_with_dependees_to_check
+                ):
+                    upstream_tasks.add(dependee_task)
+                    tasks_with_dependees_to_check.append(dependee_task)
+                    tasks_with_subtasks_to_check.append(dependee_task)
+                    tasks_with_supertasks_to_check.append(dependee_task)
+
+                    if dependee_task not in subgraph.tasks():
+                        subgraph.add_task(dependee_task)
+                    subgraph.add_dependency(
+                        dependee_task, task_with_dependees_to_check
+                    )
+
+        while tasks_with_subtasks_to_check:
+            task_with_subtasks_to_check = tasks_with_subtasks_to_check.popleft()
+
+            if task_with_subtasks_to_check in tasks_with_checked_subtasks:
+                continue
+            tasks_with_checked_subtasks.add(task_with_subtasks_to_check)
+
+            for subtask in self._hierarchy_graph.subtasks(task_with_subtasks_to_check):
+                upstream_tasks.add(subtask)
+                tasks_with_dependees_to_check.append(subtask)
+                tasks_with_subtasks_to_check.append(subtask)
+                tasks_with_supertasks_to_check.append(subtask)
+
+                if task not in subgraph.tasks():
+                    subgraph.add_task(subtask)
+                subgraph.add_hierarchy(task_with_subtasks_to_check, subtask)
+
+        while tasks_with_supertasks_to_check:
+            task_with_supertasks_to_check = tasks_with_supertasks_to_check.popleft()
+
+            if task_with_supertasks_to_check in tasks_with_checked_supertasks:
+                continue
+            tasks_with_checked_supertasks.add(task_with_supertasks_to_check)
+
+            for supertask in self._hierarchy_graph.supertasks(
+                task_with_supertasks_to_check
+            ):
+                non_upstream_tasks.add(supertask)
+                tasks_with_dependees_to_check.append(supertask)
+                tasks_with_supertasks_to_check.append(supertask)
+
+                if supertask not in subgraph.tasks():
+                    subgraph.add_task(supertask)
+                subgraph.add_hierarchy(supertask, task_with_supertasks_to_check)
+
+        non_upstream_tasks.difference_update(upstream_tasks)
+
+        # Trim off any tasks that don't have dependee/dependent tasks, nor a
+        # superior task with dependee/dependent tasks. These aren't part of the
+        # subsystem
+        tasks_to_check = collections.deque(subgraph.hierarchy_graph().top_level_tasks())
+        visited_tasks = set[UID]()
+        while tasks_to_check:
+            task_with_dependencies_to_check = tasks_to_check.popleft()
+
+            if task_with_dependencies_to_check not in non_upstream_tasks:
+                continue
+
+            if task_with_dependencies_to_check in visited_tasks:
+                continue
+            visited_tasks.add(task_with_dependencies_to_check)
+
+            if not subgraph.dependency_graph().is_isolated(
+                task_with_dependencies_to_check
+            ):
+                continue
+
+            # Get a concrete copy of the subtasks, as you'll be removing
+            # hierarchies and don't want to modify what you're iterating over
+            for subtask in list(subgraph.hierarchy_graph().subtasks(task_with_dependencies_to_check)):
+                subgraph.remove_hierarchy(task_with_dependencies_to_check, subtask)
+                if subgraph.hierarchy_graph().is_top_level(subtask):
+                    tasks_to_check.append(subtask)
+            subgraph.remove_task(task_with_dependencies_to_check)
+
+            non_upstream_tasks.remove(task_with_dependencies_to_check)
+
+        return subgraph, non_upstream_tasks
 
     def connecting_subgraph(
         self, source_task: UID, target_task: UID, /
