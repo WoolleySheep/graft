@@ -1,96 +1,89 @@
 import tkinter as tk
-from dataclasses import dataclass
 from tkinter import ttk
-
-import matplotlib as mpl
-from matplotlib import pyplot as plt
-from matplotlib.backends import backend_tkagg
 
 from graft import architecture
 from graft.domain import tasks
-from graft.domain.tasks.network_graph import NetworkGraph
+from graft.layers.presentation.tkinter_gui import event_broker, graph_colours, helpers
 
 
-@dataclass(frozen=True)
-class Coordinate3D:
-    x: float
-    y: float
-    z: float
+def format_task_name_for_annotation(name: tasks.Name) -> str | None:
+    """Helper function to transform a task name into the form expected by annotation text."""
+    return str(name) if name else None
+
+
+def _publish_task_as_selected(task: tasks.UID) -> None:
+    broker = event_broker.get_singleton()
+    broker.publish(event_broker.TaskSelected(task=task))
 
 
 class NetworkPanel(ttk.Frame):
     def __init__(self, master: tk.Misc, logic_layer: architecture.LogicLayer) -> None:
         super().__init__(master=master)
-        mpl.use("Agg")
+
         self._logic_layer = logic_layer
-        self._fig = plt.figure()
-        self._ax = self._fig.add_subplot(projection="3d")
-        self._canvas = backend_tkagg.FigureCanvasTkAgg(self._fig, self)
-        self._canvas.get_tk_widget().grid()
+        self._selected_task: tasks.UID | None = None
 
-        # Hardcoded graph graph
-        graph = NetworkGraph.empty()
-        graph.add_task(tasks.UID(0))
-        graph.add_task(tasks.UID(1))
-        graph.add_task(tasks.UID(2))
-        graph.add_hierarchy(tasks.UID(0), tasks.UID(1))
-        graph.add_hierarchy(tasks.UID(0), tasks.UID(2))
-        graph.add_dependency(tasks.UID(1), tasks.UID(2))
+        self._static_graph = helpers.StaticTaskNetworkGraph(
+            master=self,
+            graph=tasks.NetworkGraph.empty(),
+            get_task_annotation_text=self._get_formatted_task_name,
+            get_task_colour=self._get_task_colour,
+            get_task_label_colour=None,
+            get_hierarchy_colour=None,
+            get_dependency_colour=None,
+            additional_hierarchies=None,
+            additional_dependencies=None,
+            on_node_left_click=_publish_task_as_selected,
+            get_additional_hierarchy_colour=None,
+            get_additional_dependency_colour=None,
+        )
 
-        # Hardcoded node positions
-        positions = {
-            tasks.UID(0): Coordinate3D(0, 0, 1),
-            tasks.UID(1): Coordinate3D(0, 0, 0),
-            tasks.UID(2): Coordinate3D(1, 0, 0),
-        }
+        self._static_graph.grid(row=0, column=0)
 
-        # Draw fancy graph
+        self._update_figure()
 
-        # TODOs
-        #   - Replace lines with arrows
-        #   - Increase node sizing
-        #   - Show node number on/near nodes
-        #   - Show node name when hover over
-        #   - Autogenerate node positions from network graph
+        broker = event_broker.get_singleton()
+        broker.subscribe(event_broker.SystemModified, self._on_system_modified)
+        broker.subscribe(event_broker.TaskSelected, self._on_task_selected)
 
-        # Later TODOs
-        #   - Make nodes clickable
+    def _on_system_modified(self, event: event_broker.Event) -> None:
+        if not isinstance(event, event_broker.SystemModified):
+            raise TypeError
 
-        nodes = list[tasks.UID]()
-        xs = list[float]()
-        ys = list[float]()
-        zs = list[float]()
-        for task, coordinate in positions.items():
-            nodes.append(task)
-            xs.append(coordinate.x)
-            ys.append(coordinate.y)
-            zs.append(coordinate.z)
+        if (
+            self._selected_task is not None
+            and self._selected_task not in self._logic_layer.get_task_system().tasks()
+        ):
+            self._selected_task = None
 
-        self._ax.scatter(xs, ys, zs)
+        self._update_figure()
 
-        for supertask, subtask in graph.hierarchy_graph().hierarchies():
-            supertask_position = positions[supertask]
-            subtask_position = positions[subtask]
-            self._ax.plot(
-                [supertask_position.x, subtask_position.x],
-                [supertask_position.y, subtask_position.y],
-                [supertask_position.z, subtask_position.z],
-                color="black",
-            )
+    def _on_task_selected(self, event: event_broker.Event) -> None:
+        if not isinstance(event, event_broker.TaskSelected):
+            raise TypeError
 
-        for dependee_task, dependent_task in graph.dependency_graph().dependencies():
-            dependee_position = positions[dependee_task]
-            dependent_position = positions[dependent_task]
-            self._ax.plot(
-                [dependee_position.x, dependent_position.x],
-                [dependee_position.y, dependent_position.y],
-                [dependee_position.z, dependent_position.z],
-                color="red",
-            )
+        if self._selected_task is not None and event.task == self._selected_task:
+            return
 
-        self._ax.grid(False)
+        self._selected_task = event.task
+        self._update_figure()
 
-        for axis in [self._ax.xaxis, self._ax.yaxis, self._ax.zaxis]:
-            axis.set_ticks([])
-            axis.set_pane_color((1.0, 1.0, 1.0, 0.0))
-            axis._axinfo["grid"]["color"] = (1, 1, 1, 0)
+    def _get_formatted_task_name(self, task: tasks.UID) -> str | None:
+        name = self._logic_layer.get_task_system().attributes_register()[task].name
+        return format_task_name_for_annotation(name)
+
+    def _publish_task_as_selected(self, task: tasks.UID) -> None:
+        broker = event_broker.get_singleton()
+        broker.publish(event_broker.TaskSelected(task=task))
+
+    def _get_task_colour(self, task: tasks.UID) -> str | None:
+        return (
+            graph_colours.HIGHLIGHTED_NODE_COLOUR
+            if task == self._selected_task
+            else None
+        )
+
+    def _update_figure(self) -> None:
+        self._static_graph.update_graph(
+            graph=self._logic_layer.get_task_system().network_graph()
+        )

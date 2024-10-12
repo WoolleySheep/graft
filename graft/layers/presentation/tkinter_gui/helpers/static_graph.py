@@ -5,7 +5,7 @@ from collections.abc import (
     Hashable,
     Set,
 )
-from typing import Any, Literal
+from typing import Any, Final, Literal
 
 import matplotlib as mpl
 import networkx as nx
@@ -23,8 +23,8 @@ from graft.layers.presentation.tkinter_gui.layered_graph_drawing.orientation imp
     GraphOrientation,
 )
 
-_MOTION_NOTIFY_EVENT_NAME = "motion_notify_event"
-_BUTTON_RELEASE_EVENT_NAME = "button_release_event"
+_MOTION_NOTIFY_EVENT_NAME: Final = "motion_notify_event"
+_BUTTON_RELEASE_EVENT_NAME: Final = "button_release_event"
 
 
 def _return_none(*_: tuple[Any, ...]) -> Literal[None]:
@@ -230,7 +230,12 @@ class StaticGraph[T: Hashable](tk.Frame):
             connectionstyle="arc3,rad=0.1",
         )
 
-        nx.draw_networkx_labels(networkx_graph, pos=self._node_positions, ax=self._ax)
+        nx.draw_networkx_labels(
+            networkx_graph,
+            pos=self._node_positions,
+            font_color=graph_colours.DEFAULT_TEXT_COLOUR,
+            ax=self._ax,
+        )
 
         self._canvas.draw()
 

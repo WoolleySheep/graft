@@ -20,6 +20,9 @@ from graft.layers.presentation.tkinter_gui.helpers.static_graph import (
 from graft.layers.presentation.tkinter_gui.helpers.static_hierarchy_graph import (
     StaticHierarchyGraph,
 )
+from graft.layers.presentation.tkinter_gui.helpers.static_task_network_graph import (
+    StaticTaskNetworkGraph,
+)
 from graft.layers.presentation.tkinter_gui.helpers.task_table import (
     AdjustableTaskTable,
     TaskTableWithName,

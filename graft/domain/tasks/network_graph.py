@@ -939,7 +939,9 @@ class NetworkGraph:
 
             # Get a concrete copy of the subtasks, as you'll be removing
             # hierarchies and don't want to modify what you're iterating over
-            for subtask in list(subgraph.hierarchy_graph().subtasks(task_with_dependencies_to_check)):
+            for subtask in list(
+                subgraph.hierarchy_graph().subtasks(task_with_dependencies_to_check)
+            ):
                 subgraph.remove_hierarchy(task_with_dependencies_to_check, subtask)
                 if subgraph.hierarchy_graph().is_top_level(subtask):
                     tasks_to_check.append(subtask)
@@ -975,7 +977,7 @@ class NetworkGraph:
             or tasks_with_subtasks_to_check
             or tasks_with_supertasks_to_check
         ):
-             while tasks_with_dependees_to_check:
+            while tasks_with_dependees_to_check:
                 task_with_dependees_to_check = tasks_with_dependees_to_check.popleft()
 
                 if task_with_dependees_to_check in tasks_with_checked_dependees:
@@ -992,9 +994,7 @@ class NetworkGraph:
 
                     if dependee_task not in subgraph.tasks():
                         subgraph.add_task(dependee_task)
-                    subgraph.add_dependency(
-                        dependee_task, task_with_dependees_to_check
-                    )
+                    subgraph.add_dependency(dependee_task, task_with_dependees_to_check)
 
         while tasks_with_subtasks_to_check:
             task_with_subtasks_to_check = tasks_with_subtasks_to_check.popleft()
@@ -1055,7 +1055,9 @@ class NetworkGraph:
 
             # Get a concrete copy of the subtasks, as you'll be removing
             # hierarchies and don't want to modify what you're iterating over
-            for subtask in list(subgraph.hierarchy_graph().subtasks(task_with_dependencies_to_check)):
+            for subtask in list(
+                subgraph.hierarchy_graph().subtasks(task_with_dependencies_to_check)
+            ):
                 subgraph.remove_hierarchy(task_with_dependencies_to_check, subtask)
                 if subgraph.hierarchy_graph().is_top_level(subtask):
                     tasks_to_check.append(subtask)
@@ -1181,3 +1183,22 @@ class NetworkGraphView:
         correctly. I'm calling these non-upstream tasks.
         """
         return self._graph.upstream_subgraph(task)
+
+    def connecting_subgraph(
+        self, source_task: UID, target_task: UID, /
+    ) -> tuple[NetworkGraph, set[UID]]:
+        """Return subgraph of tasks between source and target tasks.
+
+        Note that the subgraph will contain a few tasks that aren't downstream
+        of the source, nor upstream of the target, but are required to connect
+        the two. I'm calling these non-connecting tasks.
+        """
+        return self._graph.connecting_subgraph(source_task, target_task)
+
+    def is_isolated(self, task: UID, /) -> bool:
+        """Check if task has no dependencies, dependents, subtasks or supertasks."""
+        return self._graph.is_isolated(task)
+
+    def isolated_tasks(self) -> Generator[UID, None, None]:
+        """Return generator of isolated tasks."""
+        return self._graph.isolated_tasks()

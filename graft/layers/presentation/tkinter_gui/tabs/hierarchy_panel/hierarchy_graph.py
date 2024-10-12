@@ -9,6 +9,11 @@ from graft.layers.presentation.tkinter_gui.helpers import (
 )
 
 
+def _publish_task_as_selected(task: tasks.UID) -> None:
+    broker = event_broker.get_singleton()
+    broker.publish(event_broker.TaskSelected(task=task))
+
+
 class HierarchyGraph(tk.Frame):
     def __init__(self, master: tk.Misc, logic_layer: architecture.LogicLayer) -> None:
         super().__init__(master)
@@ -21,7 +26,7 @@ class HierarchyGraph(tk.Frame):
             hierarchy_graph=tasks.HierarchyGraph(),
             get_task_annotation_text=self._get_formatted_task_name,
             get_task_colour=self._get_task_colour,
-            on_task_left_click=self._publish_task_as_selected,
+            on_task_left_click=_publish_task_as_selected,
         )
 
         self._static_graph.grid(row=0, column=0)
@@ -64,10 +69,6 @@ class HierarchyGraph(tk.Frame):
             if task == self._selected_task
             else None
         )
-
-    def _publish_task_as_selected(self, task: tasks.UID) -> None:
-        broker = event_broker.get_singleton()
-        broker.publish(event_broker.TaskSelected(task=task))
 
     def _update_figure(self) -> None:
         self._static_graph.update_graph(
