@@ -1,0 +1,2 @@
+When hierarchy/dependency graphs are displayed, there is too much space between the disconnected graph components.
+This can be removed by, at the end of the sugiyama method, shifting all disconnected graph components back towards each other.
