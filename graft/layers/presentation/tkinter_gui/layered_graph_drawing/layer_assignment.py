@@ -14,4 +14,4 @@ class GetLayersFn[T: Hashable](Protocol):
 def get_layers_topological_grouping_method[T: Hashable](
     graph: graphs.DirectedAcyclicGraph[T],
 ) -> list[set[T]]:
-    return list(graph.topological_sort_with_grouping())
+    return list(graph.topologically_sorted_groups())

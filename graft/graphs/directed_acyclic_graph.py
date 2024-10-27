@@ -137,7 +137,7 @@ class DirectedAcyclicGraph[T: Hashable](simple_directed_graph.SimpleDirectedGrap
         """
         return False
 
-    def topological_sort_with_grouping(self) -> Generator[set[T], None, None]:
+    def topologically_sorted_groups(self) -> Generator[set[T], None, None]:
         """Return groups of nodes in topologically sorted order.
 
         Nodes should be in the lowest group possible.

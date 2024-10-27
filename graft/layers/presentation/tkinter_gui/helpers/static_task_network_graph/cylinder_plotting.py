@@ -5,7 +5,21 @@ from matplotlib import patches
 from mpl_toolkits import mplot3d
 from mpl_toolkits.mplot3d import art3d
 
-from graft.layers.presentation.tkinter_gui import task_network_graph_drawing
+
+class XAxisCylinderPosition:
+    def __init__(self, x_min: float, x_max: float, y: float, z: float) -> None:
+        if x_min > x_max:
+            msg = "x_min must be less than or equal to x_max."
+            raise ValueError(msg)
+
+        self.x_min = x_min
+        self.x_max = x_max
+        self.y = y
+        self.z = z
+
+    @property
+    def x_center(self) -> float:
+        return (self.x_min + self.x_max) / 2
 
 
 @dataclasses.dataclass(frozen=True)
@@ -17,9 +31,7 @@ class CylinderDrawingProperties:
     def __post_init__(self) -> None:
         if self.number_of_polygons < 3:
             msg = "Number of polygons must be at least 3 to form a closed volume."
-            raise ValueError(
-                msg
-            )
+            raise ValueError(msg)
         if not (0 < self.alpha <= 1):
             msg = "Alpha must be in range (0, 1]."
             raise ValueError(msg)
@@ -45,7 +57,7 @@ class Label:
 def plot_x_axis_cylinder(
     ax: mplot3d.Axes3D,
     radius: float,
-    position: task_network_graph_drawing.XAxisCylinderPosition,
+    position: XAxisCylinderPosition,
     properties: CylinderDrawingProperties,
     label: Label | None = None,
 ) -> art3d.Poly3DCollection:
@@ -87,6 +99,6 @@ def plot_x_axis_cylinder(
         )
         ax.add_patch(circle)
         # This method actually handles float values for z just fine, hence the type ignore
-        art3d.pathpatch_2d_to_3d(circle, z=x, zdir="x") # type: ignore[reportArgumentType]
+        art3d.pathpatch_2d_to_3d(circle, z=x, zdir="x")  # type: ignore[reportArgumentType]
 
     return collection

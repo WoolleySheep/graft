@@ -4,7 +4,10 @@ from mpl_toolkits.mplot3d import proj3d
 
 
 class Arrow3D(patches.FancyArrowPatch):
-    """https://stackoverflow.com/questions/22867620/putting-arrowheads-on-vectors-in-a-3d-plot"""
+    """https://stackoverflow.com/questions/22867620/putting-arrowheads-on-vectors-in-a-3d-plot."""
+
+    # TODO: Fix the type errors this frankenstein class is throwing
+
     def __init__(self, xs, ys, zs, *args, **kwargs) -> None:
         super().__init__((0, 0), (0, 0), *args, **kwargs)
         self._verts3d = xs, ys, zs

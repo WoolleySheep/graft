@@ -1,14 +1,34 @@
-class XAxisCylinderPosition:
-    def __init__(self, x_min: float, x_max: float, y: float, z: float) -> None:
-        if x_min > x_max:
-            msg = "x_min must be less than or equal to x_max."
-            raise ValueError(msg)
+class TaskCylinderPosition:
+    def __init__(
+        self,
+        min_dependency_position: float,
+        max_dependency_position: float,
+        hierarchy_position: float,
+        depth_position: float,
+    ) -> None:
+        if min_dependency_position > max_dependency_position:
+            msg = "Min dependency position must be <= max dependency position"
+            raise ValueError(
+                msg
+            )
 
-        self.x_min = x_min
-        self.x_max = x_max
-        self.y = y
-        self.z = z
+        self._min_dependency = min_dependency_position
+        self._max_dependency = max_dependency_position
+        self._hierarchy = hierarchy_position
+        self._depth = depth_position
 
     @property
-    def x_center(self) -> float:
-        return (self.x_min + self.x_max) / 2
+    def min_dependency(self) -> float:
+        return self._min_dependency
+
+    @property
+    def max_dependency(self) -> float:
+        return self._max_dependency
+
+    @property
+    def hierarchy(self) -> float:
+        return self._hierarchy
+
+    @property
+    def depth(self) -> float:
+        return self._depth

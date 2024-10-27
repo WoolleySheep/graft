@@ -21,6 +21,7 @@ from graft.layers.presentation.tkinter_gui.helpers.static_task_network_graph.cyl
     CylinderDrawingProperties,
     Label,
     LabelDrawingProperties,
+    XAxisCylinderPosition,
     plot_x_axis_cylinder,
 )
 
@@ -97,9 +98,7 @@ class StaticTaskNetworkGraph(tk.Frame):
         super().__init__(master)
 
         self._graph = graph
-        self._task_positions: dict[
-            tasks.UID, task_network_graph_drawing.XAxisCylinderPosition
-        ] | None = None
+        self._task_positions: dict[tasks.UID, XAxisCylinderPosition] | None = None
 
         self._get_task_annotation_text = get_task_annotation_text
 
@@ -129,9 +128,7 @@ class StaticTaskNetworkGraph(tk.Frame):
             self._graph.hierarchy_graph().hierarchies()
         ):
             msg = "Additional hierarchies must not overlap with graph hierarchies"
-            raise ValueError(
-                msg
-            )
+            raise ValueError(msg)
 
         self._additional_dependencies = (
             additional_dependencies
@@ -143,9 +140,7 @@ class StaticTaskNetworkGraph(tk.Frame):
             self._graph.dependency_graph().dependencies()
         ):
             msg = "Additional dependencies must not overlap with graph dependencies"
-            raise ValueError(
-                msg
-            )
+            raise ValueError(msg)
 
         self._get_additional_hierarchy_colour = (
             get_additional_hierarchy_colour
@@ -166,7 +161,7 @@ class StaticTaskNetworkGraph(tk.Frame):
 
         # An Axes3D is the returned type when the projection argument is
         # specified as "3d", hence the type ignore
-        self._ax: mplot3d.Axes3D = self._fig.add_subplot(projection="3d") # type: ignore[reportAttributeAccessIssue]
+        self._ax: mplot3d.Axes3D = self._fig.add_subplot(projection="3d")  # type: ignore[reportAttributeAccessIssue]
 
         self._canvas = backend_tkagg.FigureCanvasTkAgg(self._fig, self)
         self._canvas.get_tk_widget().grid()
@@ -255,9 +250,7 @@ class StaticTaskNetworkGraph(tk.Frame):
             self._graph.dependency_graph().dependencies()
         ):
             msg = "Additional dependencies must not overlap with graph dependencies"
-            raise ValueError(
-                msg
-            )
+            raise ValueError(msg)
 
         if additional_hierarchies is not DefaultSentinel.DEFAULT:
             self._additional_hierarchies = (
@@ -270,9 +263,7 @@ class StaticTaskNetworkGraph(tk.Frame):
             self._graph.hierarchy_graph().hierarchies()
         ):
             msg = "Additional hierarchies must not overlap with graph hierarchies"
-            raise ValueError(
-                msg
-            )
+            raise ValueError(msg)
 
         if on_node_left_click is not DefaultSentinel.DEFAULT:
             self._on_node_left_click = on_node_left_click
@@ -313,11 +304,23 @@ class StaticTaskNetworkGraph(tk.Frame):
 
         self._task_collections.clear()
 
-        self._task_positions = (
-            task_network_graph_drawing.calculate_task_positions_hardcoded(
-                graph=self._graph, task_cylinder_radius=_TASK_CYLINDER_RADIUS
+        tmp_task_positions = (
+            task_network_graph_drawing.calculate_task_positions_unnamed_method(
+                graph=self._graph,
+                task_cylinder_radius=task_network_graph_drawing.Radius(
+                    _TASK_CYLINDER_RADIUS
+                ),
             )
         )
+        self._task_positions = {
+            task: XAxisCylinderPosition(
+                x_min=position.min_dependency,
+                x_max=position.max_dependency,
+                y=position.depth,
+                z=position.hierarchy,
+            )
+            for task, position in tmp_task_positions.items()
+        }
 
         self._update_task_cylinders()
         self._update_hierarchy_arrows()

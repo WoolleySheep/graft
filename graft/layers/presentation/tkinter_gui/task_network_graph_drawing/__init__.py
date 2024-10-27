@@ -1,6 +1,9 @@
 from graft.layers.presentation.tkinter_gui.task_network_graph_drawing.cylinder_position import (
-    XAxisCylinderPosition,
+    TaskCylinderPosition,
 )
 from graft.layers.presentation.tkinter_gui.task_network_graph_drawing.implementation import (
-    calculate_task_positions_hardcoded,
+    calculate_task_positions_unnamed_method,
+)
+from graft.layers.presentation.tkinter_gui.task_network_graph_drawing.radius import (
+    Radius,
 )
