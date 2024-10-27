@@ -174,6 +174,11 @@ def get_dependency_positions_unnamed_method(
                 for supertask in graph.hierarchy_graph().supertasks(task_to_check):
                     tasks_to_check_for_max_position.append(supertask)
 
+                for dependent_task in graph.dependency_graph().dependent_tasks(
+                    task_to_check
+                ):
+                    tasks_to_check_for_min_position.append(dependent_task)
+
         while tasks_to_check_for_min_position:
             task_to_check = tasks_to_check_for_min_position.pop()
 
@@ -204,10 +209,15 @@ def get_dependency_positions_unnamed_method(
                     task_to_check
                 ].min_position = task_to_check_min_position
 
-                if graph.hierarchy_graph().is_concrete(task_to_check):
-                    task_partial_positions[
-                        task_to_check
-                    ].max_position = task_to_check_min_position
+                if not graph.hierarchy_graph().is_concrete(task_to_check):
+                    continue
+
+                task_partial_positions[
+                    task_to_check
+                ].max_position = task_to_check_min_position
+
+                for supertask in graph.hierarchy_graph().supertasks(task_to_check):
+                    tasks_to_check_for_max_position.append(supertask)
 
                 for dependent_task in graph.dependency_graph().dependent_tasks(
                     task_to_check

@@ -8,9 +8,7 @@ class TaskCylinderPosition:
     ) -> None:
         if min_dependency_position > max_dependency_position:
             msg = "Min dependency position must be <= max dependency position"
-            raise ValueError(
-                msg
-            )
+            raise ValueError(msg)
 
         self._min_dependency = min_dependency_position
         self._max_dependency = max_dependency_position

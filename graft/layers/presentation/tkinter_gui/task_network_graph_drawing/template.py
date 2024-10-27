@@ -1,3 +1,5 @@
+from typing import Final
+
 from graft.domain import tasks
 from graft.layers.presentation.tkinter_gui.task_network_graph_drawing.cylinder_position import (
     TaskCylinderPosition,
@@ -15,6 +17,12 @@ from graft.layers.presentation.tkinter_gui.task_network_graph_drawing.hierarchy_
 from graft.layers.presentation.tkinter_gui.task_network_graph_drawing.radius import (
     Radius,
 )
+
+#  When the task cylinder length is 0, it would  appear as a flat disk. To make
+#  sure it always appears as a nice cylinder, add a small offset to each end.
+#  The minimum dependency distance between cylinders is 1, so the offset should
+#  be small enough that even if task cylinders are colinear, they do not touch.
+_TASK_CYLINDER_LENGTH_OFFSET: Final = 0.25
 
 
 def calculate_task_positions(
@@ -46,8 +54,10 @@ def calculate_task_positions(
 
     return {
         task: TaskCylinderPosition(
-            min_dependency_position=dependency_positions[task].min - 0.25,
-            max_dependency_position=dependency_positions[task].max + 0.25,
+            min_dependency_position=dependency_positions[task].min
+            - _TASK_CYLINDER_LENGTH_OFFSET,
+            max_dependency_position=dependency_positions[task].max
+            + _TASK_CYLINDER_LENGTH_OFFSET,
             hierarchy_position=hierarchy_positions[task],
             depth_position=depth_positions[task],
         )
