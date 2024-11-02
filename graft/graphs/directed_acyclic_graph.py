@@ -197,3 +197,22 @@ class DirectedAcyclicGraph[T: Hashable](simple_directed_graph.SimpleDirectedGrap
             graph=subgraph, sources=sources, targets=targets
         )
         return subgraph
+
+    @override
+    def component(self, node: T) -> DirectedAcyclicGraph[T]:
+        subgraph = DirectedAcyclicGraph[T]()
+        self._populate_graph_with_component(graph=subgraph, node=node)
+        return subgraph
+
+    @override
+    def components(self) -> Generator[DirectedAcyclicGraph[T], None, None]:
+        # TODO: Find a more elegant way to DRY out this code rather than
+        # repeating it in every subclass
+        components = list[DirectedAcyclicGraph[T]]()
+        for node in self.nodes():
+            if any(node in component.nodes() for component in components):
+                continue
+
+            component = self.component(node)
+            yield component
+            components.append(component)

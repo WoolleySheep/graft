@@ -931,6 +931,66 @@ class DirectedGraph[T: Hashable]:
         # TODO: Add stop condition parameter
         return self.connecting_subgraph_multi([source], [target])
 
+    def component(self, node: T) -> DirectedGraph[T]:
+        """Return component containing node."""
+        subgraph = DirectedGraph[T]()
+        self._populate_graph_with_component(graph=subgraph, node=node)
+        return subgraph
+
+    def _populate_graph_with_component(self, graph: DirectedGraph[T], node: T) -> None:
+        """Populate a graph with the component containing the node.
+
+        Only meant to be called by component to facilitate easy subclassing.
+
+        Be aware that if an exception is raised, the graph may be partially
+        populated.
+        """
+        # TODO: Make this function more efficient - it feels rubbish
+        if node not in self.nodes():
+            raise NodeDoesNotExistError(node=node)
+
+        checked_nodes = set[T]()
+        nodes_to_check = collections.deque[T]([node])
+
+        while nodes_to_check:
+            node = nodes_to_check.pop()
+
+            if node in checked_nodes:
+                continue
+            checked_nodes.add(node)
+
+            if node not in graph.nodes():
+                graph.add_node(node)
+
+            for predecessor in self.predecessors(node):
+                if predecessor not in graph.nodes():
+                    graph.add_node(predecessor)
+
+                if (predecessor, node) not in graph.edges():
+                    graph.add_edge(predecessor, node)
+
+                nodes_to_check.append(predecessor)
+
+            for successor in self.successors(node):
+                if successor not in graph.nodes():
+                    graph.add_node(successor)
+
+                if (node, successor) not in graph.edges():
+                    graph.add_edge(node, successor)
+
+                nodes_to_check.append(successor)
+
+    def components(self) -> Generator[DirectedGraph[T], None, None]:
+        """Yield components in the graph."""
+        components = list[DirectedGraph[T]]()
+        for node in self.nodes():
+            if any(node in component.nodes() for component in components):
+                continue
+
+            component = self.component(node)
+            yield component
+            components.append(component)
+
     def connecting_subgraph_multi(
         self, sources: Iterable[T], targets: Iterable[T]
     ) -> DirectedGraph[T]:

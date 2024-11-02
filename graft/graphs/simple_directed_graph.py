@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import (
+    Generator,
     Hashable,
     Iterable,
     Mapping,
@@ -158,3 +159,22 @@ class SimpleDirectedGraph[T: Hashable](directed_graph.DirectedGraph[T]):
             graph=subgraph, sources=sources, targets=targets
         )
         return subgraph
+
+    @override
+    def component(self, node: T) -> SimpleDirectedGraph[T]:
+        subgraph = SimpleDirectedGraph[T]()
+        self._populate_graph_with_component(graph=subgraph, node=node)
+        return subgraph
+
+    @override
+    def components(self) -> Generator[SimpleDirectedGraph[T], None, None]:
+        # TODO: Find a more elegant way to DRY out this code rather than
+        # repeating it in every subclass
+        components = list[SimpleDirectedGraph[T]]()
+        for node in self.nodes():
+            if any(node in component.nodes() for component in components):
+                continue
+
+            component = self.component(node)
+            yield component
+            components.append(component)

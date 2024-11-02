@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Hashable, Iterable, Mapping, Set
+from collections.abc import Callable, Generator, Hashable, Iterable, Mapping, Set
 from typing import Any, Literal, override
 
 from graft.graphs import bidict as bd
@@ -203,3 +203,22 @@ class ReducedDirectedAcyclicGraph[T: Hashable](
             graph=subgraph, sources=sources, targets=targets
         )
         return subgraph
+
+    @override
+    def component(self, node: T) -> ReducedDirectedAcyclicGraph[T]:
+        subgraph = ReducedDirectedAcyclicGraph[T]()
+        self._populate_graph_with_component(graph=subgraph, node=node)
+        return subgraph
+
+    @override
+    def components(self) -> Generator[ReducedDirectedAcyclicGraph[T], None, None]:
+        # TODO: Find a more elegant way to DRY out this code rather than
+        # repeating it in every subclass
+        components = list[ReducedDirectedAcyclicGraph[T]]()
+        for node in self.nodes():
+            if any(node in component.nodes() for component in components):
+                continue
+
+            component = self.component(node)
+            yield component
+            components.append(component)
