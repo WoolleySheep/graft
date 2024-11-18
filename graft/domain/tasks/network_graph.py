@@ -438,18 +438,29 @@ class NetworkGraph:
 
     @classmethod
     def empty(cls) -> NetworkGraph:
-        """Create an empty NetworkGraph."""
+        """Create an empty network graph."""
         return cls(DependencyGraph(), HierarchyGraph())
+
+    @classmethod
+    def clone(cls, graph: INetworkGraphView) -> NetworkGraph:
+        """Create a clone of a network graph from an interface."""
+        hierarchy_graph = HierarchyGraph.clone(graph.hierarchy_graph())
+        dependency_graph = DependencyGraph.clone(graph.dependency_graph())
+        return cls(dependency_graph, hierarchy_graph)
 
     def __init__(
         self, dependency_graph: DependencyGraph, hierarchy_graph: HierarchyGraph
     ) -> None:
-        """Initialise NetworkGraph.
+        """Initialise NetworkGraph."""
+        # TODO: Note that this approach does not guarantee that the resultant
+        # NetworkGraph is valid; more validation will need to be done to ensure
+        # this.
+        if dependency_graph.tasks() != hierarchy_graph.tasks():
+            msg = "Tasks in dependency graph and hierarchy graph must be the same."
+            raise ValueError(
+                msg
+            )
 
-        TODO: Note that this approach does not guarantee that the resultant
-        NetworkGraph is valid; some validation will need to be done to ensure
-        this.
-        """
         self._dependency_graph = dependency_graph
         self._hierarchy_graph = hierarchy_graph
 

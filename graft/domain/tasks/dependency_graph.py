@@ -480,6 +480,16 @@ class DependencyGraph:
     Acts as a DAG.
     """
 
+    @classmethod
+    def clone(cls, graph: IDependencyGraphView) -> DependencyGraph:
+        """Create a clone of a dependency graph from an interface."""
+        clone = cls()
+        for task in graph.tasks():
+            clone.add_task(task)
+        for dependee_task, dependent_task in graph.dependencies():
+            clone.add_dependency(dependee_task, dependent_task)
+        return clone
+
     def __init__(self, dag: graphs.DirectedAcyclicGraph[UID] | None = None) -> None:
         """Initialise DependencyGraph."""
         self._dag = dag or graphs.DirectedAcyclicGraph[UID]()

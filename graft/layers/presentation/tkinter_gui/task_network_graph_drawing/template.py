@@ -34,9 +34,7 @@ def calculate_task_positions(
 ) -> dict[tasks.UID, TaskCylinderPosition]:
     dependency_positions = get_dependency_positions(graph=graph)
 
-    hierarchy_positions = get_hierarchy_positions(
-        graph=graph, task_cylinder_radius=task_cylinder_radius
-    )
+    hierarchy_positions = get_hierarchy_positions(graph=graph)
 
     relation_positions = {
         task: RelationPosition(
@@ -58,7 +56,9 @@ def calculate_task_positions(
             - _TASK_CYLINDER_LENGTH_OFFSET,
             max_dependency_position=dependency_positions[task].max
             + _TASK_CYLINDER_LENGTH_OFFSET,
-            hierarchy_position=hierarchy_positions[task],
+            hierarchy_position=3
+            * float(task_cylinder_radius)
+            * hierarchy_positions[task],
             depth_position=depth_positions[task],
         )
         for task in graph.tasks()

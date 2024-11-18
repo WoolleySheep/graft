@@ -79,7 +79,11 @@ class TasksView(Set[UID]):
 
     def __eq__(self, other: object) -> bool:
         """Check if two views are equal."""
-        return isinstance(other, TasksView) and set(self) == set(other)
+        return (
+            isinstance(other, TasksView)
+            and len(self) == len(other)
+            and all(task in other for task in self)
+        )
 
     def __str__(self) -> str:
         """Return string representation of view."""

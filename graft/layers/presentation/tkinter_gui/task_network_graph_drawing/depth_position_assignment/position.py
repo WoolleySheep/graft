@@ -9,7 +9,7 @@ class RelationPosition:
     def __init__(
         self,
         dependency_position: dependency_position.DependencyPosition,
-        hierarchy_position: float,
+        hierarchy_position: int,
     ) -> None:
         self._dependency = dependency_position
         self._hierarchy = hierarchy_position
@@ -19,5 +19,5 @@ class RelationPosition:
         return self._dependency
 
     @property
-    def hierarchy(self) -> float:
+    def hierarchy(self) -> int:
         return self._hierarchy

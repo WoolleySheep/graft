@@ -510,6 +510,16 @@ class HierarchyGraph:
     Acts as a Minimum DAG.
     """
 
+    @classmethod
+    def clone(cls, graph: IHierarchyGraphView) -> HierarchyGraph:
+        """Create a clone of a hierarchy graph from an interface."""
+        clone = cls()
+        for task in graph.tasks():
+            clone.add_task(task)
+        for supertask, subtask in graph.hierarchies():
+            clone.add_hierarchy(supertask, subtask)
+        return clone
+
     def __init__(
         self, reduced_dag: graphs.ReducedDirectedAcyclicGraph[UID] | None = None
     ) -> None:
