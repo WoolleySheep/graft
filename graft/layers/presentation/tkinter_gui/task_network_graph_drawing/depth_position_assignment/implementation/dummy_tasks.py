@@ -1,7 +1,6 @@
 import itertools
 import math
 from collections.abc import Callable, Generator, Iterable, Mapping, MutableMapping
-from typing import Protocol
 
 from graft.domain import tasks
 from graft.domain.tasks.network_graph import NetworkGraph

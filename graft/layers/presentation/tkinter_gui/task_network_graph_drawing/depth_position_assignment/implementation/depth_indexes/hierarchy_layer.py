@@ -4,7 +4,7 @@ from graft.domain import tasks
 
 
 class HierarchyLayer:
-    """Convenience function for holding information relevant to a hierarchy layer"""
+    """Convenience function for holding information relevant to a hierarchy layer."""
 
     def __init__(
         self,

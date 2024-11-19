@@ -1,5 +1,5 @@
 import itertools
-from collections.abc import Collection, Iterable, Mapping, Sequence
+from collections.abc import Iterable, Mapping
 
 from graft import graphs
 from graft.domain import tasks

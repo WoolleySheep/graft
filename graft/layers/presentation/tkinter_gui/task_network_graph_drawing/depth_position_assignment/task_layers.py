@@ -1,5 +1,5 @@
 import collections
-from collections.abc import Generator, Hashable, Mapping
+from collections.abc import Generator, Mapping
 
 from graft.domain import tasks
 from graft.layers.presentation.tkinter_gui.task_network_graph_drawing.dependency_position_assignment import (

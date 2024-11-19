@@ -1,8 +1,7 @@
 import itertools
 import math
-from collections.abc import Generator, Iterable, Mapping, MutableMapping, Sequence
+from collections.abc import Generator, Iterable, Sequence
 
-from graft import graphs
 from graft.domain import tasks
 from graft.layers.presentation.tkinter_gui.task_network_graph_drawing.depth_position_assignment.implementation.depth_graph import (
     get_constrained_depth_graph,

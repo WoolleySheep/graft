@@ -5,7 +5,6 @@ from graft.layers.presentation.tkinter_gui.task_network_graph_drawing.depth_posi
     get_depth_indexes_neighbour_median_and_transpose_method,
 )
 from graft.layers.presentation.tkinter_gui.task_network_graph_drawing.depth_position_assignment.implementation.depth_positions import (
-    get_depth_positions_naive_spacing_method,
     get_depth_positions_priority_method,
 )
 from graft.layers.presentation.tkinter_gui.task_network_graph_drawing.depth_position_assignment.implementation.dummy_tasks import (
