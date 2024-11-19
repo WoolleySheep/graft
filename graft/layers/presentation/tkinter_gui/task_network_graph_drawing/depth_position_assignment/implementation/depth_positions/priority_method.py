@@ -82,26 +82,17 @@ def _get_average_depth_position_of_subtasks(
     )
 
 
-def _get_average_depth_position_of_dependee_tasks(
+def _get_average_depth_position_of_dependency_related_tasks(
     task: tasks.UID,
     graph: tasks.IDependencyGraphView,
     task_to_depth_position_map: Mapping[tasks.UID, float],
 ) -> float:
     return _get_average_of_neighbour_values(
         node=task,
-        get_neighbours=graph.dependee_tasks,
-        node_to_value_map=task_to_depth_position_map,
-    )
-
-
-def _get_average_depth_position_of_dependent_tasks(
-    task: tasks.UID,
-    graph: tasks.IDependencyGraphView,
-    task_to_depth_position_map: Mapping[tasks.UID, float],
-) -> float:
-    return _get_average_of_neighbour_values(
-        node=task,
-        get_neighbours=graph.dependent_tasks,
+        # TODO: Why do I have to convert this to a list? I thought | would be sufficient
+        get_neighbours=lambda task: list(
+            graph.dependee_tasks(task) | graph.dependent_tasks(task)
+        ),
         node_to_value_map=task_to_depth_position_map,
     )
 
@@ -132,20 +123,13 @@ def _get_subtasks_priority(
     )
 
 
-def _get_dependee_tasks_priority(
-    task: tasks.UID, graph: tasks.IDependencyGraphView
-) -> Priority:
-    return _get_neighbours_priority(
-        task=task, get_number_of_neighbours=lambda task: len(graph.dependee_tasks(task))
-    )
-
-
-def _get_dependent_tasks_priority(
+def _get_dependency_related_priority(
     task: tasks.UID, graph: tasks.IDependencyGraphView
 ) -> Priority:
     return _get_neighbours_priority(
         task=task,
-        get_number_of_neighbours=lambda task: len(graph.dependent_tasks(task)),
+        get_number_of_neighbours=lambda task: len(graph.dependee_tasks(task))
+        + len(graph.dependent_tasks(task)),
     )
 
 
@@ -264,35 +248,23 @@ def _shift_task_shallower(
 class HierarchyLayer:
     def __init__(
         self,
+        depth_graph: graphs.DirectedAcyclicGraph[tasks.UID],
         tasks_with_supertasks_sorted_by_descending_supertask_priority: Sequence[
             tasks.UID
         ],
         tasks_with_subtasks_sorted_by_descending_subtask_priority: Sequence[tasks.UID],
+        tasks_with_dependency_related_tasks_sorted_by_descending_dependency_related_task_priority: Sequence[
+            tasks.UID
+        ],
     ) -> None:
+        self.depth_graph = depth_graph
         self.tasks_with_supertasks_sorted_by_descending_supertask_priority = (
             tasks_with_supertasks_sorted_by_descending_supertask_priority
         )
         self.tasks_with_subtasks_sorted_by_descending_subtask_priority = (
             tasks_with_subtasks_sorted_by_descending_subtask_priority
         )
-
-
-class DependencyLayer:
-    def __init__(
-        self,
-        tasks_with_dependee_tasks_sorted_by_descending_dependee_task_priority: Sequence[
-            tasks.UID
-        ],
-        tasks_with_dependent_tasks_sorted_by_descending_dependent_task_priority: Sequence[
-            tasks.UID
-        ],
-    ) -> None:
-        self.tasks_with_dependee_tasks_sorted_by_descending_dependee_task_priority = (
-            tasks_with_dependee_tasks_sorted_by_descending_dependee_task_priority
-        )
-        self.tasks_with_dependent_tasks_sorted_by_descending_dependent_task_priority = (
-            tasks_with_dependent_tasks_sorted_by_descending_dependent_task_priority
-        )
+        self.tasks_with_dependency_related_tasks_sorted_by_descending_dependency_related_task_priority = tasks_with_dependency_related_tasks_sorted_by_descending_dependency_related_task_priority
 
 
 def get_depth_positions_priority_method(
@@ -318,7 +290,11 @@ def get_depth_positions_priority_method(
         for task in graph.tasks()
     }
 
-    task_to_depth_graph_map = dict[tasks.UID, graphs.DirectedAcyclicGraph[tasks.UID]]()
+    task_to_dependency_related_task_priority_map = {
+        task: _get_dependency_related_priority(task, graph.dependency_graph())
+        for task in graph.tasks()
+    }
+
     hierarchy_layers = list[HierarchyLayer]()
     for layer in get_hierarchy_layers_in_descending_order(task_to_relation_layers_map):
         dependency_axis_groups = get_dependency_axis_groups(
@@ -327,8 +303,6 @@ def get_depth_positions_priority_method(
         depth_graph = get_constrained_depth_graph(
             dependency_axis_groups, task_to_depth_index_map
         )
-        for task in layer:
-            task_to_depth_graph_map[task] = depth_graph
 
         tasks_with_supertasks = (
             task for task in layer if not graph.hierarchy_graph().is_top_level(task)
@@ -348,10 +322,21 @@ def get_depth_positions_priority_method(
             reverse=True,
         )
 
+        tasks_with_dependency_related_tasks = (
+            task for task in layer if not graph.dependency_graph().is_isolated(task)
+        )
+        tasks_with_dependency_related_tasks_sorted_by_descending_dependency_related_task_priority = sorted(
+            tasks_with_dependency_related_tasks,
+            key=lambda task: task_to_dependency_related_task_priority_map[task],
+            reverse=True,
+        )
+
         hierarchy_layers.append(
             HierarchyLayer(
+                depth_graph,
                 tasks_with_supertasks_sorted_by_descending_supertask_priority,
                 tasks_with_subtasks_sorted_by_descending_subtask_priority,
+                tasks_with_dependency_related_tasks_sorted_by_descending_dependency_related_task_priority,
             )
         )
 
@@ -360,47 +345,6 @@ def get_depth_positions_priority_method(
         task: starting_separation_distance * depth_index
         for task, depth_index in task_to_depth_index_map.items()
     }
-
-    task_to_dependee_task_priority_map = {
-        task: _get_dependee_tasks_priority(task, graph.dependency_graph())
-        for task in graph.tasks()
-    }
-
-    task_to_dependent_task_priority_map = {
-        task: _get_dependent_tasks_priority(task, graph.dependency_graph())
-        for task in graph.tasks()
-    }
-
-    dependency_layers = list[DependencyLayer]()
-    for layer in get_dependency_axis_groups(
-        graph.tasks(), task_to_relation_layers_map=task_to_relation_layers_map
-    ):
-        tasks_with_dependee_tasks = (
-            task for task in layer if not graph.dependency_graph().is_first(task)
-        )
-        tasks_with_dependee_tasks_sorted_by_descending_dependee_task_priority = sorted(
-            tasks_with_dependee_tasks,
-            key=lambda task: task_to_dependee_task_priority_map[task],
-            reverse=True,
-        )
-
-        tasks_with_dependent_tasks = (
-            task for task in layer if not graph.dependency_graph().is_last(task)
-        )
-        tasks_with_dependent_tasks_sorted_by_descending_dependent_task_priority = (
-            sorted(
-                tasks_with_dependent_tasks,
-                key=lambda task: task_to_dependent_task_priority_map[task],
-                reverse=True,
-            )
-        )
-
-        dependency_layers.append(
-            DependencyLayer(
-                tasks_with_dependee_tasks_sorted_by_descending_dependee_task_priority,
-                tasks_with_dependent_tasks_sorted_by_descending_dependent_task_priority,
-            )
-        )
 
     for _ in range(NUMBER_OF_DEPTH_POSITION_ITERATIONS):
         for layer in itertools.islice(hierarchy_layers, 1, None):
@@ -412,11 +356,10 @@ def get_depth_positions_priority_method(
                     graph=graph.hierarchy_graph(),
                     task_to_depth_position_map=task_to_depth_position_map,
                 )
-                depth_graph = task_to_depth_graph_map[task]
                 _move_task(
                     task=task,
                     ideal_position=ideal_position,
-                    layer_depth_graph=depth_graph,
+                    layer_depth_graph=layer.depth_graph,
                     task_to_depth_position_map=task_to_depth_position_map,
                     task_to_priority_map=task_to_supertask_priority_map,
                     min_separation_distance=min_separation_distance,
@@ -429,46 +372,48 @@ def get_depth_positions_priority_method(
                     graph=graph.hierarchy_graph(),
                     task_to_depth_position_map=task_to_depth_position_map,
                 )
-                depth_graph = task_to_depth_graph_map[task]
                 _move_task(
                     task=task,
                     ideal_position=ideal_position,
-                    layer_depth_graph=depth_graph,
+                    layer_depth_graph=layer.depth_graph,
                     task_to_depth_position_map=task_to_depth_position_map,
                     task_to_priority_map=task_to_subtask_priority_map,
                     min_separation_distance=min_separation_distance,
                 )
 
-        for layer in itertools.islice(dependency_layers, 1, None):
-            for task in layer.tasks_with_dependee_tasks_sorted_by_descending_dependee_task_priority:
-                ideal_position = _get_average_depth_position_of_dependee_tasks(
-                    task=task,
-                    graph=graph.dependency_graph(),
-                    task_to_depth_position_map=task_to_depth_position_map,
+        for layer in itertools.islice(hierarchy_layers, 1, None):
+            for task in layer.tasks_with_dependency_related_tasks_sorted_by_descending_dependency_related_task_priority:
+                ideal_position = (
+                    _get_average_depth_position_of_dependency_related_tasks(
+                        task=task,
+                        graph=graph.dependency_graph(),
+                        task_to_depth_position_map=task_to_depth_position_map,
+                    )
                 )
-                depth_graph = task_to_depth_graph_map[task]
                 _move_task(
                     task=task,
                     ideal_position=ideal_position,
-                    layer_depth_graph=depth_graph,
+                    layer_depth_graph=layer.depth_graph,
                     task_to_depth_position_map=task_to_depth_position_map,
-                    task_to_priority_map=task_to_dependee_task_priority_map,
+                    task_to_priority_map=task_to_dependency_related_task_priority_map,
                     min_separation_distance=min_separation_distance,
                 )
 
-        for layer in itertools.islice(reversed(dependency_layers), 1, None):
-            for task in layer.tasks_with_dependent_tasks_sorted_by_descending_dependent_task_priority:
-                ideal_position = _get_average_depth_position_of_dependent_tasks(
-                    task=task,
-                    graph=graph.dependency_graph(),
-                    task_to_depth_position_map=task_to_depth_position_map,
+        for layer in itertools.islice(reversed(hierarchy_layers), 1, None):
+            for task in layer.tasks_with_dependency_related_tasks_sorted_by_descending_dependency_related_task_priority:
+                ideal_position = (
+                    _get_average_depth_position_of_dependency_related_tasks(
+                        task=task,
+                        graph=graph.dependency_graph(),
+                        task_to_depth_position_map=task_to_depth_position_map,
+                    )
                 )
                 _move_task(
                     task=task,
                     ideal_position=ideal_position,
-                    layer_depth_graph=task_to_depth_graph_map[task],
+                    layer_depth_graph=layer.depth_graph,
                     task_to_depth_position_map=task_to_depth_position_map,
-                    task_to_priority_map=task_to_dependent_task_priority_map,
+                    task_to_priority_map=task_to_dependency_related_task_priority_map,
                     min_separation_distance=min_separation_distance,
                 )
 
