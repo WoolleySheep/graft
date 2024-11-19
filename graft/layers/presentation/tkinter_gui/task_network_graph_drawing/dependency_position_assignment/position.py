@@ -1,4 +1,4 @@
-class DependencyPosition:
+class DependencyLayers:
     """Class to represent the position of a task cylinder in the dependency axis."""
 
     def __init__(self, min_: int, max_: int) -> None:

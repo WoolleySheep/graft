@@ -27,7 +27,7 @@ class Priority:
         if not isinstance(other, Priority):
             raise NotImplementedError
 
-        return other.n is None or (self.n is not None and self.n < other.n)
+        return self.n is not None and (other.n is None or self.n < other.n)
 
 
 def _get_npredecessors[T](node: T, graph: graphs.DirectedAcyclicGraph[T]) -> int:

@@ -4,7 +4,7 @@ from collections.abc import Generator
 
 from graft.domain import tasks
 from graft.layers.presentation.tkinter_gui.task_network_graph_drawing.dependency_position_assignment.position import (
-    DependencyPosition,
+    DependencyLayers,
 )
 
 
@@ -100,7 +100,7 @@ def _get_immediate_upstream_tasks(
 
 def get_dependency_positions_unnamed_method(
     graph: tasks.INetworkGraphView,
-) -> dict[tasks.UID, DependencyPosition]:
+) -> dict[tasks.UID, DependencyLayers]:
     """Get the dependency positions of tasks.
 
     Rules:
@@ -224,12 +224,12 @@ def get_dependency_positions_unnamed_method(
                 ):
                     tasks_to_check_for_min_position.append(dependent_task)
 
-    task_positions = dict[tasks.UID, DependencyPosition]()
+    task_positions = dict[tasks.UID, DependencyLayers]()
     for task, partial_position in task_partial_positions.items():
         assert partial_position.min_position is not None
         assert partial_position.max_position is not None
 
-        task_positions[task] = DependencyPosition(
+        task_positions[task] = DependencyLayers(
             partial_position.min_position, partial_position.max_position
         )
 

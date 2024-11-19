@@ -1,0 +1,3 @@
+from graft.layers.presentation.tkinter_gui.task_network_graph_drawing.depth_position_assignment.implementation.depth_indexes.depth_indexes import (
+    get_depth_indexes_neighbour_median_and_transpose_method,
+)

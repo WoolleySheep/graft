@@ -9,9 +9,10 @@ from graft.layers.presentation.tkinter_gui.task_network_graph_drawing.dependency
 )
 from graft.layers.presentation.tkinter_gui.task_network_graph_drawing.depth_position_assignment import (
     GetDepthPositions,
-    RelationPosition,
+    TaskRelationLayers,
 )
 from graft.layers.presentation.tkinter_gui.task_network_graph_drawing.hierarchy_position_assignment import (
+    GetHierarchyLayers,
     GetHierarchyPositions,
 )
 from graft.layers.presentation.tkinter_gui.task_network_graph_drawing.radius import (
@@ -28,25 +29,31 @@ _TASK_CYLINDER_LENGTH_OFFSET: Final = 0.25
 def calculate_task_positions(
     graph: tasks.INetworkGraphView,
     task_cylinder_radius: Radius,
+    get_hierarchy_layers: GetHierarchyLayers,
     get_hierarchy_positions: GetHierarchyPositions,
     get_dependency_positions: GetDependencyPositions,
     get_depth_positions: GetDepthPositions,
 ) -> dict[tasks.UID, TaskCylinderPosition]:
     dependency_positions = get_dependency_positions(graph=graph)
 
-    hierarchy_positions = get_hierarchy_positions(graph=graph)
+    hierarchy_layers = get_hierarchy_layers(graph=graph)
 
-    relation_positions = {
-        task: RelationPosition(
-            dependency_position=dependency_positions[task],
-            hierarchy_position=hierarchy_positions[task],
+    hierarchy_positions = get_hierarchy_positions(
+        task_to_hierarchy_layer_map=hierarchy_layers,
+        task_cylinder_radius=task_cylinder_radius,
+    )
+
+    task_to_relation_layers_map = {
+        task: TaskRelationLayers(
+            dependency_layers=dependency_positions[task],
+            hierarchy_layer=hierarchy_layers[task],
         )
         for task in graph.tasks()
     }
 
     depth_positions = get_depth_positions(
         graph=graph,
-        relation_positions=relation_positions,
+        task_to_relation_layers_map=task_to_relation_layers_map,
         task_cylinder_radius=task_cylinder_radius,
     )
 
@@ -56,9 +63,7 @@ def calculate_task_positions(
             - _TASK_CYLINDER_LENGTH_OFFSET,
             max_dependency_position=dependency_positions[task].max
             + _TASK_CYLINDER_LENGTH_OFFSET,
-            hierarchy_position=3
-            * float(task_cylinder_radius)
-            * hierarchy_positions[task],
+            hierarchy_position=hierarchy_positions[task],
             depth_position=depth_positions[task],
         )
         for task in graph.tasks()
