@@ -457,9 +457,7 @@ class NetworkGraph:
         # this.
         if dependency_graph.tasks() != hierarchy_graph.tasks():
             msg = "Tasks in dependency graph and hierarchy graph must be the same."
-            raise ValueError(
-                msg
-            )
+            raise ValueError(msg)
 
         self._dependency_graph = dependency_graph
         self._hierarchy_graph = hierarchy_graph

@@ -1,5 +1,6 @@
 import collections
 import itertools
+import math
 import statistics
 from collections.abc import (
     Callable,
@@ -19,6 +20,9 @@ from graft.domain.tasks.dependency_graph import IDependencyGraphView
 from graft.domain.tasks.hierarchy_graph import IHierarchyGraphView
 from graft.domain.tasks.network_graph import INetworkGraphView, NetworkGraph
 from graft.layers.presentation.tkinter_gui.helpers import graph_conversion
+from graft.layers.presentation.tkinter_gui.task_network_graph_drawing.dependency_position_assignment import (
+    position as dependency_position,
+)
 from graft.layers.presentation.tkinter_gui.task_network_graph_drawing.depth_position_assignment.position import (
     RelationPosition,
 )
@@ -33,25 +37,49 @@ NUMBER_OF_DEPTH_POSITION_ITERATIONS: Final = 20
 class DummyUID(tasks.UID):
     """UID of task introduced to ensure single-level hierarchies."""
 
+    def __eq__(self, other: object) -> bool:
+        """Check if dummy UID is equal to other."""
+        return isinstance(other, DummyUID) and int(self) == int(other)
 
-class DummyTaskRelationPosition:
-    """The position of the dummy task cylinder resulting from its hierarchy and dependency relationships."""
+    def __hash__(self) -> int:
+        """Return hash of the UID number.
+        
+        Needs to be overridden explicitly as hash function defaults to None when
+        equality dunder is overridden in subclass.
+        """
+        return super().__hash__()
 
-    def __init__(
-        self,
-        dependency_position: float,
-        hierarchy_position: int,
-    ) -> None:
-        self._dependency = dependency_position
-        self._hierarchy = hierarchy_position
+    def __lt__(self, other: object) -> bool:
+        """Check if dummy UID is less than other."""
+        return isinstance(other, DummyUID) and int(self) < int(other)
 
-    @property
-    def dependency(self) -> float:
-        return self._dependency
+    def __repr__(self) -> str:
+        """Return string representation of dummy UID."""
+        return f"dummy_uid({self._number!r})"
 
-    @property
-    def hierarchy(self) -> int:
-        return self._hierarchy
+
+def _scale_true_task_dependency_position(
+    position: dependency_position.DependencyPosition,
+) -> dependency_position.DependencyPosition:
+    """Stretch out the position of true task along the dependency axis.
+
+    This is done because dummy tasks can exist at 0.5 increments; by stretching
+    dependency positions out by a factor of 2, we can keep these as integers.
+    """
+    return dependency_position.DependencyPosition(2 * position.min, 2 * position.max)
+
+
+def _scale_dummy_task_dependency_position(
+    position: float,
+) -> dependency_position.DependencyPosition:
+    """Scale the dependency position of a dummy task along the dependency axis.
+
+    This is done because dummy tasks can exist at 0.5 increments; by stretching
+    dependency positions out by a factor of 2, we can keep these as integers.
+    """
+    assert math.isclose(position % 0.5, 0)
+    scaled_position = round(position * 2)
+    return dependency_position.DependencyPosition(scaled_position, scaled_position)
 
 
 def get_depth_positions_cascade_method(
@@ -65,10 +93,26 @@ def get_depth_positions_cascade_method(
     }
 
 
+def _get_unique_dummy_uid_factory() -> Callable[[], DummyUID]:
+    """Create a function that, every time it is called, produces a unique Dummy UID.
+
+    UID's will only be unique when compared to UID's produced by the same function.
+    """
+    counter = 0
+
+    def get_unique_dummy_uid() -> DummyUID:
+        nonlocal counter
+        task = DummyUID(counter)
+        counter += 1
+        return task
+
+    return get_unique_dummy_uid
+
+
 def _generate_graph_with_dummy_tasks(
     graph: tasks.INetworkGraphView,
     relation_positions: Mapping[tasks.UID, RelationPosition],
-) -> tuple[tasks.NetworkGraph, dict[DummyUID, DummyTaskRelationPosition]]:
+) -> tuple[tasks.NetworkGraph, dict[tasks.UID | DummyUID, RelationPosition]]:
     """Create a clone of the graph with dummy tasks.
 
     Dummy tasks are added to ensure that a hierarchy only stretches across one
@@ -81,13 +125,23 @@ def _generate_graph_with_dummy_tasks(
     (aka: integers) allowed for normal task dependency positions.
 
     My current dummy UID implementation isn't particularly type safe, and
-    requires on nobody using the DummyUID class outside this context &
-    nobody having over 10000 tasks. find a better way.
+    requires on nobody using the DummyUID class outside this context. Find a
+    better way.
     """
-    graph_with_dummies = tasks.NetworkGraph.clone(graph)
-    relation_positions_with_dummies = dict[DummyUID, DummyTaskRelationPosition]()
+    get_unique_dummy_task = _get_unique_dummy_uid_factory()
 
-    dummy_task_counter = 10000
+    graph_with_dummies = tasks.NetworkGraph.clone(graph)
+
+    relation_positions_with_dummies: dict[tasks.UID | DummyUID, RelationPosition] = {
+        task: RelationPosition(
+            dependency_position=_scale_true_task_dependency_position(
+                position.dependency
+            ),
+            hierarchy_position=position.hierarchy,
+        )
+        for task, position in relation_positions.items()
+    }
+
     for supertask, subtask in list(graph.hierarchy_graph().hierarchies()):
         if (
             relation_positions[supertask].hierarchy
@@ -99,24 +153,27 @@ def _generate_graph_with_dummy_tasks(
         graph_with_dummies.remove_hierarchy(supertask, subtask)
         dummy_tasks_replacing_current_hierarchy = list[DummyUID]()
 
-        dependency_position = (
+        subtask_dependency_midpoint = (
             relation_positions[subtask].dependency.min
             + relation_positions[subtask].dependency.max
         ) / 2
+        scaled_dummy_dependency_position = _scale_dummy_task_dependency_position(
+            subtask_dependency_midpoint
+        )
 
         for dummy_task_hierarchy_position in range(
             relation_positions[supertask].hierarchy - 1,
             relation_positions[subtask].hierarchy,
             -1,
         ):
-            dummy_task = DummyUID(dummy_task_counter)
-            dummy_task_counter += 1
+            dummy_task = get_unique_dummy_task()
             dummy_tasks_replacing_current_hierarchy.append(dummy_task)
             graph_with_dummies.add_task(dummy_task)
 
-            dummy_task_position = DummyTaskRelationPosition(
-                dependency_position, dummy_task_hierarchy_position
+            dummy_task_position = RelationPosition(
+                scaled_dummy_dependency_position, dummy_task_hierarchy_position
             )
+
             relation_positions_with_dummies[dummy_task] = dummy_task_position
 
         tasks_in_hierarchy_chain = itertools.chain(
@@ -169,61 +226,60 @@ def _calculate_median_index_of_subtasks(
     )
 
 
+class TaskGroupAlongDependencyAxis:
+    def __init__(self, position: int, task_group: set[tasks.UID]) -> None:
+        self.position = position
+        self.tasks = task_group
+
+
 def _get_groups_along_dependency_axis(
-    tasks_to_assess: Collection[tasks.UID],  # TODO: Shit name, think of a better one
+    tasks_to_group: Collection[tasks.UID],
     relation_positions: Mapping[tasks.UID, RelationPosition],
-    relation_positions_of_dummy_tasks: Mapping[DummyUID, DummyTaskRelationPosition],
 ) -> Generator[set[tasks.UID], None, None]:
     # For example A starts at 1 & ends at 3, B starts at 2 & ends at 2, C starts at 2 & ends at 4.
-    # Groups would be: {A}, # {A, B, C}, {A, C}
-    min_scaled_dependency_position_to_task_map = collections.defaultdict[
-        int, set[tasks.UID]
-    ](set)
-    max_scaled_dependency_position_to_task_map = collections.defaultdict[
-        int, set[tasks.UID]
-    ](set)
-    for task in tasks_to_assess:
-        if isinstance(task, DummyUID):
-            min_dependency_position = relation_positions_of_dummy_tasks[task].dependency
-            max_dependency_position = relation_positions_of_dummy_tasks[task].dependency
-        else:
-            min_dependency_position = relation_positions[task].dependency.min
-            max_dependency_position = relation_positions[task].dependency.max
+    # Groups would be: {A}, {A, B, C}, {A, C}
+    min_dependency_position_to_task_map = collections.defaultdict[int, set[tasks.UID]](
+        set
+    )
+    max_dependency_position_to_task_map = collections.defaultdict[int, set[tasks.UID]](
+        set
+    )
+    for task in tasks_to_group:
+        task_dependency_position = relation_positions[task].dependency
+        min_dependency_position_to_task_map[task_dependency_position.min].add(task)
+        max_dependency_position_to_task_map[task_dependency_position.max].add(task)
 
-        min_scaled_dependency_position = round(2 * min_dependency_position)
-        max_scaled_dependency_position = round(2 * max_dependency_position)
-
-        min_scaled_dependency_position_to_task_map[min_scaled_dependency_position].add(
-            task
-        )
-        max_scaled_dependency_position_to_task_map[max_scaled_dependency_position].add(
-            task
-        )
-
-    sorted_min_scaled_dependency_position_groups = collections.deque(
-        sorted(min_scaled_dependency_position_to_task_map.items())
+    min_dependency_position_groups = (
+        TaskGroupAlongDependencyAxis(position=position, task_group=task_group)
+        for position, task_group in min_dependency_position_to_task_map.items()
+    )
+    sorted_min_dependency_position_groups = collections.deque(
+        sorted(min_dependency_position_groups, key=lambda group: group.position)
     )
 
-    sorted_max_scaled_dependency_position_groups = collections.deque(
-        sorted(max_scaled_dependency_position_to_task_map.items())
+    max_dependency_position_groups = (
+        TaskGroupAlongDependencyAxis(position=position, task_group=task_group)
+        for position, task_group in max_dependency_position_to_task_map.items()
+    )
+    sorted_max_dependency_position_groups = collections.deque(
+        sorted(max_dependency_position_groups, key=lambda group: group.position)
     )
 
     previous_position_task_group = set[tasks.UID]()
 
-    while sorted_min_scaled_dependency_position_groups:
-        (
-            dependency_position,
-            tasks_starting,
-        ) = sorted_min_scaled_dependency_position_groups.popleft()
+    while sorted_min_dependency_position_groups:
+        starting_tasks_group = sorted_min_dependency_position_groups.popleft()
 
-        task_group = previous_position_task_group | tasks_starting
+        task_group = previous_position_task_group | starting_tasks_group.tasks
 
-        while sorted_max_scaled_dependency_position_groups[0][0] < dependency_position:
-            (
-                _,
-                tasks_ended,
-            ) = sorted_max_scaled_dependency_position_groups.popleft()
-            for task in tasks_ended:
+        # Don't have to check that this queue is empty, as max positions should
+        # never be empty while min positions is not empty
+        while (
+            sorted_max_dependency_position_groups[0].position
+            < starting_tasks_group.position
+        ):
+            ended_tasks = sorted_max_dependency_position_groups.popleft()
+            for task in ended_tasks.tasks:
                 task_group.remove(task)
 
         yield task_group
@@ -273,18 +329,13 @@ def _get_topological_sort_group_indexes[T: Hashable](
 def _get_depth_indexes_unamed_method(
     graph: NetworkGraph,
     relation_positions: Mapping[tasks.UID, RelationPosition],
-    relation_positions_of_dummy_tasks: Mapping[DummyUID, DummyTaskRelationPosition],
 ) -> dict[tasks.UID, int]:
     hierarchy_layers = _get_task_hierarchy_layers(graph.hierarchy_graph())
 
     hierarchy_layers_with_dependency_groups = [
         (
             layer,
-            list(
-                _get_groups_along_dependency_axis(
-                    layer, relation_positions, relation_positions_of_dummy_tasks
-                )
-            ),
+            list(_get_groups_along_dependency_axis(layer, relation_positions)),
         )
         for layer in hierarchy_layers
     ]
@@ -387,6 +438,8 @@ def _get_depth_indexes_unamed_method(
 
             for task, depth_index in layer_task_to_depth_index_map.items():
                 task_to_depth_index_map[task] = depth_index
+
+        # TODO: Add transpose step
 
     return task_to_depth_index_map
 
@@ -631,7 +684,6 @@ def _shift_task_shallower(
 def _get_depth_positions_priority_method(
     graph: INetworkGraphView,
     relation_positions: Mapping[tasks.UID, RelationPosition],
-    relation_positions_of_dummy_tasks: Mapping[DummyUID, DummyTaskRelationPosition],
     task_to_depth_index_map: Mapping[tasks.UID, int],
     starting_separation_distance: float,
     min_separation_distance: float,
@@ -650,9 +702,7 @@ def _get_depth_positions_priority_method(
 
     depth_graphs = [
         _get_simple_depth_graph(
-            _get_groups_along_dependency_axis(
-                layer, relation_positions, relation_positions_of_dummy_tasks
-            )
+            _get_groups_along_dependency_axis(layer, relation_positions)
         )
         for layer in layers_sorted_by_depth_index
     ]
@@ -664,9 +714,7 @@ def _get_depth_positions_priority_method(
 
     groups_along_dependency_axis = list(
         _get_groups_along_dependency_axis(
-            graph.tasks(),
-            relation_positions=relation_positions,
-            relation_positions_of_dummy_tasks=relation_positions_of_dummy_tasks,
+            graph.tasks(), relation_positions=relation_positions
         )
     )
 
@@ -836,15 +884,23 @@ def get_depth_positions_unnamed_method(
     ) = _generate_graph_with_dummy_tasks(graph, relation_positions)
 
     task_to_depth_index_map = _get_depth_indexes_unamed_method(
-        graph_with_dummies, relation_positions, relation_positions_of_dummy_tasks
+        graph_with_dummies, relation_positions_of_dummy_tasks
     )
 
-    return _get_depth_positions_priority_method(
+    task_to_depth_position_map = _get_depth_positions_priority_method(
         graph=graph,
         relation_positions=relation_positions,
-        relation_positions_of_dummy_tasks=relation_positions_of_dummy_tasks,
         task_to_depth_index_map=task_to_depth_index_map,
         # TODO: These separation values were pulled out of thin air - more investigation required
         starting_separation_distance=16 * float(task_cylinder_radius),
         min_separation_distance=12 * float(task_cylinder_radius),
     )
+
+    # Clear the dummy tasks
+    dummy_tasks = [
+        task for task in task_to_depth_position_map if isinstance(task, DummyUID)
+    ]
+    for dummy_task in dummy_tasks:
+        del task_to_depth_position_map[dummy_task]
+
+    return task_to_depth_position_map

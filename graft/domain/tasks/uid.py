@@ -32,11 +32,11 @@ class UID:
 
     def __eq__(self, other: object) -> bool:
         """Check if UID is equal to other."""
-        return isinstance(other, UID) and self._number == int(other)
+        return isinstance(other, UID) and int(self) == int(other)
 
     def __lt__(self, other: object) -> bool:
         """Check if UID is less than other."""
-        return isinstance(other, UID) and self._number < int(other)
+        return isinstance(other, UID) and int(self) < int(other)
 
     def __hash__(self) -> int:
         """Return hash of the UID number."""
