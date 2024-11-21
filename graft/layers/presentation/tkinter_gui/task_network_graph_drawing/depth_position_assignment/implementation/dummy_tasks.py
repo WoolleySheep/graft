@@ -1,6 +1,12 @@
 import itertools
 import math
-from collections.abc import Callable, Generator, Iterable, Mapping, MutableMapping
+from collections.abc import (
+    Callable,
+    Generator,
+    Mapping,
+    MutableMapping,
+    Sequence,
+)
 
 from graft.domain import tasks
 from graft.domain.tasks.network_graph import NetworkGraph
@@ -36,50 +42,86 @@ class DummyUID(tasks.UID):
         return f"dummy_uid({self._number!r})"
 
 
-def _closest_element[T: float](
-    iterable_ordered_by_ascending: Iterable[T], value: T
-) -> T:
-    """Return the element in the iterable with the minimum absolute difference to value.
+def _closest_element[T: float](sorted_sequence: Sequence[T], value: float) -> T:
+    """Return the element in the sequence with the minimum absolute difference to value.
 
-    The iterable must be ordered by ascending order.
+    The sequence must be sorted (ascending order).
     """
-    min_difference = float("inf")
-    closest_element: T | None = None
-
-    for element in iterable_ordered_by_ascending:
-        difference = abs(element - value)
-
-        if difference < min_difference:
-            min_difference = difference
-            closest_element = element
-
-        # Once the elements are larger than the value, they're only going to
-        # keep getting further away. Stop searching
-        if element >= value:
-            break
-
-    if closest_element is None:
+    if len(sorted_sequence) == 0:
         raise ValueError
+
+    left_pointer = 0
+    right_pointer = len(sorted_sequence) - 1
+
+    closest_element = sorted_sequence[0]  # Could be any element in the array
+    min_abs_difference = abs(value - closest_element)
+
+    while left_pointer <= right_pointer:
+        middle_pointer = left_pointer + (right_pointer - left_pointer) // 2
+        middle_element = sorted_sequence[middle_pointer]
+        difference = value - middle_element
+        abs_difference = abs(difference)
+
+        if abs_difference < min_abs_difference:
+            min_abs_difference = abs_difference
+            closest_element = middle_element
+
+        if difference == 0:
+            # Found the exact value we're looking for - no need to keep searching
+            break
+        if difference < 0:
+            right_pointer = middle_pointer - 1
+        elif difference > 0:
+            left_pointer = middle_pointer + 1
 
     return closest_element
 
 
-def _within_range(
-    sorted_iterable: Iterable[int], lower_bound: int, upper_bound: int
-) -> Generator[int, None, None]:
-    """Yield all items in sorted iterable that are within the given range.
+def _islice_for_sequences[T](
+    sequence: Sequence[T],
+    start: int | None = None,
+    stop: int | None = None,
+    step: int = 1,
+) -> Generator[T, None, None]:
+    """Return a generator that mimics the behaviour of a slice.
 
-    Note that it is < and >, not <= and >=.
+    Should be exactly the same as iter(sequence(slice(start, stop, step)))
     """
-    if lower_bound >= upper_bound:
+    if step == 0:
         raise ValueError
 
-    for item in itertools.dropwhile(
-        lambda value: value <= lower_bound, sorted_iterable
-    ):
-        if item >= upper_bound:
-            break
-        yield item
+    if step > 0:
+        if start is None:
+            start = 0
+        elif start >= len(sequence):
+            return
+        elif start < 0:
+            start = max(len(sequence) + start, 0)
+
+        if stop is None:
+            stop = len(sequence)
+        elif stop < 0:
+            stop = max(len(sequence) + stop, 0)
+        else:
+            stop = min(stop, len(sequence))
+
+    else:
+        if start is None or start >= len(sequence):
+            start = len(sequence) - 1
+        elif start < 0:
+            start = len(sequence) + start
+            if start < 0:
+                return
+
+        if stop is None:
+            stop = -1
+        elif stop < 0:
+            stop = max(len(sequence) + stop, -1)
+        elif stop >= len(sequence):
+            stop = len(sequence) - 1
+
+    for i in range(start, stop, step):
+        yield sequence[i]
 
 
 def _get_unique_dummy_uid_factory() -> Callable[[], DummyUID]:
@@ -127,9 +169,15 @@ def _replace_multilevel_hierarchies_with_single_level_dummies(
     graph: NetworkGraph,
     task_to_relation_layers_map: MutableMapping[tasks.UID, TaskRelationLayers],
 ) -> None:
+    # These two data structures are used to allow very quick computations of the
+    # layers that lie between a two layers. Use the dict to find the start & stop
+    # indexes, then iterate over the subset of the sorted list
     sorted_hierarchy_layers = sorted(
         {layers.hierarchy for layers in task_to_relation_layers_map.values()}
     )
+    hierarchy_layer_to_sorted_hierarchy_layers_index_map = {
+        layer: index for index, layer in enumerate(sorted_hierarchy_layers)
+    }
 
     for supertask, subtask in list(graph.hierarchy_graph().hierarchies()):
         subtask_dependency_midpoint = (
@@ -141,14 +189,26 @@ def _replace_multilevel_hierarchies_with_single_level_dummies(
         # midpoint should be at a whole number
         assert math.isclose(subtask_dependency_midpoint % 1, 0)
         subtask_dependency_midpoint_rounded = round(subtask_dependency_midpoint)
+
         dummy_dependency_layers = DependencyLayers(
             subtask_dependency_midpoint_rounded, subtask_dependency_midpoint_rounded
         )
+
+        supertask_layer = task_to_relation_layers_map[supertask].hierarchy
+        subtask_layer = task_to_relation_layers_map[subtask].hierarchy
+
+        supertask_layer_index_in_sorted_hierarchy_layers = (
+            hierarchy_layer_to_sorted_hierarchy_layers_index_map[supertask_layer]
+        )
+        subtask_layer_index_in_sorted_hierarchy_layers = (
+            hierarchy_layer_to_sorted_hierarchy_layers_index_map[subtask_layer]
+        )
+
         dummy_tasks_replacing_current_hierarchy = list[DummyUID]()
-        for hierarchy_layer in _within_range(
+        for hierarchy_layer in _islice_for_sequences(
             sorted_hierarchy_layers,
-            task_to_relation_layers_map[subtask].hierarchy,
-            task_to_relation_layers_map[supertask].hierarchy,
+            subtask_layer_index_in_sorted_hierarchy_layers + 1,
+            supertask_layer_index_in_sorted_hierarchy_layers,
         ):
             dummy_task = get_unique_dummy_task()
             dummy_tasks_replacing_current_hierarchy.append(dummy_task)
@@ -179,9 +239,15 @@ def _replace_multilevel_dependencies_with_single_level_dummies(
     graph: NetworkGraph,
     task_to_relation_layers_map: MutableMapping[tasks.UID, TaskRelationLayers],
 ) -> None:
-    sorted_dependency_levels = sorted(
+    # These two data structures are used to allow very quick computations of the
+    # layers that lie between a two layers. Use the dict to find the start & stop
+    # indexes, then iterate over the subset of the sorted list
+    sorted_dependency_layers = sorted(
         {layers.dependency.min for layers in task_to_relation_layers_map.values()}
     )
+    dependency_layer_to_sorted_dependency_layers_index_map = {
+        layer: index for index, layer in enumerate(sorted_dependency_layers)
+    }
 
     sorted_hierarchy_levels = sorted(
         {layers.hierarchy for layers in task_to_relation_layers_map.values()}
@@ -196,17 +262,27 @@ def _replace_multilevel_dependencies_with_single_level_dummies(
             - task_to_relation_layers_map[dependee_task].dependency.max
         )
 
+        dependee_task_layer = task_to_relation_layers_map[dependee_task].dependency.max
+        dependent_task_layer = task_to_relation_layers_map[
+            dependent_task
+        ].dependency.min
+        dependee_task_layer_index_in_sorted_dependency_layers = (
+            dependency_layer_to_sorted_dependency_layers_index_map[dependee_task_layer]
+        )
+        dependent_task_layer_index_in_sorted_dependency_layers = (
+            dependency_layer_to_sorted_dependency_layers_index_map[dependent_task_layer]
+        )
+
         dummy_tasks_replacing_current_dependency = list[DummyUID]()
-        for dependency_level in _within_range(
-            sorted_dependency_levels,
-            task_to_relation_layers_map[dependee_task].dependency.max,
-            task_to_relation_layers_map[dependent_task].dependency.min,
+        for dependency_level in _islice_for_sequences(
+            sorted_dependency_layers,
+            dependee_task_layer_index_in_sorted_dependency_layers + 1,
+            dependent_task_layer_index_in_sorted_dependency_layers,
         ):
             dummy_task = get_unique_dummy_task()
             dummy_tasks_replacing_current_dependency.append(dummy_task)
             graph.add_task(dummy_task)
 
-            # Get the closest hierarchy level to the interpolated hierarchy level
             dependency_level_delta = (
                 dependency_level
                 - task_to_relation_layers_map[dependee_task].dependency.max
@@ -216,8 +292,8 @@ def _replace_multilevel_dependencies_with_single_level_dummies(
                 + task_to_relation_layers_map[dependee_task].hierarchy
             )
 
-            closest_hierarchy_level = round(
-                _closest_element(sorted_hierarchy_levels, interpolated_hierarchy_level)
+            closest_hierarchy_level = _closest_element(
+                sorted_hierarchy_levels, interpolated_hierarchy_level
             )
 
             task_to_relation_layers_map[dummy_task] = TaskRelationLayers(
