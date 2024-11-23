@@ -2,7 +2,7 @@ import tkinter as tk
 
 from graft import architecture
 from graft.domain import tasks
-from graft.layers.presentation.tkinter_gui import event_broker, graph_colours
+from graft.layers.presentation.tkinter_gui import event_broker
 from graft.layers.presentation.tkinter_gui.helpers import (
     StaticHierarchyGraph,
     format_task_name_for_annotation,

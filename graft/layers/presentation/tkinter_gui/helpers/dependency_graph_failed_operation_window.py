@@ -4,6 +4,9 @@ from tkinter import ttk
 
 from graft.domain import tasks
 from graft.layers.presentation.tkinter_gui import graph_colours
+from graft.layers.presentation.tkinter_gui.helpers.edge_drawing_properties import (
+    EdgeDrawingProperties,
+)
 from graft.layers.presentation.tkinter_gui.helpers.failed_operation_window import (
     OperationFailedWindow,
 )
@@ -49,9 +52,9 @@ class DependencyGraphOperationFailedWindow(OperationFailedWindow):
             dependency_graph=dependency_graph,
             get_task_annotation_text=get_task_annotation_text,
             get_task_properties=self._get_task_properties,
-            get_dependency_colour=self._get_dependency_colour,
+            get_dependency_properties=self._get_dependency_properties,
             additional_dependencies=additional_dependencies,
-            get_additional_dependency_colour=self._get_additional_dependency_colour,
+            get_additional_dependency_properties=self._get_additional_dependency_properties,
         )
 
         self._label.grid(row=0, column=0)
@@ -74,6 +77,13 @@ class DependencyGraphOperationFailedWindow(OperationFailedWindow):
     ) -> str:
         return graph_colours.DEFAULT_EDGE_COLOUR
 
+    def _get_dependency_properties(
+        self, dependee_task: tasks.UID, dependent_task: tasks.UID
+    ) -> EdgeDrawingProperties:
+        colour = self._get_dependency_colour(dependee_task, dependent_task)
+        connection_style = None
+        return EdgeDrawingProperties(colour=colour, connection_style=connection_style)
+
     def _get_additional_dependency_colour(
         self, dependee_task: tasks.UID, dependent_task: tasks.UID
     ) -> str:
@@ -82,3 +92,10 @@ class DependencyGraphOperationFailedWindow(OperationFailedWindow):
             if (dependee_task, dependent_task) in self._additional_dependencies
             else graph_colours.DEFAULT_EDGE_COLOUR
         )
+
+    def _get_additional_dependency_properties(
+        self, dependee_task: tasks.UID, dependent_task: tasks.UID
+    ) -> EdgeDrawingProperties:
+        colour = self._get_additional_dependency_colour(dependee_task, dependent_task)
+        connection_style = None
+        return EdgeDrawingProperties(colour=colour, connection_style=connection_style)

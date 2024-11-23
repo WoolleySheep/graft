@@ -19,6 +19,9 @@ from graft import graphs
 from graft.domain import tasks
 from graft.layers.presentation.tkinter_gui import graph_colours, layered_graph_drawing
 from graft.layers.presentation.tkinter_gui.helpers import graph_conversion
+from graft.layers.presentation.tkinter_gui.helpers.edge_drawing_properties import (
+    EdgeDrawingProperties,
+)
 from graft.layers.presentation.tkinter_gui.helpers.node_drawing_properties import (
     NodeDrawingProperties,
 )
@@ -28,6 +31,9 @@ from graft.layers.presentation.tkinter_gui.layered_graph_drawing.orientation imp
 
 _MOTION_NOTIFY_EVENT_NAME: Final = "motion_notify_event"
 _BUTTON_RELEASE_EVENT_NAME: Final = "button_release_event"
+
+_DEFAULT_ADDITIONAL_EDGE_COLOUR: Final = "red"
+_DEFAULT_ADDITIONAL_EDGE_CONNECTION_STYLE: Final = "arc3,rad=0.1"
 
 
 def _return_none(*_: tuple[Any, ...]) -> Literal[None]:
@@ -65,10 +71,12 @@ class StaticGraph[T: Hashable](tk.Frame):
         graph: graphs.DirectedAcyclicGraph[T],
         get_node_annotation_text: Callable[[T], str | None] | None = None,
         get_node_properties: Callable[[T], NodeDrawingProperties | None] | None = None,
-        get_edge_colour: Callable[[T, T], str | None] | None = None,
+        get_edge_properties: Callable[[T, T], EdgeDrawingProperties | None]
+        | None = None,
         additional_edges: Set[tuple[T, T]] | None = None,
         on_node_left_click: Callable[[T], None] | None = None,
-        get_additional_edge_colour: Callable[[T, T], str | None] | None = None,
+        get_additional_edge_properties: Callable[[T, T], EdgeDrawingProperties | None]
+        | None = None,
     ) -> None:
         super().__init__(master)
 
@@ -81,17 +89,17 @@ class StaticGraph[T: Hashable](tk.Frame):
             get_node_properties if get_node_properties is not None else _return_none
         )
 
-        self._get_edge_colour = (
-            get_edge_colour if get_edge_colour is not None else _return_none
+        self._get_edge_properties = (
+            get_edge_properties if get_edge_properties is not None else _return_none
         )
 
         self._additional_edges = (
             additional_edges if additional_edges is not None else set[tuple[T, T]]()
         )
 
-        self._get_additional_edge_colour = (
-            get_additional_edge_colour
-            if get_additional_edge_colour is not None
+        self._get_additional_edge_properties = (
+            get_additional_edge_properties
+            if get_additional_edge_properties is not None
             else _return_none
         )
 
@@ -125,7 +133,7 @@ class StaticGraph[T: Hashable](tk.Frame):
         get_node_properties: Callable[[T], NodeDrawingProperties | None]
         | None
         | DefaultSentinel = DefaultSentinel.DEFAULT,
-        get_edge_colour: Callable[[T, T], str | None]
+        get_edge_properties: Callable[[T, T], EdgeDrawingProperties | None]
         | None
         | DefaultSentinel = DefaultSentinel.DEFAULT,
         on_node_left_click: Callable[[T], None]
@@ -134,7 +142,7 @@ class StaticGraph[T: Hashable](tk.Frame):
         additional_edges: Set[tuple[T, T]]
         | None
         | DefaultSentinel = DefaultSentinel.DEFAULT,
-        get_additional_edge_colour: Callable[[T, T], str | None]
+        get_additional_edge_properties: Callable[[T, T], EdgeDrawingProperties | None]
         | None
         | DefaultSentinel = DefaultSentinel.DEFAULT,
     ) -> None:
@@ -152,9 +160,9 @@ class StaticGraph[T: Hashable](tk.Frame):
                 get_node_properties if get_node_properties is not None else _return_none
             )
 
-        if get_edge_colour is not DefaultSentinel.DEFAULT:
-            self._get_edge_colour = (
-                get_edge_colour if get_edge_colour is not None else _return_none
+        if get_edge_properties is not DefaultSentinel.DEFAULT:
+            self._get_edge_properties = (
+                get_edge_properties if get_edge_properties is not None else _return_none
             )
 
         if on_node_left_click is not DefaultSentinel.DEFAULT:
@@ -165,10 +173,10 @@ class StaticGraph[T: Hashable](tk.Frame):
                 additional_edges if additional_edges is not None else set[tuple[T, T]]()
             )
 
-        if get_additional_edge_colour is not DefaultSentinel.DEFAULT:
-            self._get_additional_edge_colour = (
-                get_additional_edge_colour
-                if get_additional_edge_colour is not None
+        if get_additional_edge_properties is not DefaultSentinel.DEFAULT:
+            self._get_additional_edge_properties = (
+                get_additional_edge_properties
+                if get_additional_edge_properties is not None
                 else _return_none
             )
 
@@ -210,16 +218,34 @@ class StaticGraph[T: Hashable](tk.Frame):
             node_edge_colours.append(edge_colour)
 
         edge_colours = list[str]()
+        edge_connection_styles = list[str]()
         for source, target in networkx_graph.edges:
-            get_colour = (
-                self._get_additional_edge_colour
-                if (source, target) in self._additional_edges
-                else self._get_edge_colour
+            if (source, target) in self._additional_edges:
+                get_properties = self._get_additional_edge_properties
+                default_edge_colour = _DEFAULT_ADDITIONAL_EDGE_COLOUR
+                default_edge_connection_style = (
+                    _DEFAULT_ADDITIONAL_EDGE_CONNECTION_STYLE
+                )
+            else:
+                get_properties = self._get_edge_properties
+                default_edge_colour = graph_colours.DEFAULT_EDGE_COLOUR
+                default_edge_connection_style = (
+                    graph_colours.DEFAULT_EDGE_CONNECTION_STYLE
+                )
+
+            properties = get_properties(source, target)
+            colour = (
+                properties.colour
+                if properties is not None and properties.colour is not None
+                else default_edge_colour
             )
-            colour = get_colour(source, target)
-            edge_colours.append(
-                colour if colour is not None else graph_colours.DEFAULT_EDGE_COLOUR
+            edge_colours.append(colour)
+            connection_style = (
+                properties.connection_style
+                if properties is not None and properties.connection_style is not None
+                else default_edge_connection_style
             )
+            edge_connection_styles.append(connection_style)
 
         self._node_positions = (
             layered_graph_drawing.calculate_node_positions_sugiyama_method(
@@ -240,9 +266,9 @@ class StaticGraph[T: Hashable](tk.Frame):
         nx.draw_networkx_edges(
             networkx_graph,
             pos=self._node_positions,
-            edge_color=edge_colours,  # pyright: ignore [reportArgumentType] (edge_colour also accepts array[str])
+            edge_color=edge_colours,  # pyright: ignore [reportArgumentType] (edge_color also accepts array[str])
             ax=self._ax,
-            connectionstyle="arc3,rad=0.1",
+            connectionstyle=edge_connection_styles,  # pyright: ignore [reportArgumentType] (connectionstyle also accepts array[str])
         )
 
         nx.draw_networkx_labels(

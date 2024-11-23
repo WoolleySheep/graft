@@ -4,6 +4,9 @@ from tkinter import ttk
 
 from graft.domain import tasks
 from graft.layers.presentation.tkinter_gui import graph_colours
+from graft.layers.presentation.tkinter_gui.helpers.edge_drawing_properties import (
+    EdgeDrawingProperties,
+)
 from graft.layers.presentation.tkinter_gui.helpers.failed_operation_window import (
     OperationFailedWindow,
 )
@@ -87,9 +90,9 @@ class NetworkGraphOperationFailedWindow(OperationFailedWindow):
             hierarchy_graph=task_network.hierarchy_graph(),
             get_task_annotation_text=get_task_annotation_text,
             get_task_properties=self._get_task_properties,
-            get_hierarchy_colour=self._get_hierarchy_colour,
+            get_hierarchy_properties=self._get_hierarchy_properties,
             additional_hierarchies=additional_hierarchies,
-            get_additional_hierarchy_colour=self._get_additional_hierarchy_colour,
+            get_additional_hierarchy_properties=self._get_additional_hierarchy_properties,
         )
 
         self._dependency_graph_label = ttk.Label(self, text="Dependency graph")
@@ -98,9 +101,9 @@ class NetworkGraphOperationFailedWindow(OperationFailedWindow):
             dependency_graph=task_network.dependency_graph(),
             get_task_annotation_text=get_task_annotation_text,
             get_task_properties=self._get_task_properties,
-            get_dependency_colour=self._get_dependency_colour,
+            get_dependency_properties=self._get_dependency_properties,
             additional_dependencies=additional_dependencies,
-            get_additional_dependency_colour=self._get_additional_dependency_colour,
+            get_additional_dependency_properties=self._get_additional_dependency_properties,
         )
 
         self._description_label.grid(row=0, column=0, columnspan=2)
@@ -128,6 +131,13 @@ class NetworkGraphOperationFailedWindow(OperationFailedWindow):
             else graph_colours.DEFAULT_EDGE_COLOUR
         )
 
+    def _get_hierarchy_properties(
+        self, supertask: tasks.UID, subtask: tasks.UID
+    ) -> EdgeDrawingProperties:
+        colour = self._get_hierarchy_colour(supertask, subtask)
+        connection_style = None
+        return EdgeDrawingProperties(colour=colour, connection_style=connection_style)
+
     def _get_additional_hierarchy_colour(
         self, supertask: tasks.UID, subtask: tasks.UID
     ) -> str:
@@ -137,12 +147,26 @@ class NetworkGraphOperationFailedWindow(OperationFailedWindow):
             else graph_colours.DEFAULT_EDGE_COLOUR
         )
 
+    def _get_additional_hierarchy_properties(
+        self, supertask: tasks.UID, subtask: tasks.UID
+    ) -> EdgeDrawingProperties:
+        colour = self._get_additional_hierarchy_colour(supertask, subtask)
+        connection_style = None
+        return EdgeDrawingProperties(colour=colour, connection_style=connection_style)
+
     def _get_dependency_colour(self, supertask: tasks.UID, subtask: tasks.UID) -> str:
         return (
             graph_colours.HIGHLIGHTED_EDGE_COLOUR
             if (supertask, subtask) in self._highlighted_dependencies
             else graph_colours.DEFAULT_EDGE_COLOUR
         )
+
+    def _get_dependency_properties(
+        self, supertask: tasks.UID, subtask: tasks.UID
+    ) -> EdgeDrawingProperties:
+        colour = self._get_dependency_colour(supertask, subtask)
+        connection_style = None
+        return EdgeDrawingProperties(colour=colour, connection_style=connection_style)
 
     def _get_additional_dependency_colour(
         self, supertask: tasks.UID, subtask: tasks.UID
@@ -152,3 +176,10 @@ class NetworkGraphOperationFailedWindow(OperationFailedWindow):
             if (supertask, subtask) in self._additional_dependencies
             else graph_colours.DEFAULT_EDGE_COLOUR
         )
+
+    def _get_additional_dependency_properties(
+        self, supertask: tasks.UID, subtask: tasks.UID
+    ) -> EdgeDrawingProperties:
+        colour = self._get_additional_dependency_colour(supertask, subtask)
+        connection_style = None
+        return EdgeDrawingProperties(colour=colour, connection_style=connection_style)

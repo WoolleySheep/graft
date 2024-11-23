@@ -3,6 +3,9 @@ from collections.abc import Callable, Set
 
 from graft.domain import tasks
 from graft.layers.presentation.tkinter_gui.helpers import graph_conversion
+from graft.layers.presentation.tkinter_gui.helpers.edge_drawing_properties import (
+    EdgeDrawingProperties,
+)
 from graft.layers.presentation.tkinter_gui.helpers.node_drawing_properties import (
     NodeDrawingProperties,
 )
@@ -23,11 +26,15 @@ class StaticHierarchyGraph(tk.Frame):
         get_task_annotation_text: Callable[[tasks.UID], str | None] | None = None,
         get_task_properties: Callable[[tasks.UID], NodeDrawingProperties | None]
         | None = None,
-        get_hierarchy_colour: Callable[[tasks.UID, tasks.UID], str | None]
+        get_hierarchy_properties: Callable[
+            [tasks.UID, tasks.UID], EdgeDrawingProperties | None
+        ]
         | None = None,
         on_task_left_click: Callable[[tasks.UID], None] | None = None,
         additional_hierarchies: Set[tuple[tasks.UID, tasks.UID]] | None = None,
-        get_additional_hierarchy_colour: Callable[[tasks.UID, tasks.UID], str | None]
+        get_additional_hierarchy_properties: Callable[
+            [tasks.UID, tasks.UID], EdgeDrawingProperties | None
+        ]
         | None = None,
     ) -> None:
         super().__init__(master=master)
@@ -37,10 +44,10 @@ class StaticHierarchyGraph(tk.Frame):
             graph=graph_conversion.convert_hierarchy_to_reduced_dag(hierarchy_graph),
             get_node_annotation_text=get_task_annotation_text,
             get_node_properties=get_task_properties,
-            get_edge_colour=get_hierarchy_colour,
+            get_edge_properties=get_hierarchy_properties,
             on_node_left_click=on_task_left_click,
             additional_edges=additional_hierarchies,
-            get_additional_edge_colour=get_additional_hierarchy_colour,
+            get_additional_edge_properties=get_additional_hierarchy_properties,
         )
 
         self._static_graph.grid(row=0, column=0)
@@ -54,7 +61,9 @@ class StaticHierarchyGraph(tk.Frame):
         get_task_properties: Callable[[tasks.UID], NodeDrawingProperties | None]
         | None
         | DefaultSentinel = DefaultSentinel.DEFAULT,
-        get_hierarchy_colour: Callable[[tasks.UID, tasks.UID], str | None]
+        get_hierarchy_properties: Callable[
+            [tasks.UID, tasks.UID], EdgeDrawingProperties | None
+        ]
         | None
         | DefaultSentinel = DefaultSentinel.DEFAULT,
         on_task_left_click: Callable[[tasks.UID], None]
@@ -63,7 +72,9 @@ class StaticHierarchyGraph(tk.Frame):
         additional_hierarchies: Set[tuple[tasks.UID, tasks.UID]]
         | None
         | DefaultSentinel = DefaultSentinel.DEFAULT,
-        get_additional_hierarchy_colour: Callable[[tasks.UID, tasks.UID], str | None]
+        get_additional_hierarchy_properties: Callable[
+            [tasks.UID, tasks.UID], EdgeDrawingProperties | None
+        ]
         | None
         | DefaultSentinel = DefaultSentinel.DEFAULT,
     ) -> None:
@@ -73,8 +84,8 @@ class StaticHierarchyGraph(tk.Frame):
             else None,
             get_node_annotation_text=get_task_annotation_text,
             get_node_properties=get_task_properties,
-            get_edge_colour=get_hierarchy_colour,
+            get_edge_properties=get_hierarchy_properties,
             on_node_left_click=on_task_left_click,
             additional_edges=additional_hierarchies,
-            get_additional_edge_colour=get_additional_hierarchy_colour,
+            get_additional_edge_properties=get_additional_hierarchy_properties,
         )

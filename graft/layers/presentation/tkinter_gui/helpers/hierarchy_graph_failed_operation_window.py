@@ -4,6 +4,9 @@ from tkinter import ttk
 
 from graft.domain import tasks
 from graft.layers.presentation.tkinter_gui import graph_colours
+from graft.layers.presentation.tkinter_gui.helpers.edge_drawing_properties import (
+    EdgeDrawingProperties,
+)
 from graft.layers.presentation.tkinter_gui.helpers.failed_operation_window import (
     OperationFailedWindow,
 )
@@ -61,9 +64,9 @@ class HierarchyGraphOperationFailedWindow(OperationFailedWindow):
             hierarchy_graph=hierarchy_graph,
             get_task_annotation_text=get_task_annotation_text,
             get_task_properties=self._get_task_properties,
-            get_hierarchy_colour=self._get_hierarchy_colour,
+            get_hierarchy_properties=self._get_hierarchy_properties,
             additional_hierarchies=additional_hierarchies,
-            get_additional_hierarchy_colour=self._get_additional_hierarchy_colour,
+            get_additional_hierarchy_properties=self._get_additional_hierarchy_properties,
         )
 
         self._label.grid(row=0, column=0)
@@ -88,6 +91,13 @@ class HierarchyGraphOperationFailedWindow(OperationFailedWindow):
             else graph_colours.DEFAULT_EDGE_COLOUR
         )
 
+    def _get_hierarchy_properties(
+        self, supertask: tasks.UID, subtask: tasks.UID
+    ) -> EdgeDrawingProperties:
+        colour = self._get_hierarchy_colour(supertask, subtask)
+        connection_style = None
+        return EdgeDrawingProperties(colour=colour, connection_style=connection_style)
+
     def _get_additional_hierarchy_colour(
         self, supertask: tasks.UID, subtask: tasks.UID
     ) -> str:
@@ -96,3 +106,10 @@ class HierarchyGraphOperationFailedWindow(OperationFailedWindow):
             if (supertask, subtask) in self._additional_hierarchies
             else graph_colours.DEFAULT_EDGE_COLOUR
         )
+
+    def _get_additional_hierarchy_properties(
+        self, supertask: tasks.UID, subtask: tasks.UID
+    ) -> EdgeDrawingProperties:
+        colour = self._get_additional_hierarchy_colour(supertask, subtask)
+        connection_style = None
+        return EdgeDrawingProperties(colour=colour, connection_style=connection_style)
