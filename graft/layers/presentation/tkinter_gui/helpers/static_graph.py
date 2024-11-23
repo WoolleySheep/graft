@@ -19,6 +19,9 @@ from graft import graphs
 from graft.domain import tasks
 from graft.layers.presentation.tkinter_gui import graph_colours, layered_graph_drawing
 from graft.layers.presentation.tkinter_gui.helpers import graph_conversion
+from graft.layers.presentation.tkinter_gui.helpers.node_drawing_properties import (
+    NodeDrawingProperties,
+)
 from graft.layers.presentation.tkinter_gui.layered_graph_drawing.orientation import (
     GraphOrientation,
 )
@@ -61,7 +64,7 @@ class StaticGraph[T: Hashable](tk.Frame):
         graph_orientation: GraphOrientation,
         graph: graphs.DirectedAcyclicGraph[T],
         get_node_annotation_text: Callable[[T], str | None] | None = None,
-        get_node_colour: Callable[[T], str | None] | None = None,
+        get_node_properties: Callable[[T], NodeDrawingProperties | None] | None = None,
         get_edge_colour: Callable[[T, T], str | None] | None = None,
         additional_edges: Set[tuple[T, T]] | None = None,
         on_node_left_click: Callable[[T], None] | None = None,
@@ -74,8 +77,8 @@ class StaticGraph[T: Hashable](tk.Frame):
 
         self._get_node_annotation_text = get_node_annotation_text
 
-        self._get_node_colour = (
-            get_node_colour if get_node_colour is not None else _return_none
+        self._get_node_properties = (
+            get_node_properties if get_node_properties is not None else _return_none
         )
 
         self._get_edge_colour = (
@@ -119,7 +122,7 @@ class StaticGraph[T: Hashable](tk.Frame):
         get_node_annotation_text: Callable[[T], str | None]
         | None
         | DefaultSentinel = DefaultSentinel.DEFAULT,
-        get_node_colour: Callable[[T], str | None]
+        get_node_properties: Callable[[T], NodeDrawingProperties | None]
         | None
         | DefaultSentinel = DefaultSentinel.DEFAULT,
         get_edge_colour: Callable[[T, T], str | None]
@@ -144,9 +147,9 @@ class StaticGraph[T: Hashable](tk.Frame):
         if get_node_annotation_text is not DefaultSentinel.DEFAULT:
             self._get_node_annotation_text = get_node_annotation_text
 
-        if get_node_colour is not DefaultSentinel.DEFAULT:
-            self._get_node_colour = (
-                get_node_colour if get_node_colour is not None else _return_none
+        if get_node_properties is not DefaultSentinel.DEFAULT:
+            self._get_node_properties = (
+                get_node_properties if get_node_properties is not None else _return_none
             )
 
         if get_edge_colour is not DefaultSentinel.DEFAULT:
@@ -188,12 +191,23 @@ class StaticGraph[T: Hashable](tk.Frame):
         networkx_graph.add_edges_from(self._additional_edges)
         self._nodes_in_path_order: list[T] = list(networkx_graph)
 
-        node_colours = [
-            colour
-            if (colour := self._get_node_colour(node)) is not None
-            else graph_colours.DEFAULT_NODE_COLOUR
-            for node in networkx_graph.nodes
-        ]
+        node_colours = list[str]()
+        node_edge_colours = list[str]()
+        for node in networkx_graph.nodes:
+            node_properties = self._get_node_properties(node)
+            colour = (
+                node_properties.colour
+                if node_properties is not None and node_properties.colour is not None
+                else graph_colours.DEFAULT_NODE_COLOUR
+            )
+            node_colours.append(colour)
+            edge_colour = (
+                node_properties.edge_colour
+                if node_properties is not None
+                and node_properties.edge_colour is not None
+                else colour
+            )
+            node_edge_colours.append(edge_colour)
 
         edge_colours = list[str]()
         for source, target in networkx_graph.edges:
@@ -218,6 +232,7 @@ class StaticGraph[T: Hashable](tk.Frame):
                 networkx_graph,
                 pos=self._node_positions,
                 node_color=node_colours,  # pyright: ignore [reportArgumentType] (node_colour also accepts array[str])
+                edgecolors=node_edge_colours,
                 ax=self._ax,
             )
         )

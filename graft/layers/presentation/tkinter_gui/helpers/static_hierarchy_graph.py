@@ -3,6 +3,9 @@ from collections.abc import Callable, Set
 
 from graft.domain import tasks
 from graft.layers.presentation.tkinter_gui.helpers import graph_conversion
+from graft.layers.presentation.tkinter_gui.helpers.node_drawing_properties import (
+    NodeDrawingProperties,
+)
 from graft.layers.presentation.tkinter_gui.helpers.static_graph import (
     DefaultSentinel,
     StaticGraph,
@@ -18,7 +21,8 @@ class StaticHierarchyGraph(tk.Frame):
         master: tk.Misc,
         hierarchy_graph: tasks.IHierarchyGraphView,
         get_task_annotation_text: Callable[[tasks.UID], str | None] | None = None,
-        get_task_colour: Callable[[tasks.UID], str | None] | None = None,
+        get_task_properties: Callable[[tasks.UID], NodeDrawingProperties | None]
+        | None = None,
         get_hierarchy_colour: Callable[[tasks.UID, tasks.UID], str | None]
         | None = None,
         on_task_left_click: Callable[[tasks.UID], None] | None = None,
@@ -32,7 +36,7 @@ class StaticHierarchyGraph(tk.Frame):
             graph_orientation=GraphOrientation.VERTICAL,
             graph=graph_conversion.convert_hierarchy_to_reduced_dag(hierarchy_graph),
             get_node_annotation_text=get_task_annotation_text,
-            get_node_colour=get_task_colour,
+            get_node_properties=get_task_properties,
             get_edge_colour=get_hierarchy_colour,
             on_node_left_click=on_task_left_click,
             additional_edges=additional_hierarchies,
@@ -47,7 +51,7 @@ class StaticHierarchyGraph(tk.Frame):
         get_task_annotation_text: Callable[[tasks.UID], str | None]
         | None
         | DefaultSentinel = DefaultSentinel.DEFAULT,
-        get_task_colour: Callable[[tasks.UID], str | None]
+        get_task_properties: Callable[[tasks.UID], NodeDrawingProperties | None]
         | None
         | DefaultSentinel = DefaultSentinel.DEFAULT,
         get_hierarchy_colour: Callable[[tasks.UID, tasks.UID], str | None]
@@ -68,7 +72,7 @@ class StaticHierarchyGraph(tk.Frame):
             if hierarchy_graph is not None
             else None,
             get_node_annotation_text=get_task_annotation_text,
-            get_node_colour=get_task_colour,
+            get_node_properties=get_task_properties,
             get_edge_colour=get_hierarchy_colour,
             on_node_left_click=on_task_left_click,
             additional_edges=additional_hierarchies,

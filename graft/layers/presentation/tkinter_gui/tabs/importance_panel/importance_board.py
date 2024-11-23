@@ -14,6 +14,13 @@ _IMPORTANCE_TASK_TABLES_NAME_COLUMN_WIDTH_PIXELS = 200
 _IMPORTANCE_TASK_TABLES_NUMBER_OF_DISPLAYED_ROWS = 5
 
 
+class ImportanceType(enum.Enum):
+    INFERRED = (
+        enum.auto()
+    )  # Task's importance is dependent upon supertasks' importances
+    EXPLICIT = enum.auto()  # Task has its own importance
+
+
 def _create_importance_task_table(master: tk.Misc) -> TaskTableWithName:
     return TaskTableWithName(
         master=master,
@@ -30,11 +37,6 @@ def _create_no_importance_task_table(master: tk.Misc) -> TaskTableWithName:
         name_column_width_pixels=2 * _IMPORTANCE_TASK_TABLES_NAME_COLUMN_WIDTH_PIXELS,
         number_of_rows_displayed=2 * _IMPORTANCE_TASK_TABLES_NUMBER_OF_DISPLAYED_ROWS,
     )
-
-
-class ImportanceType(enum.Enum):
-    INFERRED = enum.auto()
-    EXPLICIT = enum.auto()
 
 
 class ImportanceBoard(tk.Frame):

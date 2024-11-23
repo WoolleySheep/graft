@@ -11,6 +11,9 @@ from graft.layers.presentation.tkinter_gui.helpers.hierarchy_graph_failed_operat
 from graft.layers.presentation.tkinter_gui.helpers.network_graph_failed_operation_window import (
     NetworkGraphOperationFailedWindow,
 )
+from graft.layers.presentation.tkinter_gui.helpers.node_drawing_properties import (
+    NodeDrawingProperties,
+)
 from graft.layers.presentation.tkinter_gui.helpers.static_dependency_graph import (
     StaticDependencyGraph,
 )

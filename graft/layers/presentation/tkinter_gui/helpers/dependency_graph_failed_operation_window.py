@@ -7,6 +7,9 @@ from graft.layers.presentation.tkinter_gui import graph_colours
 from graft.layers.presentation.tkinter_gui.helpers.failed_operation_window import (
     OperationFailedWindow,
 )
+from graft.layers.presentation.tkinter_gui.helpers.node_drawing_properties import (
+    NodeDrawingProperties,
+)
 from graft.layers.presentation.tkinter_gui.helpers.static_dependency_graph import (
     StaticDependencyGraph,
 )
@@ -45,7 +48,7 @@ class DependencyGraphOperationFailedWindow(OperationFailedWindow):
             master=self,
             dependency_graph=dependency_graph,
             get_task_annotation_text=get_task_annotation_text,
-            get_task_colour=self._get_task_colour,
+            get_task_properties=self._get_task_properties,
             get_dependency_colour=self._get_dependency_colour,
             additional_dependencies=additional_dependencies,
             get_additional_dependency_colour=self._get_additional_dependency_colour,
@@ -60,6 +63,11 @@ class DependencyGraphOperationFailedWindow(OperationFailedWindow):
             if task in self._highlighted_tasks
             else graph_colours.DEFAULT_NODE_COLOUR
         )
+
+    def _get_task_properties(self, task: tasks.UID) -> NodeDrawingProperties:
+        colour = self._get_task_colour(task)
+        edge_colour = None
+        return NodeDrawingProperties(colour=colour, edge_colour=edge_colour)
 
     def _get_dependency_colour(
         self, dependee_task: tasks.UID, dependent_task: tasks.UID

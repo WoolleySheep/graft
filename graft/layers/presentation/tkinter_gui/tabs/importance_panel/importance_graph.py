@@ -17,7 +17,7 @@ def _publish_task_as_selected(task: tasks.UID) -> None:
     broker.publish(event_broker.TaskSelected(task=task))
 
 
-class HierarchyGraph(tk.Frame):
+class ImportanceGraph(tk.Frame):
     def __init__(self, master: tk.Misc, logic_layer: architecture.LogicLayer) -> None:
         super().__init__(master)
 
@@ -67,15 +67,33 @@ class HierarchyGraph(tk.Frame):
         return format_task_name_for_annotation(name)
 
     def _get_task_colour(self, task: tasks.UID) -> str | None:
+        # TODO: Can make this more efficient by getting all task importances at once
+        match self._logic_layer.get_task_system().get_importance(task):
+            case None:
+                return None
+            case tasks.Importance.LOW:
+                return "yellow"
+            case tasks.Importance.MEDIUM:
+                return "orange"
+            case tasks.Importance.HIGH:
+                return "red"
+
+    def _get_task_edge_colour(self, task: tasks.UID) -> str | None:
+        if task == self._selected_task:
+            return "green"
+
         return (
-            graph_colours.HIGHLIGHTED_NODE_COLOUR
-            if task == self._selected_task
+            "black"
+            if self._logic_layer.get_task_system()
+            .attributes_register()[task]
+            .importance
+            is not None
             else None
         )
 
-    def _get_task_properties(self, task: tasks.UID) -> NodeDrawingProperties:
+    def _get_task_properties(self, task: tasks.UID) -> NodeDrawingProperties | None:
         colour = self._get_task_colour(task)
-        edge_colour = None
+        edge_colour = self._get_task_edge_colour(task)
         return NodeDrawingProperties(colour=colour, edge_colour=edge_colour)
 
     def _update_figure(self) -> None:

@@ -4,6 +4,7 @@ from graft import architecture
 from graft.domain import tasks
 from graft.layers.presentation.tkinter_gui import event_broker, graph_colours
 from graft.layers.presentation.tkinter_gui.helpers import (
+    NodeDrawingProperties,
     StaticDependencyGraph,
     format_task_name_for_annotation,
 )
@@ -20,7 +21,7 @@ class DependencyGraph(tk.Frame):
             master=self,
             dependency_graph=tasks.DependencyGraph(),
             get_task_annotation_text=self._get_formatted_task_name,
-            get_task_colour=self._get_task_colour,
+            get_task_properties=self._get_task_properties,
             on_task_left_click=self._publish_task_as_selected,
         )
 
@@ -64,6 +65,11 @@ class DependencyGraph(tk.Frame):
             if task == self._selected_task
             else None
         )
+
+    def _get_task_properties(self, task: tasks.UID) -> NodeDrawingProperties:
+        colour = self._get_task_colour(task)
+        edge_colour = None
+        return NodeDrawingProperties(colour=colour, edge_colour=edge_colour)
 
     def _publish_task_as_selected(self, task: tasks.UID) -> None:
         broker = event_broker.get_singleton()
