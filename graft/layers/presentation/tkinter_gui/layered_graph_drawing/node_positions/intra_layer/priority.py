@@ -11,8 +11,6 @@ from graft.layers.presentation.tkinter_gui.layered_graph_drawing.node_positions.
     get_node_positions_even_spacing_around_zero_method,
 )
 
-MIN_NODE_SEPARATION_DISTANCE = 1
-
 
 class Priority:
     """Priority of a node for movement purposes.
@@ -73,9 +71,8 @@ def _shift_nodes_left[T](
     x_positions: MutableMapping[T, float],
     priorities: Mapping[T, Priority],
     layer: Sequence[T],
+    min_node_separation_distance: float,
 ) -> None:
-    if node == tasks.UID(10):
-        pass
     # Node is the leftmost node - base case
     if layer.index(node) == 0:
         if x_positions[node] <= threshold_position:
@@ -88,14 +85,15 @@ def _shift_nodes_left[T](
     if priorities[leftward_node] < priorities[node]:
         _shift_nodes_left(
             node=leftward_node,
-            threshold_position=threshold_position - MIN_NODE_SEPARATION_DISTANCE,
+            threshold_position=threshold_position - min_node_separation_distance,
             x_positions=x_positions,
             priorities=priorities,
             layer=layer,
+            min_node_separation_distance=min_node_separation_distance,
         )
 
     x_positions[node] = max(
-        threshold_position, x_positions[leftward_node] + MIN_NODE_SEPARATION_DISTANCE
+        threshold_position, x_positions[leftward_node] + min_node_separation_distance
     )
 
 
@@ -105,6 +103,7 @@ def _shift_nodes_right[T](
     x_positions: MutableMapping[T, float],
     priorities: Mapping[T, Priority],
     layer: Sequence[T],
+    min_node_separation_distance: float,
 ) -> None:
     # Node is the rightmost node - base case
     if layer.index(node) == len(layer) - 1:
@@ -118,14 +117,15 @@ def _shift_nodes_right[T](
     if priorities[rightward_node] < priorities[node]:
         _shift_nodes_right(
             node=rightward_node,
-            threshold_position=threshold_position + MIN_NODE_SEPARATION_DISTANCE,
+            threshold_position=threshold_position + min_node_separation_distance,
             x_positions=x_positions,
             priorities=priorities,
             layer=layer,
+            min_node_separation_distance=min_node_separation_distance,
         )
 
     x_positions[node] = min(
-        threshold_position, x_positions[rightward_node] - MIN_NODE_SEPARATION_DISTANCE
+        threshold_position, x_positions[rightward_node] - min_node_separation_distance
     )
 
 
@@ -135,6 +135,7 @@ def _move_node[T](
     layer: Sequence[T],
     node_x_positions: MutableMapping[T, float],
     priorities: Mapping[T, Priority],
+    min_node_separation_distance: float,
 ) -> None:
     current_position = node_x_positions[node]
 
@@ -145,6 +146,7 @@ def _move_node[T](
             x_positions=node_x_positions,
             priorities=priorities,
             layer=layer,
+            min_node_separation_distance=min_node_separation_distance,
         )
     elif current_position > ideal_position:
         _shift_nodes_left(
@@ -153,12 +155,14 @@ def _move_node[T](
             x_positions=node_x_positions,
             priorities=priorities,
             layer=layer,
+            min_node_separation_distance=min_node_separation_distance,
         )
 
 
 def get_node_positions_priority_method[T](
     graph: graphs.DirectedAcyclicGraph[T | DummyNode],
     ordered_layers: Sequence[Sequence[T | DummyNode]],
+    min_node_separation_distance: float,
     starting_separation_ratio: float = 2,
     niterations: int = 20,
 ) -> dict[T | DummyNode, float]:
@@ -170,13 +174,19 @@ def get_node_positions_priority_method[T](
     x-position if the graph is vertical, and its y-position if the graph is
     horizontal.
     """
+    if min_node_separation_distance <= 0:
+        raise ValueError
+
+    if starting_separation_ratio < 1:
+        raise ValueError
+
     if niterations < 1:
         raise ValueError
 
     node_x_positions = get_node_positions_even_spacing_around_zero_method(
         ordered_layers=ordered_layers,
         starting_separation_ratio=starting_separation_ratio,
-        min_node_separation_distance=MIN_NODE_SEPARATION_DISTANCE,
+        min_node_separation_distance=min_node_separation_distance,
     )
 
     forward_priorities = {
@@ -204,6 +214,7 @@ def get_node_positions_priority_method[T](
                     layer=layer,
                     node_x_positions=node_x_positions,
                     priorities=forward_priorities,
+                    min_node_separation_distance=min_node_separation_distance,
                 )
 
         for layer in itertools.islice(reversed(ordered_layers), 1, None):
@@ -222,6 +233,7 @@ def get_node_positions_priority_method[T](
                     layer=layer,
                     node_x_positions=node_x_positions,
                     priorities=backward_priorities,
+                    min_node_separation_distance=min_node_separation_distance,
                 )
 
     return node_x_positions

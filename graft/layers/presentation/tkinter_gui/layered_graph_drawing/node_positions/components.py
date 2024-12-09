@@ -1,8 +1,6 @@
-import itertools
 from collections.abc import Hashable, Mapping
 
 from graft import graphs
-from graft.domain.tasks.network_graph import NetworkGraph
 
 MIN_COMPONENT_SEPARATION_DISTANCE = 2
 
@@ -31,7 +29,7 @@ class ComponentPositionLimits:
 
 
 def get_node_positions_inter_component_adjustment[T: Hashable](
-    graph: graphs.DirectedAcyclicGraph[T], node_positions: Mapping[T, float]
+    graph: graphs.DirectedAcyclicGraph[T], node_positions: Mapping[T, float], component_separation_distance: float
 ) -> dict[T, float]:
     """Adjust the position of components of the graph relative to one another.
 
@@ -40,6 +38,9 @@ def get_node_positions_inter_component_adjustment[T: Hashable](
     affecting the positioning of nodes relative to other nodes within the same
     component.
     """
+    if component_separation_distance <= 0:
+        raise ValueError("component_separation_distance must be positive")
+
     if not graph:
         return {}
 
@@ -59,21 +60,15 @@ def get_node_positions_inter_component_adjustment[T: Hashable](
         key=lambda component_with_limits: component_with_limits[1].min,
     )
 
-    components_with_position_offsets = list[tuple[graphs.DirectedAcyclicGraph[T], float]]()
+    node_to_adjusted_position_map = dict[T, float]()
     previous_component_max_position = 0 # Starting point is irrelevant
     for component, limits in components_with_limits_sorted_by_min_position:
         adjusted_min_position = previous_component_max_position + MIN_COMPONENT_SEPARATION_DISTANCE
         position_offset = adjusted_min_position - limits.min
-        components_with_position_offsets.append((component, position_offset))
+
+        for node in component.nodes():
+            node_to_adjusted_position_map[node] = node_positions[node] + position_offset
+
         previous_component_max_position = adjusted_min_position + limits.width
 
-    node_to_position_offset_map = {
-        node: position_offset
-        for component, position_offset in components_with_position_offsets
-        for node in component.nodes()
-    }
-
-    return {
-        node: node_positions[node] + node_to_position_offset_map[node]
-        for node in graph.nodes()
-    }
+    return node_to_adjusted_position_map
