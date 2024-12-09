@@ -1,6 +1,6 @@
-from collections.abc import Hashable, Mapping
+from collections.abc import Mapping
 
-from graft import graphs
+from graft.domain import tasks
 
 MIN_COMPONENT_SEPARATION_DISTANCE = 2
 
@@ -28,16 +28,16 @@ class ComponentPositionLimits:
         return self._max - self._min
 
 
-def get_node_positions_inter_component_adjustment[T: Hashable](
-    graph: graphs.DirectedAcyclicGraph[T],
-    node_positions: Mapping[T, float],
+def get_depth_positions_with_component_adjustment(
+    graph: tasks.NetworkGraph,
+    task_to_position_map: Mapping[tasks.UID, float],
     component_separation_distance: float,
-) -> dict[T, float]:
+) -> dict[tasks.UID, float]:
     """Adjust the position of components of the graph relative to one another.
 
     Disconnected components of the graph tended to drift away from each other
     during positioning. This step aims to bring them back together without
-    affecting the positioning of nodes relative to other nodes within the same
+    affecting the positioning of tasks relative to other tasks within the same
     component.
     """
     if component_separation_distance <= 0:
@@ -50,8 +50,8 @@ def get_node_positions_inter_component_adjustment[T: Hashable](
         (
             component,
             ComponentPositionLimits(
-                min_=min(node_positions[node] for node in component.nodes()),
-                max_=max(node_positions[node] for node in component.nodes()),
+                min_=min(task_to_position_map[node] for node in component.tasks()),
+                max_=max(task_to_position_map[node] for node in component.tasks()),
             ),
         )
         for component in graph.components()
@@ -62,7 +62,7 @@ def get_node_positions_inter_component_adjustment[T: Hashable](
         key=lambda component_with_limits: component_with_limits[1].min,
     )
 
-    node_to_adjusted_position_map = dict[T, float]()
+    task_to_adjusted_position_map = dict[tasks.UID, float]()
     previous_component_max_position = 0  # Starting point is irrelevant
     for component, limits in components_with_limits_sorted_by_min_position:
         adjusted_min_position = (
@@ -70,9 +70,11 @@ def get_node_positions_inter_component_adjustment[T: Hashable](
         )
         position_offset = adjusted_min_position - limits.min
 
-        for node in component.nodes():
-            node_to_adjusted_position_map[node] = node_positions[node] + position_offset
+        for task in component.tasks():
+            task_to_adjusted_position_map[task] = (
+                task_to_position_map[task] + position_offset
+            )
 
         previous_component_max_position = adjusted_min_position + limits.width
 
-    return node_to_adjusted_position_map
+    return task_to_adjusted_position_map

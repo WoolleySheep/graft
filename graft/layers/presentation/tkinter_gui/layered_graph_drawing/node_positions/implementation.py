@@ -36,7 +36,9 @@ def get_node_positions_best_method[T: Hashable](
 
     intra_level_positions_component_adjusted = (
         get_node_positions_inter_component_adjustment(
-            graph=graph, node_positions=intra_level_positions, component_separation_distance=INTER_COMPONENT_SEPARATION_DISTANCE,
+            graph=graph,
+            node_positions=intra_level_positions,
+            component_separation_distance=INTER_COMPONENT_SEPARATION_DISTANCE,
         )
     )
 

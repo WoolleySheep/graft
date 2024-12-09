@@ -1,6 +1,9 @@
 from collections.abc import Mapping
 
 from graft.domain import tasks
+from graft.layers.presentation.tkinter_gui.task_network_graph_drawing.depth_position_assignment.implementation.component_separation import (
+    get_depth_positions_with_component_adjustment,
+)
 from graft.layers.presentation.tkinter_gui.task_network_graph_drawing.depth_position_assignment.implementation.depth_indexes import (
     get_depth_indexes_neighbour_median_and_transpose_method,
 )
@@ -35,8 +38,6 @@ def get_depth_positions_unnamed_method(
         )
     )
 
-    # task_to_depth_position_map = get_depth_positions_naive_spacing_method(task_to_depth_index_map, separation_distance=12 * float(task_cylinder_radius))
-
     task_to_depth_position_map = get_depth_positions_priority_method(
         graph=graph_with_dummies,
         task_to_relation_layers_map=task_or_dummy_to_relation_layers_map,
@@ -46,11 +47,16 @@ def get_depth_positions_unnamed_method(
         min_separation_distance=5 * float(task_cylinder_radius),
     )
 
-    # Clear the dummy tasks
-    dummy_tasks = [
-        task for task in task_to_depth_position_map if isinstance(task, DummyUID)
-    ]
-    for dummy_task in dummy_tasks:
-        del task_to_depth_position_map[dummy_task]
+    task_to_adjusted_depth_position_map = get_depth_positions_with_component_adjustment(
+        graph=graph_with_dummies,
+        task_to_position_map=task_to_depth_position_map,
+        # TODO: Another separation value pulled out of my ass
+        component_separation_distance=5 * float(task_cylinder_radius),
+    )
 
-    return task_to_depth_position_map
+    # Throw away the dummy tasks
+    return {
+        task: depth_position
+        for task, depth_position in task_to_adjusted_depth_position_map.items()
+        if not isinstance(task, DummyUID)
+    }

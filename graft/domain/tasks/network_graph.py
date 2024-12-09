@@ -1141,25 +1141,29 @@ class NetworkGraph:
             for dependee_task in self.dependency_graph().dependee_tasks(task):
                 if dependee_task not in subgraph.tasks():
                     subgraph.add_task(dependee_task)
-                subgraph.add_dependency(dependee_task, task)
+                if (dependee_task, task) not in subgraph.dependency_graph().dependencies():
+                    subgraph.add_dependency(dependee_task, task)
                 tasks_to_check.append(dependee_task)
 
             for dependent_task in self.dependency_graph().dependent_tasks(task):
                 if dependent_task not in subgraph.tasks():
                     subgraph.add_task(dependent_task)
-                subgraph.add_dependency(task, dependent_task)
+                if (task, dependent_task) not in subgraph.dependency_graph().dependencies():
+                    subgraph.add_dependency(task, dependent_task)
                 tasks_to_check.append(dependent_task)
 
             for supertask in self.hierarchy_graph().supertasks(task):
                 if supertask not in subgraph.tasks():
                     subgraph.add_task(supertask)
-                subgraph.add_hierarchy(supertask, task)
+                if (supertask, task) not in subgraph.hierarchy_graph().hierarchies():
+                    subgraph.add_hierarchy(supertask, task)
                 tasks_to_check.append(supertask)
 
             for subtask in self.hierarchy_graph().subtasks(task):
                 if subtask not in subgraph.tasks():
                     subgraph.add_task(subtask)
-                subgraph.add_hierarchy(task, subtask)
+                if (task, subtask) not in subgraph.hierarchy_graph().hierarchies():
+                    subgraph.add_hierarchy(task, subtask)
                 tasks_to_check.append(subtask)
 
         return subgraph
