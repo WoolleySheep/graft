@@ -8,9 +8,10 @@ MIN_COMPONENT_SEPARATION_DISTANCE = 2
 class ComponentPositionLimits:
     """The extremes of the positions of nodes within a component."""
 
-    def __init__(self, min_: float, max_: float):
+    def __init__(self, min_: float, max_: float) -> None:
         if min_ > max_:
-            raise ValueError("min must be less than or equal to max")
+            msg = "min must be less than or equal to max"
+            raise ValueError(msg)
 
         self._min = min_
         self._max = max_
@@ -41,7 +42,8 @@ def get_depth_positions_with_component_adjustment(
     component.
     """
     if component_separation_distance <= 0:
-        raise ValueError("component_separation_distance must be positive")
+        msg = "component_separation_distance must be positive"
+        raise ValueError(msg)
 
     if not graph:
         return {}

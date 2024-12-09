@@ -3,7 +3,6 @@ from collections.abc import Collection, Mapping, MutableMapping, Sequence
 from typing import Callable
 
 from graft import graphs
-from graft.domain import tasks
 from graft.layers.presentation.tkinter_gui.layered_graph_drawing.dummy_node import (
     DummyNode,
 )

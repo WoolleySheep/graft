@@ -1,6 +1,5 @@
 import itertools
-from collections.abc import Container, Generator, Sequence
-from typing import Iterable
+from collections.abc import Container, Generator, Iterable, Sequence
 
 from graft import graphs
 

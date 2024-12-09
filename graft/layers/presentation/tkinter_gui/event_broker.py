@@ -2,7 +2,7 @@ import abc
 import collections
 import logging
 from collections.abc import Callable
-from typing import Self, Type
+from typing import Self
 
 from graft.domain import tasks
 
@@ -38,7 +38,7 @@ class EventBroker:
     def __init__(self) -> None:
         logger.info("Initialising %s", self.__class__.__name__)
         self.event_callbacks_map = collections.defaultdict[
-            Type[Event], list[Callable[[Event], None]]
+            type[Event], list[Callable[[Event], None]]
         ](list)
         logger.info("Initialised %s", self.__class__.__name__)
 
@@ -48,7 +48,7 @@ class EventBroker:
             callback(event)
 
     def subscribe(
-        self, event_type: Type[Event], callback: Callable[[Event], None]
+        self, event_type: type[Event], callback: Callable[[Event], None]
     ) -> None:
         self.event_callbacks_map[event_type].append(callback)
 

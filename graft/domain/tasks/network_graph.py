@@ -1141,14 +1141,20 @@ class NetworkGraph:
             for dependee_task in self.dependency_graph().dependee_tasks(task):
                 if dependee_task not in subgraph.tasks():
                     subgraph.add_task(dependee_task)
-                if (dependee_task, task) not in subgraph.dependency_graph().dependencies():
+                if (
+                    dependee_task,
+                    task,
+                ) not in subgraph.dependency_graph().dependencies():
                     subgraph.add_dependency(dependee_task, task)
                 tasks_to_check.append(dependee_task)
 
             for dependent_task in self.dependency_graph().dependent_tasks(task):
                 if dependent_task not in subgraph.tasks():
                     subgraph.add_task(dependent_task)
-                if (task, dependent_task) not in subgraph.dependency_graph().dependencies():
+                if (
+                    task,
+                    dependent_task,
+                ) not in subgraph.dependency_graph().dependencies():
                     subgraph.add_dependency(task, dependent_task)
                 tasks_to_check.append(dependent_task)
 
