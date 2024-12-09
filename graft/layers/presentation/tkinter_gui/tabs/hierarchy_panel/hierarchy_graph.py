@@ -5,7 +5,7 @@ from graft.domain import tasks
 from graft.layers.presentation.tkinter_gui import event_broker, graph_colours
 from graft.layers.presentation.tkinter_gui.helpers import (
     StaticHierarchyGraph,
-    _format_task_name_for_annotation,
+    format_task_name_for_annotation,
 )
 from graft.layers.presentation.tkinter_gui.helpers.node_drawing_properties import (
     NodeDrawingProperties,
@@ -64,7 +64,7 @@ class HierarchyGraph(tk.Frame):
 
     def _get_formatted_task_name(self, task: tasks.UID) -> str | None:
         name = self._logic_layer.get_task_system().attributes_register()[task].name
-        return _format_task_name_for_annotation(name)
+        return format_task_name_for_annotation(name)
 
     def _get_task_colour(self, task: tasks.UID) -> str | None:
         return (

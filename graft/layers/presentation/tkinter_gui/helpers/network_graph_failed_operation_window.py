@@ -1,24 +1,30 @@
 import tkinter as tk
 from collections.abc import Callable, Set
 from tkinter import ttk
+from typing import Final
 
 from graft.domain import tasks
-from graft.layers.presentation.tkinter_gui import graph_colours
-from graft.layers.presentation.tkinter_gui.helpers.edge_drawing_properties import (
-    EdgeDrawingProperties,
-)
 from graft.layers.presentation.tkinter_gui.helpers.failed_operation_window import (
     OperationFailedWindow,
 )
-from graft.layers.presentation.tkinter_gui.helpers.node_drawing_properties import (
-    NodeDrawingProperties,
+from graft.layers.presentation.tkinter_gui.helpers.static_task_network_graph.relationship_drawing_properties import (
+    RelationshipDrawingProperties,
 )
-from graft.layers.presentation.tkinter_gui.helpers.static_dependency_graph import (
-    StaticDependencyGraph,
+from graft.layers.presentation.tkinter_gui.helpers.static_task_network_graph.static_task_network_graph import (
+    StaticTaskNetworkGraph,
 )
-from graft.layers.presentation.tkinter_gui.helpers.static_hierarchy_graph import (
-    StaticHierarchyGraph,
+from graft.layers.presentation.tkinter_gui.helpers.static_task_network_graph.task_drawing_properties import (
+    TaskDrawingProperties,
 )
+
+_NORMAL_TASK_COLOUR: Final = "blue"
+_HIGHLIGHTED_TASK_COLOUR: Final = "red"
+_STANDARD_HIERARCHY_COLOUR: Final = "green"
+_STANDARD_DEPENDENCY_COLOUR: Final = "black"
+_HIGHLIGHTED_HIERARCHY_COLOUR: Final = "orange"
+_HIGHLIGHTED_DEPENDENCY_COLOUR: Final = "purple"
+_ADDITIONAL_HIERARCHY_COLOUR: Final = "yellow"
+_ADDITIONAL_DEPENDENCY_COLOUR: Final = "cyan"
 
 
 class NetworkGraphOperationFailedWindow(OperationFailedWindow):
@@ -84,102 +90,57 @@ class NetworkGraphOperationFailedWindow(OperationFailedWindow):
 
         self._description_label = ttk.Label(self, text=description_text)
 
-        self._hierarchy_graph_label = ttk.Label(self, text="Hierarchy graph")
-        self._hierarchy_graph = StaticHierarchyGraph(
+        self._graph = StaticTaskNetworkGraph(
             master=self,
-            hierarchy_graph=task_network.hierarchy_graph(),
+            graph=task_network,
             get_task_annotation_text=get_task_annotation_text,
             get_task_properties=self._get_task_properties,
             get_hierarchy_properties=self._get_hierarchy_properties,
-            additional_hierarchies=additional_hierarchies,
-            get_additional_hierarchy_properties=self._get_additional_hierarchy_properties,
-        )
-
-        self._dependency_graph_label = ttk.Label(self, text="Dependency graph")
-        self._dependency_graph = StaticDependencyGraph(
-            master=self,
-            dependency_graph=task_network.dependency_graph(),
-            get_task_annotation_text=get_task_annotation_text,
-            get_task_properties=self._get_task_properties,
             get_dependency_properties=self._get_dependency_properties,
-            additional_dependencies=additional_dependencies,
-            get_additional_dependency_properties=self._get_additional_dependency_properties,
+            additional_hierarchies=self._additional_hierarchies,
+            additional_dependencies=self._additional_dependencies,
+            get_additional_hierarchy_properties=lambda _,
+            __: RelationshipDrawingProperties(colour=_ADDITIONAL_HIERARCHY_COLOUR),
+            get_additional_dependency_properties=lambda _,
+            __: RelationshipDrawingProperties(colour=_ADDITIONAL_DEPENDENCY_COLOUR),
         )
 
-        self._description_label.grid(row=0, column=0, columnspan=2)
-        self._hierarchy_graph_label.grid(row=1, column=0)
-        self._hierarchy_graph.grid(row=2, column=0)
-        self._dependency_graph_label.grid(row=1, column=1)
-        self._dependency_graph.grid(row=2, column=1)
+        self._description_label.grid(row=0, column=0)
+        self._graph.grid(row=1, column=0)
+
+    def _get_task_properties(self, task: tasks.UID) -> TaskDrawingProperties:
+        colour = self._get_task_colour(task)
+        return TaskDrawingProperties(colour=colour)
 
     def _get_task_colour(self, task: tasks.UID) -> str:
         return (
-            graph_colours.HIGHLIGHTED_NODE_COLOUR
+            _HIGHLIGHTED_TASK_COLOUR
             if task in self._highlighted_tasks
-            else graph_colours.DEFAULT_NODE_COLOUR
-        )
-
-    def _get_task_properties(self, task: tasks.UID) -> NodeDrawingProperties:
-        colour = self._get_task_colour(task)
-        edge_colour = None
-        return NodeDrawingProperties(colour=colour, edge_colour=edge_colour)
-
-    def _get_hierarchy_colour(self, supertask: tasks.UID, subtask: tasks.UID) -> str:
-        return (
-            graph_colours.HIGHLIGHTED_EDGE_COLOUR
-            if (supertask, subtask) in self._highlighted_hierarchies
-            else graph_colours.DEFAULT_EDGE_COLOUR
+            else _NORMAL_TASK_COLOUR
         )
 
     def _get_hierarchy_properties(
         self, supertask: tasks.UID, subtask: tasks.UID
-    ) -> EdgeDrawingProperties:
+    ) -> RelationshipDrawingProperties:
         colour = self._get_hierarchy_colour(supertask, subtask)
-        connection_style = None
-        return EdgeDrawingProperties(colour=colour, connection_style=connection_style)
+        return RelationshipDrawingProperties(colour=colour)
 
-    def _get_additional_hierarchy_colour(
-        self, supertask: tasks.UID, subtask: tasks.UID
-    ) -> str:
+    def _get_hierarchy_colour(self, supertask: tasks.UID, subtask: tasks.UID) -> str:
         return (
-            graph_colours.INTRODUCED_EDGE_COLOUR
-            if (supertask, subtask) in self._additional_hierarchies
-            else graph_colours.DEFAULT_EDGE_COLOUR
-        )
-
-    def _get_additional_hierarchy_properties(
-        self, supertask: tasks.UID, subtask: tasks.UID
-    ) -> EdgeDrawingProperties:
-        colour = self._get_additional_hierarchy_colour(supertask, subtask)
-        connection_style = None
-        return EdgeDrawingProperties(colour=colour, connection_style=connection_style)
-
-    def _get_dependency_colour(self, supertask: tasks.UID, subtask: tasks.UID) -> str:
-        return (
-            graph_colours.HIGHLIGHTED_EDGE_COLOUR
-            if (supertask, subtask) in self._highlighted_dependencies
-            else graph_colours.DEFAULT_EDGE_COLOUR
+            _HIGHLIGHTED_HIERARCHY_COLOUR
+            if (supertask, subtask) in self._highlighted_hierarchies
+            else _STANDARD_HIERARCHY_COLOUR
         )
 
     def _get_dependency_properties(
         self, supertask: tasks.UID, subtask: tasks.UID
-    ) -> EdgeDrawingProperties:
+    ) -> RelationshipDrawingProperties:
         colour = self._get_dependency_colour(supertask, subtask)
-        connection_style = None
-        return EdgeDrawingProperties(colour=colour, connection_style=connection_style)
+        return RelationshipDrawingProperties(colour=colour)
 
-    def _get_additional_dependency_colour(
-        self, supertask: tasks.UID, subtask: tasks.UID
-    ) -> str:
+    def _get_dependency_colour(self, supertask: tasks.UID, subtask: tasks.UID) -> str:
         return (
-            graph_colours.INTRODUCED_EDGE_COLOUR
-            if (supertask, subtask) in self._additional_dependencies
-            else graph_colours.DEFAULT_EDGE_COLOUR
+            _HIGHLIGHTED_DEPENDENCY_COLOUR
+            if (supertask, subtask) in self._highlighted_dependencies
+            else _STANDARD_DEPENDENCY_COLOUR
         )
-
-    def _get_additional_dependency_properties(
-        self, supertask: tasks.UID, subtask: tasks.UID
-    ) -> EdgeDrawingProperties:
-        colour = self._get_additional_dependency_colour(supertask, subtask)
-        connection_style = None
-        return EdgeDrawingProperties(colour=colour, connection_style=connection_style)

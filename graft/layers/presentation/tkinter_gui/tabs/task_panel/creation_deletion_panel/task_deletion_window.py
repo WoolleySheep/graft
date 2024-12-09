@@ -7,7 +7,7 @@ from graft import architecture
 from graft.domain import tasks
 from graft.layers.presentation.tkinter_gui import event_broker, helpers
 from graft.layers.presentation.tkinter_gui.helpers import (
-    _format_task_name_for_annotation,
+    format_task_name_for_annotation,
 )
 
 logger = logging.getLogger(__name__)
@@ -84,7 +84,7 @@ class TaskDeletionWindow(tk.Toplevel):
                 master=self,
                 description_text="Cannot delete task as it has supertask(s)",
                 hierarchy_graph=hierarchy_graph,
-                get_task_annotation_text=lambda task: _format_task_name_for_annotation(
+                get_task_annotation_text=lambda task: format_task_name_for_annotation(
                     self._logic_layer.get_task_system().attributes_register()[task].name
                 ),
                 highlighted_tasks={e.task},
@@ -100,7 +100,7 @@ class TaskDeletionWindow(tk.Toplevel):
                 master=self,
                 description_text="Cannot delete task as it has subtask(s)",
                 hierarchy_graph=hierarchy_graph,
-                get_task_annotation_text=lambda task: _format_task_name_for_annotation(
+                get_task_annotation_text=lambda task: format_task_name_for_annotation(
                     self._logic_layer.get_task_system().attributes_register()[task].name
                 ),
                 highlighted_tasks={e.task},
@@ -116,7 +116,7 @@ class TaskDeletionWindow(tk.Toplevel):
                 master=self,
                 description_text="Cannot delete task as it has dependee-task(s)",
                 dependency_graph=dependency_graph,
-                get_task_annotation_text=lambda task: _format_task_name_for_annotation(
+                get_task_annotation_text=lambda task: format_task_name_for_annotation(
                     self._logic_layer.get_task_system().attributes_register()[task].name
                 ),
                 highlighted_tasks={e.task},
@@ -132,7 +132,7 @@ class TaskDeletionWindow(tk.Toplevel):
                 master=self,
                 description_text="Cannot delete task as it has dependent-tasks(s)",
                 dependency_graph=dependency_graph,
-                get_task_annotation_text=lambda task: _format_task_name_for_annotation(
+                get_task_annotation_text=lambda task: format_task_name_for_annotation(
                     self._logic_layer.get_task_system().attributes_register()[task].name
                 ),
                 highlighted_tasks={e.task},

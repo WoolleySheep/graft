@@ -21,7 +21,7 @@ from graft.layers.presentation.tkinter_gui.helpers.static_dependency_graph impor
     StaticDependencyGraph,
 )
 from graft.layers.presentation.tkinter_gui.helpers.static_graph import (
-    _format_task_name_for_annotation,
+    format_task_name_for_annotation,
 )
 from graft.layers.presentation.tkinter_gui.helpers.static_hierarchy_graph import (
     StaticHierarchyGraph,

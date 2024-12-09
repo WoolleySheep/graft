@@ -7,7 +7,7 @@ from graft import architecture
 from graft.domain import tasks
 from graft.layers.presentation.tkinter_gui import event_broker, helpers
 from graft.layers.presentation.tkinter_gui.helpers import (
-    _format_task_name_for_annotation,
+    format_task_name_for_annotation,
 )
 
 logger = logging.getLogger(__name__)
@@ -117,7 +117,7 @@ class DependencyCreationWindow(tk.Toplevel):
                 master=self,
                 description_text="Cannot create a dependency between a task and itself",
                 dependency_graph=dependency_graph,
-                get_task_annotation_text=lambda task: _format_task_name_for_annotation(
+                get_task_annotation_text=lambda task: format_task_name_for_annotation(
                     self._logic_layer.get_task_system().attributes_register()[task].name
                 ),
                 highlighted_tasks={e.task},
@@ -133,7 +133,7 @@ class DependencyCreationWindow(tk.Toplevel):
                 master=self,
                 description_text="Dependency already exists",
                 dependency_graph=dependency_graph,
-                get_task_annotation_text=lambda task: _format_task_name_for_annotation(
+                get_task_annotation_text=lambda task: format_task_name_for_annotation(
                     self._logic_layer.get_task_system().attributes_register()[task].name
                 ),
                 additional_dependencies={(e.dependent_task, e.dependee_task)},
@@ -144,7 +144,7 @@ class DependencyCreationWindow(tk.Toplevel):
                 master=self,
                 description_text="Introduces dependency cycle",
                 dependency_graph=e.connecting_subgraph,
-                get_task_annotation_text=lambda task: _format_task_name_for_annotation(
+                get_task_annotation_text=lambda task: format_task_name_for_annotation(
                     self._logic_layer.get_task_system().attributes_register()[task].name
                 ),
                 highlighted_tasks={e.dependee_task, e.dependent_task},

@@ -7,7 +7,7 @@ from graft import architecture
 from graft.domain import tasks
 from graft.layers.presentation.tkinter_gui import event_broker, helpers
 from graft.layers.presentation.tkinter_gui.helpers import (
-    _format_task_name_for_annotation,
+    format_task_name_for_annotation,
 )
 
 logger = logging.getLogger(__name__)
@@ -113,7 +113,7 @@ class HierarchyCreationWindow(tk.Toplevel):
                 master=self,
                 description_text="Cannot create a hierarchy between a task and itself",
                 hierarchy_graph=hierarchy_graph,
-                get_task_annotation_text=lambda task: _format_task_name_for_annotation(
+                get_task_annotation_text=lambda task: format_task_name_for_annotation(
                     self._logic_layer.get_task_system().attributes_register()[task].name
                 ),
                 highlighted_tasks={e.task},
@@ -129,7 +129,7 @@ class HierarchyCreationWindow(tk.Toplevel):
                 master=self,
                 description_text="Hierarchy already exists",
                 hierarchy_graph=hierarchy_graph,
-                get_task_annotation_text=lambda task: _format_task_name_for_annotation(
+                get_task_annotation_text=lambda task: format_task_name_for_annotation(
                     self._logic_layer.get_task_system().attributes_register()[task].name
                 ),
                 additional_hierarchies={(e.subtask, e.supertask)},
@@ -140,7 +140,7 @@ class HierarchyCreationWindow(tk.Toplevel):
                 master=self,
                 description_text="Introduces hierarchy cycle",
                 hierarchy_graph=e.connecting_subgraph,
-                get_task_annotation_text=lambda task: _format_task_name_for_annotation(
+                get_task_annotation_text=lambda task: format_task_name_for_annotation(
                     self._logic_layer.get_task_system().attributes_register()[task].name
                 ),
                 highlighted_tasks={e.supertask, e.subtask},
@@ -152,7 +152,7 @@ class HierarchyCreationWindow(tk.Toplevel):
                 master=self,
                 description_text="Introduces redundant hierarchy",
                 hierarchy_graph=e.connecting_subgraph,
-                get_task_annotation_text=lambda task: _format_task_name_for_annotation(
+                get_task_annotation_text=lambda task: format_task_name_for_annotation(
                     self._logic_layer.get_task_system().attributes_register()[task].name
                 ),
                 highlighted_hierarchies={(e.supertask, e.subtask)},
