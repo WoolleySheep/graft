@@ -12,5 +12,4 @@ class GetNodePositionsFn[T: Hashable](Protocol):
         self,
         graph: graphs.DirectedAcyclicGraph[T | DummyNode],
         ordered_layers: Sequence[Sequence[T | DummyNode]],
-    ) -> dict[T | DummyNode, tuple[float, float]]:
-        ...
+    ) -> dict[T | DummyNode, tuple[float, float]]: ...

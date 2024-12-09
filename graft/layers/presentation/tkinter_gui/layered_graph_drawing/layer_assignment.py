@@ -7,8 +7,7 @@ from graft import graphs
 class GetLayersFn[T: Hashable](Protocol):
     def __call__(
         self, graph: graphs.DirectedAcyclicGraph[T]
-    ) -> Sequence[Collection[T]]:
-        ...
+    ) -> Sequence[Collection[T]]: ...
 
 
 def get_layers_topological_grouping_method[T: Hashable](

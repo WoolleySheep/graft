@@ -391,32 +391,28 @@ class IDependencyGraphView(Protocol):
         task: UID,
         /,
         stop_condition: Callable[[UID], bool] | None = None,
-    ) -> SingleStartingTaskDependencySubgraphView:
-        ...
+    ) -> SingleStartingTaskDependencySubgraphView: ...
 
     def proceeding_tasks(
         self,
         task: UID,
         /,
         stop_condition: Callable[[UID], bool] | None = None,
-    ) -> SingleStartingTaskDependencySubgraphView:
-        ...
+    ) -> SingleStartingTaskDependencySubgraphView: ...
 
     def following_tasks_multi(
         self,
         tasks: Iterable[UID],
         /,
         stop_condition: Callable[[UID], bool] | None = None,
-    ) -> MultipleStartingTasksDependencySubgraphView:
-        ...
+    ) -> MultipleStartingTasksDependencySubgraphView: ...
 
     def proceeding_tasks_multi(
         self,
         tasks: Iterable[UID],
         /,
         stop_condition: Callable[[UID], bool] | None = None,
-    ) -> MultipleStartingTasksDependencySubgraphView:
-        ...
+    ) -> MultipleStartingTasksDependencySubgraphView: ...
 
     def has_path(
         self,

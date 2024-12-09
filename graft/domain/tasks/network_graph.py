@@ -1118,6 +1118,63 @@ class NetworkGraph:
             if self.is_isolated(task):
                 yield task
 
+    def component(self, task: UID, /) -> NetworkGraph:
+        """Return subgraph of all tasks in the same connected component as task."""
+        subgraph = NetworkGraph.empty()
+
+        if task not in self.tasks():
+            raise TaskDoesNotExistError(task=task)
+
+        checked_tasks = set[UID]()
+        tasks_to_check = collections.deque([task])
+
+        while tasks_to_check:
+            task = tasks_to_check.popleft()
+
+            if task in checked_tasks:
+                continue
+            checked_tasks.add(task)
+
+            if task not in subgraph.tasks():
+                subgraph.add_task(task)
+
+            for dependee_task in self.dependency_graph().dependee_tasks(task):
+                if dependee_task not in subgraph.tasks():
+                    subgraph.add_task(dependee_task)
+                subgraph.add_dependency(dependee_task, task)
+                tasks_to_check.append(dependee_task)
+
+            for dependent_task in self.dependency_graph().dependent_tasks(task):
+                if dependent_task not in subgraph.tasks():
+                    subgraph.add_task(dependent_task)
+                subgraph.add_dependency(task, dependent_task)
+                tasks_to_check.append(dependent_task)
+
+            for supertask in self.hierarchy_graph().supertasks(task):
+                if supertask not in subgraph.tasks():
+                    subgraph.add_task(supertask)
+                subgraph.add_hierarchy(supertask, task)
+                tasks_to_check.append(supertask)
+
+            for subtask in self.hierarchy_graph().subtasks(task):
+                if subtask not in subgraph.tasks():
+                    subgraph.add_task(subtask)
+                subgraph.add_hierarchy(task, subtask)
+                tasks_to_check.append(subtask)
+
+        return subgraph
+
+    def components(self) -> Generator[NetworkGraph, None, None]:
+        """Return generator of connected components."""
+        components = list[NetworkGraph]()
+        for task in self.tasks():
+            if any(task in component.tasks() for component in components):
+                continue
+
+            component = self.component(task)
+            components.append(component)
+            yield component
+
 
 class NetworkGraphView:
     """View of Network Graph."""

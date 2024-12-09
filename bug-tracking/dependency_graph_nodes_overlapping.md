@@ -1,0 +1,1 @@
+While the nodes in the hierarchy graph are arranging themselves nicely, the nodes in the dependency graph are overlapping and not spreading as expected.

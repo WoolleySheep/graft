@@ -54,9 +54,9 @@ def _get_tasks_with_no_upstream_tasks(
             # Need more info to determine if task has upstream tasks or not
             continue
 
-        task_has_upstream_tasks[
-            task_to_check
-        ] = task_to_check_has_supertasks_with_upstream_tasks
+        task_has_upstream_tasks[task_to_check] = (
+            task_to_check_has_supertasks_with_upstream_tasks
+        )
 
         tasks_to_check.extend(graph.hierarchy_graph().subtasks(task_to_check))
 

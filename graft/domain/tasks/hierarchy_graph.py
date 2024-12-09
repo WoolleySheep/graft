@@ -415,32 +415,28 @@ class IHierarchyGraphView(Protocol):
         task: UID,
         /,
         stop_condition: Callable[[UID], bool] | None = None,
-    ) -> SingleStartingTaskHierarchySubgraphView:
-        ...
+    ) -> SingleStartingTaskHierarchySubgraphView: ...
 
     def superior_tasks(
         self,
         task: UID,
         /,
         stop_condition: Callable[[UID], bool] | None = None,
-    ) -> SingleStartingTaskHierarchySubgraphView:
-        ...
+    ) -> SingleStartingTaskHierarchySubgraphView: ...
 
     def inferior_tasks_multi(
         self,
         tasks: Iterable[UID],
         /,
         stop_condition: Callable[[UID], bool] | None = None,
-    ) -> MultipleStartingTasksHierarchySubgraphView:
-        ...
+    ) -> MultipleStartingTasksHierarchySubgraphView: ...
 
     def superior_tasks_multi(
         self,
         tasks: Iterable[UID],
         /,
         stop_condition: Callable[[UID], bool] | None = None,
-    ) -> MultipleStartingTasksHierarchySubgraphView:
-        ...
+    ) -> MultipleStartingTasksHierarchySubgraphView: ...
 
     def has_path(
         self,

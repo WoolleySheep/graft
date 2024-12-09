@@ -94,9 +94,9 @@ def get_layer_orders_brute_force_method[T: Hashable](
             )
             sorted_target_layer_orders = sorted(target_layer_orders, key=lambda x: x[1])
 
-            source_layer_order_to_sorted_target_layer_orders_map[
-                source_layer_order
-            ] = sorted_target_layer_orders
+            source_layer_order_to_sorted_target_layer_orders_map[source_layer_order] = (
+                sorted_target_layer_orders
+            )
 
     # Sort the top level groups by number of minimum intersecting edges Evaluate
     # them in this order. Know that the target layer orders are sorted, so just

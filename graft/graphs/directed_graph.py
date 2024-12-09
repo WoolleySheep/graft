@@ -950,10 +950,10 @@ class DirectedGraph[T: Hashable]:
             raise NodeDoesNotExistError(node=node)
 
         checked_nodes = set[T]()
-        nodes_to_check = collections.deque[T]([node])
+        nodes_to_check = collections.deque([node])
 
         while nodes_to_check:
-            node = nodes_to_check.pop()
+            node = nodes_to_check.popleft()
 
             if node in checked_nodes:
                 continue

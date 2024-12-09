@@ -16,5 +16,4 @@ class GetDepthPositions(Protocol):
         graph: tasks.INetworkGraphView,
         task_to_relation_layers_map: Mapping[tasks.UID, TaskRelationLayers],
         task_cylinder_radius: Radius,
-    ) -> Mapping[tasks.UID, float]:
-        ...
+    ) -> Mapping[tasks.UID, float]: ...

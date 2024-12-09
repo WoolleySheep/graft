@@ -8,8 +8,7 @@ from graft.layers.presentation.tkinter_gui.task_network_graph_drawing.radius imp
 
 
 class GetHierarchyLayers(Protocol):
-    def __call__(self, graph: tasks.INetworkGraphView) -> dict[tasks.UID, int]:
-        ...
+    def __call__(self, graph: tasks.INetworkGraphView) -> dict[tasks.UID, int]: ...
 
 
 class GetHierarchyPositions(Protocol):
@@ -17,5 +16,4 @@ class GetHierarchyPositions(Protocol):
         self,
         task_to_hierarchy_layer_map: Mapping[tasks.UID, int],
         task_cylinder_radius: Radius,
-    ) -> dict[tasks.UID, float]:
-        ...
+    ) -> dict[tasks.UID, float]: ...

@@ -11,8 +11,7 @@ class GraphOrientation(enum.Enum):
 class PlaceNodesFn[T: Hashable](Protocol):
     def __call__(
         self, node_positions: Mapping[T, tuple[float, float]]
-    ) -> dict[T, tuple[float, float]]:
-        ...
+    ) -> dict[T, tuple[float, float]]: ...
 
 
 def _place_nodes_in_vertical_orientation[T: Hashable](
