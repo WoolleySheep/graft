@@ -8,20 +8,20 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = ">= 3.12, < 3.14"
-networkx = "^3.2.1"
-matplotlib = "^3.8.4"
+networkx = "^3"
+matplotlib = "^3"
 
 [tool.poetry.group.dev.dependencies]
-ruff = "^0.1.6"
-pylint = "^3.0.2"
-autoflake = "^2.2.1"
-pydocstringformatter = "^0.7.3"
-vulture = "^2.10"
-pytest = "^7.4.3"
-pytest-mock = "^3.12.0"
-pytest-cov = "^4.1.0"
-pyright = "^1.1.372"
-pyinstaller = "^6.10.0"
+ruff = "^0"
+pylint = "^3"
+autoflake = "^2"
+pydocstringformatter = "^0"
+vulture = "^2"
+pytest = "^7"
+pytest-mock = "^3"
+pytest-cov = "^4"
+pyright = "^1"
+pyinstaller = "^6"
 
 [tool.ruff]
 line-length = 88
