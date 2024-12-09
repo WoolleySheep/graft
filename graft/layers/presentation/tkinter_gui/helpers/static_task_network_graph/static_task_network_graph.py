@@ -24,6 +24,12 @@ from graft.layers.presentation.tkinter_gui.helpers.static_task_network_graph.cyl
     XAxisCylinderPosition,
     plot_x_axis_cylinder,
 )
+from graft.layers.presentation.tkinter_gui.helpers.static_task_network_graph.relationship_drawing_properties import (
+    RelationshipDrawingProperties,
+)
+from graft.layers.presentation.tkinter_gui.helpers.static_task_network_graph.task_drawing_properties import (
+    TaskDrawingProperties,
+)
 
 if TYPE_CHECKING:
     from mpl_toolkits import mplot3d
@@ -37,7 +43,7 @@ _DEFAULT_DEPENDENCY_ARROW_COLOUR: Final = "black"
 _DEFAULT_ADDITIONAL_HIERARCHY_ARROW_COLOUR: Final = "yellow"
 _DEFAULT_ADDITIONAL_DEPENDENCY_ARROW_COLOUR: Final = "pink"
 
-_AXIS_ARROW_COLOUR = "black"
+_AXIS_ARROW_COLOUR: Final = "black"
 
 
 _TASK_CYLINDER_RADIUS: Final = 0.25
@@ -81,18 +87,26 @@ class StaticTaskNetworkGraph(tk.Frame):
         master: tk.Misc,
         graph: tasks.INetworkGraphView,
         get_task_annotation_text: Callable[[tasks.UID], str | None] | None = None,
-        get_task_colour: Callable[[tasks.UID], str | None] | None = None,
-        get_task_label_colour: Callable[[tasks.UID], str | None] | None = None,
-        get_hierarchy_colour: Callable[[tasks.UID, tasks.UID], str | None]
+        get_task_properties: Callable[[tasks.UID], TaskDrawingProperties | None]
         | None = None,
-        get_dependency_colour: Callable[[tasks.UID, tasks.UID], str | None]
+        get_hierarchy_properties: Callable[
+            [tasks.UID, tasks.UID], RelationshipDrawingProperties | None
+        ]
+        | None = None,
+        get_dependency_properties: Callable[
+            [tasks.UID, tasks.UID], RelationshipDrawingProperties | None
+        ]
         | None = None,
         additional_hierarchies: Set[tuple[tasks.UID, tasks.UID]] | None = None,
         additional_dependencies: Set[tuple[tasks.UID, tasks.UID]] | None = None,
         on_node_left_click: Callable[[tasks.UID], None] | None = None,
-        get_additional_hierarchy_colour: Callable[[tasks.UID, tasks.UID], str | None]
+        get_additional_hierarchy_properties: Callable[
+            [tasks.UID, tasks.UID], RelationshipDrawingProperties | None
+        ]
         | None = None,
-        get_additional_dependency_colour: Callable[[tasks.UID, tasks.UID], str | None]
+        get_additional_dependency_properties: Callable[
+            [tasks.UID, tasks.UID], RelationshipDrawingProperties | None
+        ]
         | None = None,
     ) -> None:
         super().__init__(master)
@@ -102,20 +116,20 @@ class StaticTaskNetworkGraph(tk.Frame):
 
         self._get_task_annotation_text = get_task_annotation_text
 
-        self._get_task_colour = (
-            get_task_colour if get_task_colour is not None else _return_none
+        self._get_task_properties = (
+            get_task_properties if get_task_properties is not None else _return_none
         )
 
-        self._get_task_label_colour = (
-            get_task_label_colour if get_task_label_colour is not None else _return_none
+        self._get_hierarchy_properties = (
+            get_hierarchy_properties
+            if get_hierarchy_properties is not None
+            else _return_none
         )
 
-        self._get_hierarchy_colour = (
-            get_hierarchy_colour if get_hierarchy_colour is not None else _return_none
-        )
-
-        self._get_dependency_colour = (
-            get_dependency_colour if get_dependency_colour is not None else _return_none
+        self._get_dependency_properties = (
+            get_dependency_properties
+            if get_dependency_properties is not None
+            else _return_none
         )
 
         self._additional_hierarchies = (
@@ -142,15 +156,15 @@ class StaticTaskNetworkGraph(tk.Frame):
             msg = "Additional dependencies must not overlap with graph dependencies"
             raise ValueError(msg)
 
-        self._get_additional_hierarchy_colour = (
-            get_additional_hierarchy_colour
-            if get_additional_hierarchy_colour is not None
+        self._get_additional_hierarchy_properties = (
+            get_additional_hierarchy_properties
+            if get_additional_hierarchy_properties is not None
             else _return_none
         )
 
-        self._get_additional_dependency_colour = (
-            get_additional_dependency_colour
-            if get_additional_dependency_colour is not None
+        self._get_additional_dependency_properties = (
+            get_additional_dependency_properties
+            if get_additional_dependency_properties is not None
             else _return_none
         )
 
@@ -179,16 +193,17 @@ class StaticTaskNetworkGraph(tk.Frame):
         get_task_annotation_text: Callable[[tasks.UID], str | None]
         | None
         | DefaultSentinel = DefaultSentinel.DEFAULT,
-        get_task_colour: Callable[[tasks.UID], str | None]
+        get_task_properties: Callable[[tasks.UID], TaskDrawingProperties | None]
         | None
         | DefaultSentinel = DefaultSentinel.DEFAULT,
-        get_task_label_colour: Callable[[tasks.UID], str | None]
+        get_hierarchy_properties: Callable[
+            [tasks.UID, tasks.UID], RelationshipDrawingProperties | None
+        ]
         | None
         | DefaultSentinel = DefaultSentinel.DEFAULT,
-        get_hierarchy_colour: Callable[[tasks.UID, tasks.UID], str | None]
-        | None
-        | DefaultSentinel = DefaultSentinel.DEFAULT,
-        get_dependency_colour: Callable[[tasks.UID, tasks.UID], str | None]
+        get_dependency_properties: Callable[
+            [tasks.UID, tasks.UID], RelationshipDrawingProperties | None
+        ]
         | None
         | DefaultSentinel = DefaultSentinel.DEFAULT,
         additional_hierarchies: Set[tuple[tasks.UID, tasks.UID]]
@@ -200,10 +215,14 @@ class StaticTaskNetworkGraph(tk.Frame):
         on_node_left_click: Callable[[tasks.UID], None]
         | None
         | DefaultSentinel = DefaultSentinel.DEFAULT,
-        get_additional_hierarchy_colour: Callable[[tasks.UID, tasks.UID], str | None]
+        get_additional_hierarchy_properties: Callable[
+            [tasks.UID, tasks.UID], RelationshipDrawingProperties | None
+        ]
         | None
         | DefaultSentinel = DefaultSentinel.DEFAULT,
-        get_additional_dependency_colour: Callable[[tasks.UID, tasks.UID], str | None]
+        get_additional_dependency_properties: Callable[
+            [tasks.UID, tasks.UID], RelationshipDrawingProperties | None
+        ]
         | None
         | DefaultSentinel = DefaultSentinel.DEFAULT,
     ) -> None:
@@ -213,29 +232,22 @@ class StaticTaskNetworkGraph(tk.Frame):
         if get_task_annotation_text is not DefaultSentinel.DEFAULT:
             self._get_task_annotation_text = get_task_annotation_text
 
-        if get_task_colour is not DefaultSentinel.DEFAULT:
-            self._get_task_colour = (
-                get_task_colour if get_task_colour is not None else _return_none
+        if get_task_properties is not DefaultSentinel.DEFAULT:
+            self._get_task_properties = (
+                get_task_properties if get_task_properties is not None else _return_none
             )
 
-        if get_task_label_colour is not DefaultSentinel.DEFAULT:
-            self._get_task_label_colour = (
-                get_task_label_colour
-                if get_task_label_colour is not None
+        if get_hierarchy_properties is not DefaultSentinel.DEFAULT:
+            self._get_hierarchy_properties = (
+                get_hierarchy_properties
+                if get_hierarchy_properties is not None
                 else _return_none
             )
 
-        if get_hierarchy_colour is not DefaultSentinel.DEFAULT:
-            self._get_hierarchy_colour = (
-                get_hierarchy_colour
-                if get_hierarchy_colour is not None
-                else _return_none
-            )
-
-        if get_dependency_colour is not DefaultSentinel.DEFAULT:
-            self._get_dependency_colour = (
-                get_dependency_colour
-                if get_dependency_colour is not None
+        if get_dependency_properties is not DefaultSentinel.DEFAULT:
+            self._get_dependency_properties = (
+                get_dependency_properties
+                if get_dependency_properties is not None
                 else _return_none
             )
 
@@ -268,17 +280,17 @@ class StaticTaskNetworkGraph(tk.Frame):
         if on_node_left_click is not DefaultSentinel.DEFAULT:
             self._on_node_left_click = on_node_left_click
 
-        if get_additional_hierarchy_colour is not DefaultSentinel.DEFAULT:
-            self._get_additional_hierarchy_colour = (
-                get_additional_hierarchy_colour
-                if get_additional_hierarchy_colour is not None
+        if get_additional_hierarchy_properties is not DefaultSentinel.DEFAULT:
+            self._get_additional_hierarchy_properties = (
+                get_additional_hierarchy_properties
+                if get_additional_hierarchy_properties is not None
                 else _return_none
             )
 
-        if get_additional_dependency_colour is not DefaultSentinel.DEFAULT:
-            self._get_additional_dependency_colour = (
-                get_additional_dependency_colour
-                if get_additional_dependency_colour is not None
+        if get_additional_dependency_properties is not DefaultSentinel.DEFAULT:
+            self._get_additional_dependency_properties = (
+                get_additional_dependency_properties
+                if get_additional_dependency_properties is not None
                 else _return_none
             )
 
@@ -450,27 +462,40 @@ class StaticTaskNetworkGraph(tk.Frame):
         assert self._task_positions is not None
 
         for task, position in self._task_positions.items():
-            tmp_task_colour = self._get_task_colour(task)
-            task_colour = (
-                tmp_task_colour
-                if tmp_task_colour is not None
+            properties = self._get_task_properties(task)
+            colour = (
+                properties.colour
+                if properties is not None and properties.colour is not None
                 else graph_colours.DEFAULT_NODE_COLOUR
             )
-            task_cylinder_properties = CylinderDrawingProperties(
-                colour=task_colour,
-                number_of_polygons=_TASK_CYLINDER_NUMBER_OF_POLYGONS,
-                alpha=_TASK_CYLINDER_ALPHA,
+            alpha = (
+                properties.alpha
+                if properties is not None and properties.alpha is not None
+                else _TASK_CYLINDER_ALPHA
             )
 
-            task_label = str(task)
-            tmp_label_colour = self._get_task_label_colour(task)
+            task_cylinder_properties = CylinderDrawingProperties(
+                colour=colour,
+                number_of_polygons=_TASK_CYLINDER_NUMBER_OF_POLYGONS,
+                alpha=alpha,
+            )
+
+            label_text = str(task)
+
             label_colour = (
-                tmp_label_colour
-                if tmp_label_colour is not None
+                properties.label_colour
+                if properties is not None and properties.label_colour is not None
                 else graph_colours.DEFAULT_TEXT_COLOUR
             )
+
+            label_alpha = (
+                properties.label_alpha
+                if properties is not None and properties.label_alpha is not None
+                else _TASK_LABEL_ALPHA
+            )
+
             label_properties = LabelDrawingProperties(
-                colour=label_colour, alpha=_TASK_LABEL_ALPHA
+                colour=label_colour, alpha=label_alpha
             )
 
             collection = plot_x_axis_cylinder(
@@ -478,7 +503,7 @@ class StaticTaskNetworkGraph(tk.Frame):
                 radius=_TASK_CYLINDER_RADIUS,
                 position=position,
                 properties=task_cylinder_properties,
-                label=Label(text=task_label, properties=label_properties),
+                label=Label(text=label_text, properties=label_properties),
             )
 
             self._task_collections.append((task, collection))
@@ -496,10 +521,11 @@ class StaticTaskNetworkGraph(tk.Frame):
             arrow_target_y = subtask_position.y
             arrow_target_z = subtask_position.z
 
-            tmp_arrow_colour = self._get_hierarchy_colour(supertask, subtask)
-            arrow_colour = (
-                tmp_arrow_colour
-                if tmp_arrow_colour is not None
+            properties = self._get_additional_hierarchy_properties(supertask, subtask)
+
+            colour = (
+                properties.colour
+                if properties is not None and properties.colour is not None
                 else _DEFAULT_HIERARCHY_ARROW_COLOUR
             )
 
@@ -509,7 +535,7 @@ class StaticTaskNetworkGraph(tk.Frame):
                 [arrow_source_z, arrow_target_z],
                 arrowstyle="-|>",
                 mutation_scale=10,
-                color=arrow_colour,
+                color=colour,
             )
 
             self._ax.add_artist(arrow)
@@ -531,12 +557,11 @@ class StaticTaskNetworkGraph(tk.Frame):
             arrow_target_y = dependent_task_position.y
             arrow_target_z = dependent_task_position.z
 
-            tmp_arrow_colour = self._get_dependency_colour(
-                dependee_task, dependent_task
-            )
-            arrow_colour = (
-                tmp_arrow_colour
-                if tmp_arrow_colour is not None
+            properties = self._get_dependency_properties(dependee_task, dependent_task)
+
+            colour = (
+                properties.colour
+                if properties is not None and properties.colour is not None
                 else _DEFAULT_DEPENDENCY_ARROW_COLOUR
             )
 
@@ -546,7 +571,7 @@ class StaticTaskNetworkGraph(tk.Frame):
                 [arrow_source_z, arrow_target_z],
                 arrowstyle="-|>",
                 mutation_scale=10,
-                color=arrow_colour,
+                color=colour,
             )
             self._ax.add_artist(arrow)
 

@@ -49,7 +49,7 @@ class DefaultSentinel(enum.Enum):
     DEFAULT = enum.auto()
 
 
-def format_task_name_for_annotation(name: tasks.Name) -> str | None:
+def _format_task_name_for_annotation(name: tasks.Name) -> str | None:
     """Helper function to transform a task name into the form expected by annotation text."""
     return str(name) if name else None
 
