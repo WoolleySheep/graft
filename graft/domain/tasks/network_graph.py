@@ -899,40 +899,50 @@ class NetworkGraph:
                         task_with_dependents_to_check, dependent_task
                     )
 
-        while tasks_with_subtasks_to_check:
-            task_with_subtasks_to_check = tasks_with_subtasks_to_check.popleft()
+            while tasks_with_subtasks_to_check:
+                task_with_subtasks_to_check = tasks_with_subtasks_to_check.popleft()
 
-            if task_with_subtasks_to_check in tasks_with_checked_subtasks:
-                continue
-            tasks_with_checked_subtasks.add(task_with_subtasks_to_check)
+                if task_with_subtasks_to_check in tasks_with_checked_subtasks:
+                    continue
+                tasks_with_checked_subtasks.add(task_with_subtasks_to_check)
 
-            for subtask in self._hierarchy_graph.subtasks(task_with_subtasks_to_check):
-                downstream_tasks.add(subtask)
-                tasks_with_dependents_to_check.append(subtask)
-                tasks_with_subtasks_to_check.append(subtask)
-                tasks_with_supertasks_to_check.append(subtask)
+                for subtask in self._hierarchy_graph.subtasks(
+                    task_with_subtasks_to_check
+                ):
+                    downstream_tasks.add(subtask)
+                    tasks_with_dependents_to_check.append(subtask)
+                    tasks_with_subtasks_to_check.append(subtask)
+                    tasks_with_supertasks_to_check.append(subtask)
 
-                if task not in subgraph.tasks():
-                    subgraph.add_task(subtask)
-                subgraph.add_hierarchy(task_with_subtasks_to_check, subtask)
+                    if subtask not in subgraph.tasks():
+                        subgraph.add_task(subtask)
+                    if (
+                        task_with_subtasks_to_check,
+                        subtask,
+                    ) not in subgraph.hierarchy_graph().hierarchies():
+                        subgraph.add_hierarchy(task_with_subtasks_to_check, subtask)
 
-        while tasks_with_supertasks_to_check:
-            task_with_supertasks_to_check = tasks_with_supertasks_to_check.popleft()
+            while tasks_with_supertasks_to_check:
+                task_with_supertasks_to_check = tasks_with_supertasks_to_check.popleft()
 
-            if task_with_supertasks_to_check in tasks_with_checked_supertasks:
-                continue
-            tasks_with_checked_supertasks.add(task_with_supertasks_to_check)
+                if task_with_supertasks_to_check in tasks_with_checked_supertasks:
+                    continue
+                tasks_with_checked_supertasks.add(task_with_supertasks_to_check)
 
-            for supertask in self._hierarchy_graph.supertasks(
-                task_with_supertasks_to_check
-            ):
-                non_downstream_tasks.add(supertask)
-                tasks_with_dependents_to_check.append(supertask)
-                tasks_with_supertasks_to_check.append(supertask)
+                for supertask in self._hierarchy_graph.supertasks(
+                    task_with_supertasks_to_check
+                ):
+                    non_downstream_tasks.add(supertask)
+                    tasks_with_dependents_to_check.append(supertask)
+                    tasks_with_supertasks_to_check.append(supertask)
 
-                if supertask not in subgraph.tasks():
-                    subgraph.add_task(supertask)
-                subgraph.add_hierarchy(supertask, task_with_supertasks_to_check)
+                    if supertask not in subgraph.tasks():
+                        subgraph.add_task(supertask)
+                    if (
+                        supertask,
+                        task_with_supertasks_to_check,
+                    ) not in subgraph.hierarchy_graph().hierarchies():
+                        subgraph.add_hierarchy(supertask, task_with_supertasks_to_check)
 
         non_downstream_tasks.difference_update(downstream_tasks)
 
@@ -1015,40 +1025,42 @@ class NetworkGraph:
                         subgraph.add_task(dependee_task)
                     subgraph.add_dependency(dependee_task, task_with_dependees_to_check)
 
-        while tasks_with_subtasks_to_check:
-            task_with_subtasks_to_check = tasks_with_subtasks_to_check.popleft()
+            while tasks_with_subtasks_to_check:
+                task_with_subtasks_to_check = tasks_with_subtasks_to_check.popleft()
 
-            if task_with_subtasks_to_check in tasks_with_checked_subtasks:
-                continue
-            tasks_with_checked_subtasks.add(task_with_subtasks_to_check)
+                if task_with_subtasks_to_check in tasks_with_checked_subtasks:
+                    continue
+                tasks_with_checked_subtasks.add(task_with_subtasks_to_check)
 
-            for subtask in self._hierarchy_graph.subtasks(task_with_subtasks_to_check):
-                upstream_tasks.add(subtask)
-                tasks_with_dependees_to_check.append(subtask)
-                tasks_with_subtasks_to_check.append(subtask)
-                tasks_with_supertasks_to_check.append(subtask)
+                for subtask in self._hierarchy_graph.subtasks(
+                    task_with_subtasks_to_check
+                ):
+                    upstream_tasks.add(subtask)
+                    tasks_with_dependees_to_check.append(subtask)
+                    tasks_with_subtasks_to_check.append(subtask)
+                    tasks_with_supertasks_to_check.append(subtask)
 
-                if task not in subgraph.tasks():
-                    subgraph.add_task(subtask)
-                subgraph.add_hierarchy(task_with_subtasks_to_check, subtask)
+                    if task not in subgraph.tasks():
+                        subgraph.add_task(subtask)
+                    subgraph.add_hierarchy(task_with_subtasks_to_check, subtask)
 
-        while tasks_with_supertasks_to_check:
-            task_with_supertasks_to_check = tasks_with_supertasks_to_check.popleft()
+            while tasks_with_supertasks_to_check:
+                task_with_supertasks_to_check = tasks_with_supertasks_to_check.popleft()
 
-            if task_with_supertasks_to_check in tasks_with_checked_supertasks:
-                continue
-            tasks_with_checked_supertasks.add(task_with_supertasks_to_check)
+                if task_with_supertasks_to_check in tasks_with_checked_supertasks:
+                    continue
+                tasks_with_checked_supertasks.add(task_with_supertasks_to_check)
 
-            for supertask in self._hierarchy_graph.supertasks(
-                task_with_supertasks_to_check
-            ):
-                non_upstream_tasks.add(supertask)
-                tasks_with_dependees_to_check.append(supertask)
-                tasks_with_supertasks_to_check.append(supertask)
+                for supertask in self._hierarchy_graph.supertasks(
+                    task_with_supertasks_to_check
+                ):
+                    non_upstream_tasks.add(supertask)
+                    tasks_with_dependees_to_check.append(supertask)
+                    tasks_with_supertasks_to_check.append(supertask)
 
-                if supertask not in subgraph.tasks():
-                    subgraph.add_task(supertask)
-                subgraph.add_hierarchy(supertask, task_with_supertasks_to_check)
+                    if supertask not in subgraph.tasks():
+                        subgraph.add_task(supertask)
+                    subgraph.add_hierarchy(supertask, task_with_supertasks_to_check)
 
         non_upstream_tasks.difference_update(upstream_tasks)
 

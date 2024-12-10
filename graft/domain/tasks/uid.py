@@ -1,5 +1,7 @@
 """UID and associated classes/exceptions."""
 
+from __future__ import annotations
+
 from collections.abc import Generator, Iterable, Iterator, Set
 from typing import Any
 
@@ -34,9 +36,9 @@ class UID:
         """Check if UID is equal to other."""
         return isinstance(other, UID) and int(self) == int(other)
 
-    def __lt__(self, other: object) -> bool:
+    def __lt__(self, other: UID) -> bool:
         """Check if UID is less than other."""
-        return isinstance(other, UID) and int(self) < int(other)
+        return int(self) < int(other)
 
     def __hash__(self) -> int:
         """Return hash of the UID number."""

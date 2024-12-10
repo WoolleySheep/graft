@@ -1,7 +1,5 @@
-import collections
 import itertools
-import math
-from collections.abc import Generator, Mapping, MutableMapping
+from collections.abc import Generator, MutableMapping
 
 from graft import graphs
 from graft.domain import tasks
@@ -21,10 +19,6 @@ class PartialDependencyPosition:
 
     def __repr__(self) -> str:
         return f"{__class__.__name__}(min={self.min}, max={self.max})"
-
-
-def _has_upstream_tasks(task: tasks.UID, graph: tasks.INetworkGraphView) -> bool:
-    return next(graph.upstream_tasks(task), None) is not None
 
 
 def _get_tasks_with_no_upstream_tasks(
