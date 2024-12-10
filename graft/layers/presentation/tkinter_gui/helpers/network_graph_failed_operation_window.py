@@ -59,19 +59,27 @@ class NetworkGraphOperationFailedWindow(OperationFailedWindow):
         if highlighted_tasks is not None and not (
             highlighted_tasks <= task_network.tasks()
         ):
-            msg = "Some highlighted tasks not found graph"
+            missing_tasks = highlighted_tasks - task_network.tasks()
+            msg = f"Highlighted tasks {missing_tasks} not found graph"
             raise ValueError(msg)
 
         if highlighted_hierarchies is not None and not (
             highlighted_hierarchies <= task_network.hierarchy_graph().hierarchies()
         ):
-            msg = "Some highlighted hierarchies not found graph"
+            missing_hierarchies = (
+                highlighted_hierarchies - task_network.hierarchy_graph().hierarchies()
+            )
+            msg = f"Highlighted hierarchies {missing_hierarchies} not found graph"
             raise ValueError(msg)
 
         if highlighted_dependencies is not None and not (
             highlighted_dependencies <= task_network.dependency_graph().dependencies()
         ):
-            msg = "Some highlighted dependencies not found graph"
+            missing_dependencies = (
+                highlighted_dependencies
+                - task_network.dependency_graph().dependencies()
+            )
+            msg = f"Highlighted dependencies {missing_dependencies} not found graph"
             raise ValueError(msg)
 
         self._highlighted_tasks = (

@@ -31,6 +31,7 @@ def _format_task_name_for_annotation(name: tasks.Name) -> str | None:
 
 class ProgressGraph(tk.Frame):
     def __init__(self, master: tk.Misc, logic_layer: architecture.LogicLayer) -> None:
+        # TODO: Highlight selected task somehow
         super().__init__(master=master)
 
         self._logic_layer = logic_layer

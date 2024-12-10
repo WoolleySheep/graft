@@ -206,7 +206,7 @@ class NodesView[T: Hashable](Set[T]):
         return len(self._nodes)
 
     def __contains__(self, item: object) -> bool:
-        """Check if item is in NodeView."""
+        """Check if item is in the view."""
         return item in self._nodes
 
     def __iter__(self) -> Iterator[T]:
@@ -214,7 +214,7 @@ class NodesView[T: Hashable](Set[T]):
         return iter(self._nodes)
 
     def __eq__(self, other: object) -> bool:
-        """Check if nodeview is equal to other."""
+        """Check if views are equal."""
         return isinstance(other, NodesView) and set(self) == set(other)
 
     def __str__(self) -> str:
@@ -225,8 +225,24 @@ class NodesView[T: Hashable](Set[T]):
         """Return string representation of the nodes."""
         return f"{self.__class__.__name__}{{{', '.join(repr(node) for node in self)}}}"
 
+    def __sub__(self, other: Set[Any]) -> NodesView[T]:
+        """Return difference of two views."""
+        return NodesView(self._nodes - other)
 
-class GraphEdgesView[T: Hashable](Set[tuple[T, T]]):
+    def __and__(self, other: Set[Any]) -> NodesView[T]:
+        """Return intersection of two views."""
+        return NodesView(self._nodes & other)
+
+    def __or__(self, other: Set[T]) -> NodesView[T]:
+        """Return union of two views."""
+        return NodesView(self._nodes | other)
+
+    def __xor__(self, other: Set[T]) -> NodesView[T]:
+        """Return symmetric difference of two views."""
+        return NodesView(self._nodes ^ other)
+
+
+class EdgesView[T: Hashable](Set[tuple[T, T]]):
     """View of the edges of a graph."""
 
     def __init__(self, node_successors_map: Mapping[T, Set[T]], /) -> None:
@@ -238,8 +254,8 @@ class GraphEdgesView[T: Hashable](Set[tuple[T, T]]):
         return any(self._node_successors_map.values())
 
     def __eq__(self, other: object) -> bool:
-        """Check if edgesview is equal to other."""
-        return isinstance(other, GraphEdgesView) and set(self) == set(other)
+        """Check if view is equal to other."""
+        return isinstance(other, EdgesView) and set(self) == set(other)
 
     def __len__(self) -> int:
         """Return number of edges in view."""
@@ -290,6 +306,56 @@ class GraphEdgesView[T: Hashable](Set[tuple[T, T]]):
             f"({node!r}, {successor!r})" for node, successor in self
         )
         return f"{self.__class__.__name__}({{{', '.join(formatted_node_successor_pairs)}}})"
+
+    def __sub__(self, other: Set[Any]) -> EdgesView[T]:
+        """Return difference of two views."""
+        difference = dict[T, set[T]]()
+        for source, target in self:
+            if (source, target) in other:
+                continue
+            if source not in difference:
+                difference[source] = set[T]()
+            difference[source].add(target)
+
+        return EdgesView(difference)
+
+    def __and__(self, other: Set[Any]) -> EdgesView[T]:
+        """Return intersection of two views."""
+        intersection = dict[T, set[T]]()
+        for source, target in self:
+            if (source, target) not in other:
+                continue
+            if source not in intersection:
+                intersection[source] = set[T]()
+            intersection[source].add(target)
+
+        return EdgesView(intersection)
+
+    def __or__(self, other: Set[tuple[T, T]]) -> EdgesView[T]:
+        """Return union of two views."""
+        union = {
+            source: set(targets)
+            for source, targets in self._node_successors_map.items()
+        }
+        for source, target in other:
+            if source not in union:
+                union[source] = set[T]()
+            union[source].add(target)
+
+        return EdgesView(union)
+
+    def __xor__(self, other: Set[tuple[T, T]]) -> EdgesView[T]:
+        """Return symmetric difference of two views."""
+        intersection = self & other
+        symmetric_difference = dict[T, set[T]]()
+        for source, target in itertools.chain(self, other):
+            if (source, target) in intersection:
+                continue
+            if source not in symmetric_difference:
+                symmetric_difference[source] = set[T]()
+            symmetric_difference[source].add(target)
+
+        return EdgesView(symmetric_difference)
 
 
 class SubgraphNodesView[T: Hashable](Set[T]):
@@ -428,6 +494,22 @@ class SubgraphNodesView[T: Hashable](Set[T]):
             yield contains_recursive(
                 node, nodes_in_subgraph, visited_nodes, nodes_to_check
             )
+
+    def __sub__(self, other: Set[Any]) -> SubgraphNodesView[T]:
+        """Return difference of two views."""
+        raise NotImplementedError
+
+    def __and__(self, other: Set[Any]) -> SubgraphNodesView[T]:
+        """Return intersection of two views."""
+        raise NotImplementedError
+
+    def __or__(self, other: Set[T]) -> SubgraphNodesView[T]:
+        """Return union of two views."""
+        raise NotImplementedError
+
+    def __xor__(self, other: Set[T]) -> SubgraphNodesView[T]:
+        """Return symmetric difference of two views."""
+        raise NotImplementedError
 
 
 class SubgraphEdgesView[T: Hashable](Set[tuple[T, T]]):
@@ -597,6 +679,22 @@ class SubgraphEdgesView[T: Hashable](Set[tuple[T, T]]):
             yield contains_recursive(
                 edge, node_neighbours_in_subgraph, visited_nodes, nodes_to_check
             )
+
+    def __sub__(self, other: Set[Any]) -> SubgraphEdgesView[T]:
+        """Return difference of two views."""
+        raise NotImplementedError
+
+    def __and__(self, other: Set[Any]) -> SubgraphEdgesView[T]:
+        """Return intersection of two views."""
+        raise NotImplementedError
+
+    def __or__(self, other: Set[tuple[T, T]]) -> SubgraphEdgesView[T]:
+        """Return union of two views."""
+        raise NotImplementedError
+
+    def __xor__(self, other: Set[tuple[T, T]]) -> SubgraphEdgesView[T]:
+        """Return symmetric difference of two views."""
+        raise NotImplementedError
 
 
 class MultipleStartingNodesSubgraphView[T: Hashable]:
@@ -842,9 +940,9 @@ class DirectedGraph[T: Hashable]:
 
         self._bidict.remove(key=source, value=target)
 
-    def edges(self) -> GraphEdgesView[T]:
+    def edges(self) -> EdgesView[T]:
         """Return view of digraph edges."""
-        return GraphEdgesView(self._bidict)
+        return EdgesView(self._bidict)
 
     def successors(self, node: T, /) -> NodesView[T]:
         """Return successors of node."""
@@ -1033,12 +1131,7 @@ class DirectedGraph[T: Hashable]:
         except NodeDoesNotExistError as e:
             raise NoConnectingSubgraphError(sources=sources2, targets=targets2) from e
 
-        for node in connecting_subgraph.nodes():
-            if node not in graph.nodes():
-                graph.add_node(node)
-        for source, target in connecting_subgraph.edges():
-            if (source, target) not in graph.edges():
-                graph.add_edge(source, target)
+        graph.update(connecting_subgraph)
 
     def is_root(self, node: T, /) -> bool:
         """Check if node is a root of the graph."""
@@ -1107,3 +1200,21 @@ class DirectedGraph[T: Hashable]:
             and process_node(node, visited_nodes, current_subgraph_nodes)
             for node in self.nodes()
         )
+
+    def update(self, graph: DirectedGraph[T]) -> None:
+        """Update the graph with another graph.
+
+        Use this method with caution; the order in which nodes and edges are
+        added cannot be controlled, and they graph you're updating from may have
+        edges that are not allowed in the graph you're updating. As such, I
+        recommend only using it as a helper method when you know it won't fail.
+        """
+        for node in graph.nodes():
+            if node in self.nodes():
+                continue
+            self.add_node(node)
+
+        for source, target in graph.edges():
+            if (source, target) in self.edges():
+                continue
+            self.add_edge(source, target)

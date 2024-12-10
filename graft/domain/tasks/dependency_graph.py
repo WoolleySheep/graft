@@ -213,7 +213,7 @@ def _reraise_node_removing_exceptions_as_corresponding_task_removing_exceptions(
     return wrapper
 
 
-class GraphDependenciesView(Set[tuple[UID, UID]]):
+class DependenciesView(Set[tuple[UID, UID]]):
     """View of the dependencies in a graph."""
 
     def __init__(self, dependencies: Set[tuple[UID, UID]], /) -> None:
@@ -230,7 +230,7 @@ class GraphDependenciesView(Set[tuple[UID, UID]]):
 
     def __eq__(self, other: object) -> bool:
         """Check if two views are equal."""
-        return isinstance(other, GraphDependenciesView) and set(self) == set(other)
+        return isinstance(other, DependenciesView) and set(self) == set(other)
 
     def __contains__(self, item: object) -> bool:
         """Check if item in DependenciesView."""
@@ -257,6 +257,22 @@ class GraphDependenciesView(Set[tuple[UID, UID]]):
             f"({task!r}, {dependent_task!r})" for task, dependent_task in iter(self)
         )
         return f"{self.__class__.__name__}({{{', '.join(task_dependent_pairs)}}})"
+
+    def __sub__(self, other: Set[Any]) -> DependenciesView:
+        """Return difference of two views."""
+        return DependenciesView(self._dependencies - other)
+
+    def __and__(self, other: Set[Any]) -> DependenciesView:
+        """Return intersection of two views."""
+        return DependenciesView(self._dependencies & other)
+
+    def __or__(self, other: Set[tuple[UID, UID]]) -> DependenciesView:
+        """Return union of two views."""
+        return DependenciesView(self._dependencies | other)
+
+    def __xor__(self, other: Set[tuple[UID, UID]]) -> DependenciesView:
+        """Return symmetric difference of two views."""
+        return DependenciesView(self._dependencies ^ other)
 
 
 class DependencySubgraphDependenciesView(Set[tuple[UID, UID]]):
@@ -374,7 +390,7 @@ class IDependencyGraphView(Protocol):
         """Return view of tasks in graph."""
         ...
 
-    def dependencies(self) -> GraphDependenciesView:
+    def dependencies(self) -> DependenciesView:
         """Return view of dependencies in graph."""
         ...
 
@@ -477,13 +493,10 @@ class DependencyGraph:
     """
 
     @classmethod
-    def clone(cls, graph: IDependencyGraphView) -> DependencyGraph:
+    def clone(cls, graph: IDependencyGraphView, /) -> DependencyGraph:
         """Create a clone of a dependency graph from an interface."""
         clone = cls()
-        for task in graph.tasks():
-            clone.add_task(task)
-        for dependee_task, dependent_task in graph.dependencies():
-            clone.add_dependency(dependee_task, dependent_task)
+        clone.update(graph)
         return clone
 
     def __init__(self, dag: graphs.DirectedAcyclicGraph[UID] | None = None) -> None:
@@ -558,9 +571,9 @@ class DependencyGraph:
         """Return a view of the tasks."""
         return TasksView(self._dag.nodes())
 
-    def dependencies(self) -> GraphDependenciesView:
+    def dependencies(self) -> DependenciesView:
         """Return a view of the dependencies."""
-        return GraphDependenciesView(self._dag.edges())
+        return DependenciesView(self._dag.edges())
 
     def dependee_tasks(self, task: UID, /) -> TasksView:
         """Return a view of the dependee-tasks of a task."""
@@ -693,6 +706,23 @@ class DependencyGraph:
         for task, dependents in self._dag.node_successors_pairs():
             yield task, TasksView(dependents)
 
+    def update(self, graph: IDependencyGraphView, /) -> None:
+        """Update the graph with another graph.
+
+        Use this method with EXTREME CAUTION; the order in which tasks and
+        dependencies are added cannot be controlled, so I recommend only using
+        it as a helper method when you know it won't fail.
+        """
+        for task in graph.tasks():
+            if task in self.tasks():
+                continue
+            self.add_task(task)
+
+        for dependee_task, dependent_task in graph.dependencies():
+            if (dependee_task, dependent_task) in self.dependencies():
+                continue
+            self.add_dependency(dependee_task, dependent_task)
+
 
 class DependencyGraphView:
     """View of the DependencyGraph."""
@@ -733,7 +763,7 @@ class DependencyGraphView:
         """Return view of tasks in graph."""
         return self._graph.tasks()
 
-    def dependencies(self) -> GraphDependenciesView:
+    def dependencies(self) -> DependenciesView:
         """Return view of dependencies in graph."""
         return self._graph.dependencies()
 

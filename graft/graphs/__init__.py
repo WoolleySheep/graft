@@ -11,7 +11,7 @@ from graft.graphs.directed_graph import (
     DirectedGraph,
     EdgeAlreadyExistsError,
     EdgeDoesNotExistError,
-    GraphEdgesView,
+    EdgesView,
     HasPredecessorsError,
     HasSuccessorsError,
     MultipleStartingNodesSubgraphView,

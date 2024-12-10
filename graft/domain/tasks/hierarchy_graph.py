@@ -281,6 +281,22 @@ class HierarchiesView(Set[tuple[UID, UID]]):
         task_subtask_pairs = (f"({task!r}, {subtask!r})" for task, subtask in self)
         return f"{self.__class__.__name__}({{{', '.join(task_subtask_pairs)}}})"
 
+    def __sub__(self, other: Set[Any]) -> HierarchiesView:
+        """Return difference of two views."""
+        return HierarchiesView(self._hierarchies - other)
+
+    def __and__(self, other: Set[Any]) -> HierarchiesView:
+        """Return intersection of two views."""
+        return HierarchiesView(self._hierarchies & other)
+
+    def __or__(self, other: Set[tuple[UID, UID]]) -> HierarchiesView:
+        """Return union of two views."""
+        return HierarchiesView(self._hierarchies | other)
+
+    def __xor__(self, other: Set[tuple[UID, UID]]) -> HierarchiesView:
+        """Return symmetric difference of two views."""
+        return HierarchiesView(self._hierarchies ^ other)
+
 
 class HierarchySubgraphHierarchyView(Set[tuple[UID, UID]]):
     """View of subgraph hierarchies."""
@@ -507,13 +523,10 @@ class HierarchyGraph:
     """
 
     @classmethod
-    def clone(cls, graph: IHierarchyGraphView) -> HierarchyGraph:
+    def clone(cls, graph: IHierarchyGraphView, /) -> HierarchyGraph:
         """Create a clone of a hierarchy graph from an interface."""
         clone = cls()
-        for task in graph.tasks():
-            clone.add_task(task)
-        for supertask, subtask in graph.hierarchies():
-            clone.add_hierarchy(supertask, subtask)
+        clone.update(graph)
         return clone
 
     def __init__(
@@ -725,6 +738,23 @@ class HierarchyGraph:
         """Return generator over task-subtasks pairs."""
         for task, subtasks in self._reduced_dag.node_successors_pairs():
             yield task, TasksView(subtasks)
+
+    def update(self, graph: IHierarchyGraphView, /) -> None:
+        """Update the graph with another graph.
+
+        Use this method with EXTREME CAUTION; the order in which tasks and
+        hierarchies are added cannot be controlled, so I recommend only using
+        it as a helper method when you know it won't fail.
+        """
+        for task in graph.tasks():
+            if task in self.tasks():
+                continue
+            self.add_task(task)
+
+        for supertask, subtask in graph.hierarchies():
+            if (supertask, subtask) in self.hierarchies():
+                continue
+            self.add_hierarchy(supertask, subtask)
 
 
 class HierarchyGraphView:

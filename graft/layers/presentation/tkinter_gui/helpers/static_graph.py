@@ -78,6 +78,8 @@ class StaticGraph[T: Hashable](tk.Frame):
         get_additional_edge_properties: Callable[[T, T], EdgeDrawingProperties | None]
         | None = None,
     ) -> None:
+        # TODO: Switch across to using the same drawing classes (eg: Colour,
+        # Alpha, LineStyle, etc) as the static network graph
         super().__init__(master)
 
         self._graph_orientation = graph_orientation

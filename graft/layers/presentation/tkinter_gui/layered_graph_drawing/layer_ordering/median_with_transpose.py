@@ -157,6 +157,9 @@ def get_layer_orders_median_with_transpose_method[T: Hashable](
             layer_orders_reversed.append(sorted_layer)
         best_layer_orders = list(reversed(layer_orders_reversed))
 
+        # TODO: A lot of the work in `transpose`` is repeated each time it is
+        # called (eg: working out which edges belong between which layers).
+        # Could do this all once up front and pass around a dict.
         _transpose(layers=best_layer_orders, graph=graph)
 
     return best_layer_orders

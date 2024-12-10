@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections.abc import Generator, Iterable, Iterator, Set
 from typing import Any
 
+from matplotlib.dates import SU
+
 from graft import graphs
 
 
@@ -93,7 +95,23 @@ class TasksView(Set[UID]):
 
     def __repr__(self) -> str:
         """Return string representation of view."""
-        return f"uids_view({', '.join(repr(task) for task in self._tasks)})"
+        return f"tasks_view({', '.join(repr(task) for task in self._tasks)})"
+
+    def __sub__(self, other: Set[Any]) -> TasksView:
+        """Return difference of two views."""
+        return TasksView(self._tasks - other)
+
+    def __and__(self, other: Set[Any]) -> TasksView:
+        """Return intersection of two views."""
+        return TasksView(self._tasks & other)
+
+    def __or__(self, other: Set[UID]) -> TasksView:
+        """Return union of two views."""
+        return TasksView(self._tasks | other)
+
+    def __xor__(self, other: Set[UID]) -> TasksView:
+        """Return symmetric difference of two views."""
+        return TasksView(self._tasks ^ other)
 
 
 class SubgraphTasksView(Set[UID]):
@@ -129,3 +147,19 @@ class SubgraphTasksView(Set[UID]):
         one at a time, as can cache the parts of the subgraph already searched.
         """
         return self._subgraph_nodes.contains(tasks)
+
+    def __sub__(self, other: Set[Any]) -> SubgraphTasksView:
+        """Return difference of two views."""
+        raise NotImplementedError
+
+    def __and__(self, other: Set[Any]) -> SubgraphTasksView:
+        """Return intersection of two views."""
+        raise NotImplementedError
+
+    def __or__(self, other: Set[UID]) -> SubgraphTasksView:
+        """Return union of two views."""
+        raise NotImplementedError
+
+    def __xor__(self, other: Set[UID]) -> SubgraphTasksView:
+        """Return symmetric difference of two views."""
+        raise NotImplementedError

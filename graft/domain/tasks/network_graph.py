@@ -2,11 +2,20 @@ from __future__ import annotations
 
 import collections
 import itertools
+from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any, Protocol, Self
 
-from graft.domain.tasks.dependency_graph import DependencyGraph, DependencyGraphView
+from graft.domain.tasks.dependency_graph import (
+    DependencyGraph,
+    DependencyGraphView,
+    IDependencyGraphView,
+)
 from graft.domain.tasks.helpers import TaskDoesNotExistError
-from graft.domain.tasks.hierarchy_graph import HierarchyGraph, HierarchyGraphView
+from graft.domain.tasks.hierarchy_graph import (
+    HierarchyGraph,
+    HierarchyGraphView,
+    IHierarchyGraphView,
+)
 from graft.domain.tasks.uid import UID, TasksView
 
 if TYPE_CHECKING:
@@ -118,87 +127,6 @@ class HierarchyRelationshipConflictError(Exception):
             *args,
             **kwargs,
         )
-
-
-class StreamPathFromSuperTaskToSubTaskExistsError(Exception):
-    """Raised when a stream path from a super-task to a sub-task exists."""
-
-    def __init__(
-        self,
-        supertask: UID,
-        subtask: UID,
-        *args: tuple[Any, ...],
-        **kwargs: dict[str, Any],
-    ) -> None:
-        """Initialise StreamPathFromSuperTaskToSubTask."""
-        self.supertask = supertask
-        self.subtask = subtask
-        super().__init__(
-            f"Stream path from [{supertask}] to [{subtask}] exists.",
-            *args,
-            **kwargs,
-        )
-
-
-class StreamPathFromSubTaskToSuperTaskExistsError(Exception):
-    """Raised when a stream path from a sub-task to a super-task exists."""
-
-    def __init__(
-        self,
-        supertask: UID,
-        subtask: UID,
-        *args: tuple[Any, ...],
-        **kwargs: dict[str, Any],
-    ) -> None:
-        """Initialise StreamPathFromSubTaskToSuperTaskExistsError."""
-        self.supertask = supertask
-        self.subtask = subtask
-        super().__init__(
-            f"Stream path from [{subtask}] to [{supertask}] exists.",
-            *args,
-            **kwargs,
-        )
-
-
-class StreamPathFromSuperTaskToInferiorTaskOfSubTaskExistsError(Exception):
-    """Raised when a stream path from a super-task to an inferior task of a sub-task exists."""
-
-    def __init__(
-        self,
-        supertask: UID,
-        subtask: UID,
-        *args: tuple[Any, ...],
-        **kwargs: dict[str, Any],
-    ) -> None:
-        """Initialise StreamPathFromSuperTaskToInferiorTaskOfSubTaskExistsError."""
-        self.supertask = supertask
-        self.subtask = subtask
-        super().__init__(
-            f"Stream path from [{supertask}] to inferior task of [{subtask}] exists.",
-            *args,
-            **kwargs,
-        )
-
-
-class StreamPathFromInferiorTaskOfSubTaskToSuperTaskExistsError(Exception):
-    """Raised when a stream path from an inferior task of a sub-task to a super-task exists."""
-
-    def __init__(
-        self,
-        supertask: UID,
-        subtask: UID,
-        *args: tuple[Any, ...],
-        **kwargs: dict[str, Any],
-    ) -> None:
-        """Initialise StreamPathFromInferiorTaskOfSubTaskToSuperTaskExistsError."""
-        self.supertask = supertask
-        self.subtask = subtask
-        super().__init__(
-            f"Stream path from inferior task of [{subtask}] to [{supertask}] exists.",
-            *args,
-            **kwargs,
-        )
-
 
 class HierarchyIntroducesDependencyClashError(Exception):
     """Raised when a dependency-clash would be introduced.
@@ -363,6 +291,26 @@ class NoConnectingSubgraphError(Exception):
         self.target_task = target_task
         super().__init__(
             f"No connecting subgraph between tasks [{source_task}] and [{target_task}].",
+            *args,
+            **kwargs,
+        )
+
+
+class NoConnectingMultiSubgraphError(Exception):
+    """Raised when there is no connecting subsystem between two tasks."""
+
+    def __init__(
+        self,
+        source_tasks: set[UID],
+        target_tasks: set[UID],
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
+        """Initialise NoConnectingSubgraphError."""
+        self.source_tasks = source_tasks
+        self.target_tasks = target_tasks
+        super().__init__(
+            f"No connecting subgraph between tasks {source_tasks} and {target_tasks}.",
             *args,
             **kwargs,
         )
@@ -583,36 +531,78 @@ class NetworkGraph:
 
         self._hierarchy_graph.validate_hierarchy_can_be_added(supertask, subtask)
 
-        if self.has_stream_path(supertask, subtask):
-            connecting_subgraph, _ = self.connecting_subgraph(supertask, subtask)
+        # Check if there is a stream path from the supertask to the subtask or any of the subtask's inferiors
+        subtask_and_its_inferior_tasks = set(
+            itertools.chain(
+                [subtask], self.hierarchy_graph().inferior_tasks(subtask).tasks()
+            )
+        )
+        if any(
+            task in subtask_and_its_inferior_tasks
+            for task in self.downstream_tasks(supertask)
+        ):
+            supertask_downstream_subgraph, _ = self.downstream_subgraph(supertask)
+            subtask_inferior_tasks_subgraph = (
+                self.hierarchy_graph().inferior_tasks(subtask).subgraph()
+            )
+            intersecting_tasks = (
+                supertask_downstream_subgraph.tasks()
+                & subtask_inferior_tasks_subgraph.tasks()
+            )
+            subtask_connecting_hierarchy_subgraph = (
+                subtask_inferior_tasks_subgraph.superior_tasks_multi(
+                    intersecting_tasks
+                ).subgraph()
+            )
+            connecting_subgraph, _ = (
+                supertask_downstream_subgraph.upstream_subgraph_multi(
+                    intersecting_tasks
+                )
+            )
+
+            connecting_subgraph.update_hierarchy(subtask_connecting_hierarchy_subgraph)
+
             raise HierarchyRelationshipConflictError(
                 supertask=supertask,
                 subtask=subtask,
                 connecting_subgraph=connecting_subgraph,
             )
 
-        if self.has_stream_path(subtask, supertask):
-            connecting_subgraph, _ = self.connecting_subgraph(subtask, supertask)
+        # Check if there is a stream path from the supertask or any supertask's inferiors to the subtask
+        supertask_and_its_inferior_tasks = set(
+            itertools.chain(
+                [supertask], self.hierarchy_graph().inferior_tasks(supertask).tasks()
+            )
+        )
+        if any(
+            task in supertask_and_its_inferior_tasks
+            for task in self.upstream_tasks(subtask)
+        ):
+            subtask_upstream_subgraph, _ = self.upstream_subgraph(subtask)
+            supertask_inferior_tasks_subgraph = (
+                self.hierarchy_graph().inferior_tasks(supertask).subgraph()
+            )
+            intersecting_tasks = (
+                subtask_upstream_subgraph.tasks()
+                & supertask_inferior_tasks_subgraph.tasks()
+            )
+            supertask_connecting_hierarchy_subgraph = (
+                supertask_inferior_tasks_subgraph.superior_tasks_multi(
+                    intersecting_tasks
+                ).subgraph()
+            )
+            connecting_subgraph, _ = (
+                subtask_upstream_subgraph.downstream_subgraph_multi(intersecting_tasks)
+            )
+
+            connecting_subgraph.update_hierarchy(
+                supertask_connecting_hierarchy_subgraph
+            )
+
             raise HierarchyRelationshipConflictError(
                 supertask=supertask,
                 subtask=subtask,
                 connecting_subgraph=connecting_subgraph,
-            )
-
-        if self._has_stream_path_from_source_to_inferior_task_of_target(
-            supertask, subtask
-        ):
-            # TODO: Get relevant subgraph and return as part of exception
-            raise StreamPathFromSuperTaskToInferiorTaskOfSubTaskExistsError(
-                supertask, subtask
-            )
-
-        if self._has_stream_path_from_inferior_task_of_source_to_target(
-            subtask, supertask
-        ):
-            # TODO: Get relevant subgraph and return as part of exception
-            raise StreamPathFromInferiorTaskOfSubTaskToSuperTaskExistsError(
-                supertask, subtask
             )
 
         if has_dependency_clash(self, supertask, subtask):
@@ -728,6 +718,68 @@ class NetworkGraph:
     def remove_dependency(self, dependee_task: UID, dependent_task: UID) -> None:
         """Remove the specified dependency."""
         self._dependency_graph.remove_dependency(dependee_task, dependent_task)
+
+    def update(self, graph: INetworkGraphView) -> None:
+        """Update the graph with the specified graph.
+
+        Use this method with EXTREME CAUTION; the order in which tasks,
+        hierarchies and dependencies are added cannot be controlled, so I
+        recommend only using it as a helper method when you know it won't fail.
+        """
+        for task in graph.tasks():
+            if task in self.tasks():
+                continue
+            self.add_task(task)
+
+        for supertask, subtask in graph.hierarchy_graph().hierarchies():
+            if (supertask, subtask) in self.hierarchy_graph().hierarchies():
+                continue
+            self.add_hierarchy(supertask, subtask)
+
+        for dependee_task, dependent_task in graph.dependency_graph().dependencies():
+            if (
+                dependee_task,
+                dependent_task,
+            ) in self.dependency_graph().dependencies():
+                continue
+            self.add_dependency(dependee_task, dependent_task)
+
+    def update_hierarchy(self, graph: IHierarchyGraphView) -> None:
+        """Update the graph with the specified hierarchy graph.
+
+        Use this method with EXTREME CAUTION; the order in which tasks and
+        hierarchies are added cannot be controlled, so I recommend only
+        using it as a helper method when you know it won't fail.
+        """
+        for task in graph.tasks():
+            if task in self.tasks():
+                continue
+            self.add_task(task)
+
+        for supertask, subtask in graph.hierarchies():
+            if (supertask, subtask) in self.hierarchy_graph().hierarchies():
+                continue
+            self.add_hierarchy(supertask, subtask)
+
+    def update_dependency(self, graph: IDependencyGraphView) -> None:
+        """Update the graph with the specified dependency graph.
+
+        Use this method with EXTREME CAUTION; the order in which tasks and
+        dependencies are added cannot be controlled, so I recommend only
+        using it as a helper method when you know it won't fail.
+        """
+        for task in graph.tasks():
+            if task in self.tasks():
+                continue
+            self.add_task(task)
+
+        for dependee_task, dependent_task in graph.dependencies():
+            if (
+                dependee_task,
+                dependent_task,
+            ) in self.dependency_graph().dependencies():
+                continue
+            self.add_dependency(dependee_task, dependent_task)
 
     def downstream_tasks(self, task: UID, /) -> Generator[UID, None, None]:
         """Return tasks downstream of task.
@@ -856,8 +908,9 @@ class NetworkGraph:
         """Return subgraph of all downstream tasks of task.
 
         Note that the subgraph will contain a few tasks that aren't downstream
-        of the task, but are required to connect all downstream tasks
-        correctly. I'm calling these non-downstream tasks.
+        of the task, but are required to connect all downstream tasks correctly.
+        I'm calling these non-downstream tasks and are returned along with the
+        subgraph.
         """
         subgraph = NetworkGraph.empty()
         subgraph.add_task(task)
@@ -980,6 +1033,28 @@ class NetworkGraph:
 
         return subgraph, non_downstream_tasks
 
+    def downstream_subgraph_multi(
+        self, tasks: Iterable[UID], /
+    ) -> tuple[NetworkGraph, set[UID]]:
+        """Return subgraph of all tasks downstream of at least one of the tasks.
+
+        Note that the subgraph will contain a few tasks that aren't downstream
+        of any of the tasks, but are required to connect all downstream tasks
+        correctly. I'm calling these non-downstream tasks and are returned along
+        with the subgraph.
+        """
+        # TODO: Make this more efficient - currently horrible
+        combined_subgraph = NetworkGraph.empty()
+        combined_non_downstream_tasks = set[UID]()
+        for task in tasks:
+            subgraph, non_downstream_tasks = self.downstream_subgraph(task)
+            combined_subgraph.update(subgraph)
+
+            combined_non_downstream_tasks.difference_update(subgraph.tasks())
+            combined_non_downstream_tasks.update(non_downstream_tasks)
+
+        return combined_subgraph, combined_non_downstream_tasks
+
     def upstream_subgraph(self, task: UID, /) -> tuple[NetworkGraph, set[UID]]:
         """Return subgraph of all upstream tasks of task.
 
@@ -1098,10 +1173,32 @@ class NetworkGraph:
 
         return subgraph, non_upstream_tasks
 
+    def upstream_subgraph_multi(
+        self, tasks: Iterable[UID], /
+    ) -> tuple[NetworkGraph, set[UID]]:
+        """Return subgraph of all tasks upstream of at least one of the tasks.
+
+        Note that the subgraph will contain a few tasks that aren't upstream
+        of any of the tasks, but are required to connect all upstream tasks
+        correctly. I'm calling these non-upstream tasks and are returned along
+        with the subgraph.
+        """
+        # TODO: Make this more efficient - currently horrible
+        combined_subgraph = NetworkGraph.empty()
+        combined_non_upstream_tasks = set[UID]()
+        for task in tasks:
+            subgraph, non_upstream_tasks = self.upstream_subgraph(task)
+            combined_subgraph.update(subgraph)
+
+            combined_non_upstream_tasks.difference_update(subgraph.tasks())
+            combined_non_upstream_tasks.update(non_upstream_tasks)
+
+        return combined_subgraph, combined_non_upstream_tasks
+
     def connecting_subgraph(
         self, source_task: UID, target_task: UID, /
     ) -> tuple[NetworkGraph, set[UID]]:
-        """Return subgraph of tasks between source and target tasks.
+        """Return subgraph of tasks between the source task and target task.
 
         Note that the subgraph will contain a few tasks that aren't downstream
         of the source, nor upstream of the target, but are required to connect
@@ -1125,8 +1222,42 @@ class NetworkGraph:
                 source_task=source_task, target_task=target_task
             ) from e
 
-        non_connecting_tasks = non_downstream_tasks | non_upstream_tasks
+        non_connecting_tasks = (
+            non_downstream_tasks | non_upstream_tasks
+        ) & target_upstream_subgraph.tasks()
         return target_upstream_subgraph, non_connecting_tasks
+
+    def connecting_subgraph_multi(
+        self, source_tasks: Iterable[UID], target_tasks: Iterable[UID], /
+    ) -> tuple[NetworkGraph, set[UID]]:
+        """Return subgraph of tasks between the source tasks and target tasks.
+
+        All target tasks must be downstream of at least one of the source tasks.
+        """
+        source_tasks = list(source_tasks)
+        target_tasks = list(target_tasks)
+
+        for task in itertools.chain(source_tasks, target_tasks):
+            if task not in self.tasks():
+                raise TaskDoesNotExistError(task=task)
+
+        sources_downstream_subgraph, non_downstream_tasks = (
+            self.downstream_subgraph_multi(source_tasks)
+        )
+        try:
+            (
+                targets_upstream_subgraph,
+                non_upstream_tasks,
+            ) = sources_downstream_subgraph.upstream_subgraph_multi(target_tasks)
+        except TaskDoesNotExistError as e:
+            raise NoConnectingMultiSubgraphError(
+                source_tasks=set(source_tasks), target_tasks=set(target_tasks)
+            ) from e
+
+        non_connecting_tasks = (
+            non_downstream_tasks | non_upstream_tasks
+        ) & targets_upstream_subgraph.tasks()
+        return targets_upstream_subgraph, non_connecting_tasks
 
     def is_isolated(self, task: UID, /) -> bool:
         """Check if task has no dependencies, dependents, subtasks or supertasks."""

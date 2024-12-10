@@ -1,9 +1,11 @@
 import tkinter as tk
 from tkinter import ttk
+from typing import Final
 
 from graft import architecture
 from graft.domain import tasks
 from graft.layers.presentation.tkinter_gui import event_broker, graph_colours, helpers
+from graft.layers.presentation.tkinter_gui.helpers.colour import RED, Colour
 from graft.layers.presentation.tkinter_gui.helpers.static_task_network_graph.relationship_drawing_properties import (
     RelationshipDrawingProperties,
 )
@@ -20,6 +22,8 @@ from graft.layers.presentation.tkinter_gui.helpers.static_task_network_graph.sta
 from graft.layers.presentation.tkinter_gui.helpers.static_task_network_graph.task_drawing_properties import (
     TaskDrawingProperties,
 )
+
+_SELECTED_TASK_COLOUR: Final = RED
 
 
 def format_task_name_for_annotation(name: tasks.Name) -> str | None:
@@ -43,13 +47,7 @@ class NetworkPanel(ttk.Frame):
             master=self,
             graph=tasks.NetworkGraph.empty(),
             get_task_annotation_text=self._get_formatted_task_name,
-            get_task_properties=lambda _: TaskDrawingProperties(
-                colour=DEFAULT_STANDARD_TASK_COLOUR,
-                label_colour=DEFAULT_TASK_LABEL_COLOUR,
-                edge_colour=DEFAULT_TASK_EDGE_COLOUR,
-                alpha=DEFAULT_TASK_ALPHA,
-                label_alpha=DEFAULT_TASK_LABEL_ALPHA,
-            ),
+            get_task_properties=self._get_task_properties,
             get_hierarchy_properties=lambda _, __: RelationshipDrawingProperties(
                 colour=DEFAULT_STANDARD_HIERARCHY_COLOUR,
                 alpha=DEFAULT_STANDARD_RELATIONSHIP_ALPHA,
@@ -101,11 +99,20 @@ class NetworkPanel(ttk.Frame):
         broker = event_broker.get_singleton()
         broker.publish(event_broker.TaskSelected(task=task))
 
-    def _get_task_colour(self, task: tasks.UID) -> str | None:
+    def _get_task_colour(self, task: tasks.UID) -> Colour:
         return (
-            graph_colours.HIGHLIGHTED_NODE_COLOUR
+            _SELECTED_TASK_COLOUR
             if task == self._selected_task
-            else None
+            else DEFAULT_STANDARD_TASK_COLOUR
+        )
+
+    def _get_task_properties(self, task: tasks.UID) -> TaskDrawingProperties:
+        return TaskDrawingProperties(
+            colour=self._get_task_colour(task),
+            label_colour=DEFAULT_TASK_LABEL_COLOUR,
+            edge_colour=DEFAULT_TASK_EDGE_COLOUR,
+            alpha=DEFAULT_TASK_ALPHA,
+            label_alpha=DEFAULT_TASK_LABEL_ALPHA,
         )
 
     def _update_figure(self) -> None:

@@ -35,6 +35,7 @@ def _copy_graph_to_allow_dummies[T: Hashable](
 ) -> graphs.DirectedAcyclicGraph[T | DummyNode]:
     """Copy a graph to allow dummy nodes."""
     graph_with_dummies = graphs.DirectedAcyclicGraph[T | DummyNode]()
+    # NB: I'd like to use `update` here, but the type hints won't let me
     for node in graph.nodes():
         graph_with_dummies.add_node(node)
     for source, target in graph.edges():

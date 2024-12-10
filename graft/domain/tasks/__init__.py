@@ -7,13 +7,13 @@ from graft.domain.tasks.attributes_register import (
     IAttributesRegisterView,
 )
 from graft.domain.tasks.dependency_graph import (
+    DependenciesView,
     DependencyAlreadyExistsError,
     DependencyDoesNotExistError,
     DependencyGraph,
     DependencyGraphView,
     DependencyIntroducesCycleError,
     DependencyLoopError,
-    GraphDependenciesView,
     HasDependeeTasksError,
     HasDependentTasksError,
     IDependencyGraphView,
@@ -51,10 +51,6 @@ from graft.domain.tasks.network_graph import (
     NetworkGraphView,
     StreamPathFromDependentTaskToInferiorTaskOfDependeeTaskExistsError,
     StreamPathFromInferiorTaskOfDependentTaskToDependeeTaskExistsError,
-    StreamPathFromInferiorTaskOfSubTaskToSuperTaskExistsError,
-    StreamPathFromSubTaskToSuperTaskExistsError,
-    StreamPathFromSuperTaskToInferiorTaskOfSubTaskExistsError,
-    StreamPathFromSuperTaskToSubTaskExistsError,
 )
 from graft.domain.tasks.progress import Progress
 from graft.domain.tasks.system import (
