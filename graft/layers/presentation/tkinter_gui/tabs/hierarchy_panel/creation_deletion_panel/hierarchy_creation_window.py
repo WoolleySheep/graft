@@ -155,13 +155,21 @@ class HierarchyCreationWindow(tk.Toplevel):
                 get_task_annotation_text=lambda task: format_task_name_for_annotation(
                     self._logic_layer.get_task_system().attributes_register()[task].name
                 ),
-                highlighted_hierarchies={(e.supertask, e.subtask)},
                 additional_hierarchies={(e.supertask, e.subtask)},
             )
             return
-        except Exception:
-            # TODO: Add error popup. For now, letting it propegate
-            raise
+        except tasks.HierarchyRelationshipConflictError as e:
+            helpers.NetworkGraphOperationFailedWindow(
+                master=self,
+                description_text="Introduces relationship conflict",
+                task_network=e.connecting_subgraph,
+                get_task_annotation_text=lambda task: format_task_name_for_annotation(
+                    self._logic_layer.get_task_system().attributes_register()[task].name
+                ),
+                highlighted_tasks={e.supertask, e.subtask},
+                additional_hierarchies={(e.supertask, e.subtask)},
+            )
+            return
 
         broker = event_broker.get_singleton()
         broker.publish(event_broker.SystemModified())

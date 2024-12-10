@@ -26,6 +26,9 @@ class TaskRelationLayers:
     def hierarchy(self) -> int:
         return self._hierarchy
 
+    def __repr__(self) -> str:
+        return f"TaskRelationLayers(dependency={self.dependency}, hierarchy={self.hierarchy})"
+
 
 def get_hierarchy_layers_in_descending_order(
     task_to_relation_layers_map: Mapping[tasks.UID, TaskRelationLayers],

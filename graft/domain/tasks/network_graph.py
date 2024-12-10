@@ -99,6 +99,27 @@ class DependencyPathAlreadyExistsFromSubTaskToSuperTaskError(Exception):
         )
 
 
+class HierarchyRelationshipConflictError(Exception):
+    """Raised when a hierarchy would introduce a relationship conflict."""
+
+    def __init__(
+        self,
+        supertask: UID,
+        subtask: UID,
+        connecting_subgraph: NetworkGraph,
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
+        self.supertask = supertask
+        self.subtask = subtask
+        self.connecting_subgraph = connecting_subgraph
+        super().__init__(
+            f"Hierarchy from supertask [{supertask}] to subtask [{subtask}] would introduce a relationship conflict.",
+            *args,
+            **kwargs,
+        )
+
+
 class StreamPathFromSuperTaskToSubTaskExistsError(Exception):
     """Raised when a stream path from a super-task to a sub-task exists."""
 
@@ -562,32 +583,21 @@ class NetworkGraph:
 
         self._hierarchy_graph.validate_hierarchy_can_be_added(supertask, subtask)
 
-        if self._dependency_graph.has_path(supertask, subtask):
-            connecting_subgraph = self._dependency_graph.connecting_subgraph(
-                supertask, subtask
-            )
-            raise DependencyPathAlreadyExistsFromSuperTaskToSubTaskError(
-                supertask=supertask,
-                subtask=subtask,
-                connecting_subgraph=connecting_subgraph,
-            )
-        if self._dependency_graph.has_path(subtask, supertask):
-            connecting_subgraph = self._dependency_graph.connecting_subgraph(
-                subtask, supertask
-            )
-            raise DependencyPathAlreadyExistsFromSubTaskToSuperTaskError(
-                supertask=supertask,
-                subtask=subtask,
-                connecting_subgraph=connecting_subgraph,
-            )
-
         if self.has_stream_path(supertask, subtask):
-            # TODO: Get relevant subgraph and return as part of exception
-            raise StreamPathFromSuperTaskToSubTaskExistsError(supertask, subtask)
+            connecting_subgraph, _ = self.connecting_subgraph(supertask, subtask)
+            raise HierarchyRelationshipConflictError(
+                supertask=supertask,
+                subtask=subtask,
+                connecting_subgraph=connecting_subgraph,
+            )
 
         if self.has_stream_path(subtask, supertask):
-            # TODO: Get relevant subgraph and return as part of exception
-            raise StreamPathFromSubTaskToSuperTaskExistsError(supertask, subtask)
+            connecting_subgraph, _ = self.connecting_subgraph(subtask, supertask)
+            raise HierarchyRelationshipConflictError(
+                supertask=supertask,
+                subtask=subtask,
+                connecting_subgraph=connecting_subgraph,
+            )
 
         if self._has_stream_path_from_source_to_inferior_task_of_target(
             supertask, subtask

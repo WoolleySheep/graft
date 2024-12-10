@@ -1,4 +1,3 @@
-
 import numpy as np
 from matplotlib import patches
 from mpl_toolkits import mplot3d

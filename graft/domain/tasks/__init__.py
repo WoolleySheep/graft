@@ -45,6 +45,7 @@ from graft.domain.tasks.network_graph import (
     HierarchyIntroducesNetworkCycleError,
     HierarchyPathAlreadyExistsFromDependeeTaskToDependentTaskError,
     HierarchyPathAlreadyExistsFromDependentTaskToDependeeTaskError,
+    HierarchyRelationshipConflictError,
     INetworkGraphView,
     NetworkGraph,
     NetworkGraphView,

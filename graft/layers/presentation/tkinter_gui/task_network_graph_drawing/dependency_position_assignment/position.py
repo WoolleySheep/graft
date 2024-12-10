@@ -16,3 +16,6 @@ class DependencyLayers:
     @property
     def max(self) -> int:
         return self._max
+
+    def __repr__(self) -> str:
+        return f"{__class__.__name__}(min={self.min}, max={self.max}))"
