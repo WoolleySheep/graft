@@ -4,6 +4,22 @@ from tkinter import ttk
 from graft import architecture
 from graft.domain import tasks
 from graft.layers.presentation.tkinter_gui import event_broker, graph_colours, helpers
+from graft.layers.presentation.tkinter_gui.helpers.static_task_network_graph.relationship_drawing_properties import (
+    RelationshipDrawingProperties,
+)
+from graft.layers.presentation.tkinter_gui.helpers.static_task_network_graph.static_task_network_graph import (
+    DEFAULT_STANDARD_DEPENDENCY_COLOUR,
+    DEFAULT_STANDARD_HIERARCHY_COLOUR,
+    DEFAULT_STANDARD_RELATIONSHIP_ALPHA,
+    DEFAULT_STANDARD_TASK_COLOUR,
+    DEFAULT_TASK_ALPHA,
+    DEFAULT_TASK_EDGE_COLOUR,
+    DEFAULT_TASK_LABEL_ALPHA,
+    DEFAULT_TASK_LABEL_COLOUR,
+)
+from graft.layers.presentation.tkinter_gui.helpers.static_task_network_graph.task_drawing_properties import (
+    TaskDrawingProperties,
+)
 
 
 def format_task_name_for_annotation(name: tasks.Name) -> str | None:
@@ -27,14 +43,24 @@ class NetworkPanel(ttk.Frame):
             master=self,
             graph=tasks.NetworkGraph.empty(),
             get_task_annotation_text=self._get_formatted_task_name,
-            get_task_properties=None,
-            get_hierarchy_properties=None,
-            get_dependency_properties=None,
+            get_task_properties=lambda _: TaskDrawingProperties(
+                colour=DEFAULT_STANDARD_TASK_COLOUR,
+                label_colour=DEFAULT_TASK_LABEL_COLOUR,
+                edge_colour=DEFAULT_TASK_EDGE_COLOUR,
+                alpha=DEFAULT_TASK_ALPHA,
+                label_alpha=DEFAULT_TASK_LABEL_ALPHA,
+            ),
+            get_hierarchy_properties=lambda _, __: RelationshipDrawingProperties(
+                colour=DEFAULT_STANDARD_HIERARCHY_COLOUR,
+                alpha=DEFAULT_STANDARD_RELATIONSHIP_ALPHA,
+            ),
+            get_dependency_properties=lambda _, __: RelationshipDrawingProperties(
+                colour=DEFAULT_STANDARD_DEPENDENCY_COLOUR,
+                alpha=DEFAULT_STANDARD_RELATIONSHIP_ALPHA,
+            ),
             additional_hierarchies=None,
             additional_dependencies=None,
             on_node_left_click=_publish_task_as_selected,
-            get_additional_hierarchy_properties=None,
-            get_additional_dependency_properties=None,
         )
 
         self._static_graph.grid(row=0, column=0)

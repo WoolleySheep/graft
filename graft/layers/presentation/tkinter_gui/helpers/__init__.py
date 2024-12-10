@@ -40,3 +40,9 @@ from graft.layers.presentation.tkinter_gui.helpers.task_table import (
 from graft.layers.presentation.tkinter_gui.helpers.task_table import (
     sort_by_task_id as sort_rows_by_task_id,
 )
+
+from .alpha import OPAQUE, TRANSPARENT, Alpha
+from .arrow_style import CURVE_FILLED_B, SIMPLE, ArrowStyle
+from .colour import BLACK, BLUE, CYAN, GREEN, ORANGE, PURPLE, RED, YELLOW, Colour
+from .connection_style import ARC3, ConnectionStyle
+from .line_style import DASHED, DASHED_DOTTED, DOTTED, SOLID, LineStyle

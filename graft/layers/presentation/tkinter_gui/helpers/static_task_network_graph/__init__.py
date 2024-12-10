@@ -1,3 +1,12 @@
-from graft.layers.presentation.tkinter_gui.helpers.static_task_network_graph.static_task_network_graph import (
+from .static_task_network_graph import (
+    DEFAULT_STANDARD_DEPENDENCY_COLOUR,
+    DEFAULT_STANDARD_HIERARCHY_COLOUR,
+    DEFAULT_STANDARD_RELATIONSHIP_ALPHA,
+    DEFAULT_STANDARD_RELATIONSHIP_LINE_STYLE,
+    DEFAULT_STANDARD_TASK_COLOUR,
+    DEFAULT_TASK_ALPHA,
+    DEFAULT_TASK_EDGE_COLOUR,
+    DEFAULT_TASK_LABEL_ALPHA,
+    DEFAULT_TASK_LABEL_COLOUR,
     StaticTaskNetworkGraph,
 )

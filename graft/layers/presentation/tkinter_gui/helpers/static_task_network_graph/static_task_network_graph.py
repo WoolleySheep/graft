@@ -1,7 +1,7 @@
 import enum
 import tkinter as tk
 from collections.abc import Callable, Set
-from typing import TYPE_CHECKING, Any, Final, Literal
+from typing import TYPE_CHECKING, Final
 
 import matplotlib as mpl
 from matplotlib import backend_bases, text
@@ -11,16 +11,22 @@ from mpl_toolkits.mplot3d import art3d, axis3d, proj3d
 
 from graft.domain import tasks
 from graft.layers.presentation.tkinter_gui import (
-    graph_colours,
     task_network_graph_drawing,
 )
+from graft.layers.presentation.tkinter_gui.helpers.alpha import Alpha
+from graft.layers.presentation.tkinter_gui.helpers.colour import (
+    BLACK,
+    BLUE,
+    GREEN,
+)
+from graft.layers.presentation.tkinter_gui.helpers.line_style import SOLID
 from graft.layers.presentation.tkinter_gui.helpers.static_task_network_graph.arrow_3d import (
     Arrow3D,
 )
 from graft.layers.presentation.tkinter_gui.helpers.static_task_network_graph.cylinder_plotting import (
     CylinderDrawingProperties,
-    Label,
-    LabelDrawingProperties,
+    CylinderLabel,
+    CylinderLabelDrawingProperties,
     XAxisCylinderPosition,
     plot_x_axis_cylinder,
 )
@@ -30,30 +36,31 @@ from graft.layers.presentation.tkinter_gui.helpers.static_task_network_graph.rel
 from graft.layers.presentation.tkinter_gui.helpers.static_task_network_graph.task_drawing_properties import (
     TaskDrawingProperties,
 )
+from graft.layers.presentation.tkinter_gui.task_network_graph_drawing.radius import (
+    Radius,
+)
 
 if TYPE_CHECKING:
     from mpl_toolkits import mplot3d
 
+DEFAULT_TASK_ALPHA: Final = Alpha(0.8)
+DEFAULT_TASK_LABEL_COLOUR: Final = BLACK
+DEFAULT_TASK_EDGE_COLOUR: Final = None
+DEFAULT_TASK_LABEL_ALPHA: Final = Alpha(0.9)
+
+DEFAULT_STANDARD_TASK_COLOUR: Final = BLUE
+DEFAULT_STANDARD_RELATIONSHIP_ALPHA: Final = Alpha(0.9)
+DEFAULT_STANDARD_RELATIONSHIP_LINE_STYLE: Final = SOLID
+DEFAULT_STANDARD_HIERARCHY_COLOUR: Final = GREEN
+DEFAULT_STANDARD_DEPENDENCY_COLOUR: Final = BLACK
+
+_AXIS_ARROW_COLOUR: Final = BLACK
+
+_TASK_CYLINDER_RADIUS: Final = Radius(0.25)
+_TASK_CYLINDER_NUMBER_OF_POLYGONS: Final = 10
+
 _MOTION_NOTIFY_EVENT_NAME: Final = "motion_notify_event"
 _BUTTON_RELEASE_EVENT_NAME: Final = "button_release_event"
-
-_DEFAULT_HIERARCHY_ARROW_COLOUR: Final = "green"
-_DEFAULT_DEPENDENCY_ARROW_COLOUR: Final = "black"
-
-_DEFAULT_ADDITIONAL_HIERARCHY_ARROW_COLOUR: Final = "yellow"
-_DEFAULT_ADDITIONAL_DEPENDENCY_ARROW_COLOUR: Final = "pink"
-
-_AXIS_ARROW_COLOUR: Final = "black"
-
-
-_TASK_CYLINDER_RADIUS: Final = 0.25
-_TASK_CYLINDER_NUMBER_OF_POLYGONS: Final = 10
-_TASK_CYLINDER_ALPHA: Final = 0.8
-_TASK_LABEL_ALPHA: Final = 0.9
-
-
-def _return_none(*args: Any, **kwargs: Any) -> Literal[None]:
-    return None
 
 
 def _remove_axis(axis: axis3d.Axis) -> None:
@@ -72,6 +79,28 @@ class DefaultSentinel(enum.Enum):
     DEFAULT = enum.auto()
 
 
+class AdditionalRelationships:
+    def __init__(
+        self,
+        relationships: Set[tuple[tasks.UID, tasks.UID]],
+        get_relationship_properties: Callable[
+            [tasks.UID, tasks.UID], RelationshipDrawingProperties
+        ],
+    ) -> None:
+        self._relationships = relationships
+        self._get_relationship_properties = get_relationship_properties
+
+    @property
+    def relationships(self) -> Set[tuple[tasks.UID, tasks.UID]]:
+        return self._relationships
+
+    @property
+    def get_relationship_properties(
+        self,
+    ) -> Callable[[tasks.UID, tasks.UID], RelationshipDrawingProperties]:
+        return self._get_relationship_properties
+
+
 class StaticTaskNetworkGraph(tk.Frame):
     """Tkinter frame showing a task network graph.
 
@@ -86,87 +115,47 @@ class StaticTaskNetworkGraph(tk.Frame):
         self,
         master: tk.Misc,
         graph: tasks.INetworkGraphView,
-        get_task_annotation_text: Callable[[tasks.UID], str | None] | None = None,
-        get_task_properties: Callable[[tasks.UID], TaskDrawingProperties | None]
-        | None = None,
+        get_task_annotation_text: Callable[[tasks.UID], str | None],
+        get_task_properties: Callable[[tasks.UID], TaskDrawingProperties],
         get_hierarchy_properties: Callable[
-            [tasks.UID, tasks.UID], RelationshipDrawingProperties | None
-        ]
-        | None = None,
+            [tasks.UID, tasks.UID], RelationshipDrawingProperties
+        ],
         get_dependency_properties: Callable[
-            [tasks.UID, tasks.UID], RelationshipDrawingProperties | None
-        ]
-        | None = None,
-        additional_hierarchies: Set[tuple[tasks.UID, tasks.UID]] | None = None,
-        additional_dependencies: Set[tuple[tasks.UID, tasks.UID]] | None = None,
+            [tasks.UID, tasks.UID], RelationshipDrawingProperties
+        ],
+        additional_hierarchies: AdditionalRelationships | None = None,
+        additional_dependencies: AdditionalRelationships | None = None,
         on_node_left_click: Callable[[tasks.UID], None] | None = None,
-        get_additional_hierarchy_properties: Callable[
-            [tasks.UID, tasks.UID], RelationshipDrawingProperties | None
-        ]
-        | None = None,
-        get_additional_dependency_properties: Callable[
-            [tasks.UID, tasks.UID], RelationshipDrawingProperties | None
-        ]
-        | None = None,
     ) -> None:
         super().__init__(master)
 
         self._graph = graph
         self._task_positions: dict[tasks.UID, XAxisCylinderPosition] | None = None
-
         self._get_task_annotation_text = get_task_annotation_text
+        self._get_task_properties = get_task_properties
+        self._get_hierarchy_properties = get_hierarchy_properties
+        self._get_dependency_properties = get_dependency_properties
+        self._additional_hierarchies = additional_hierarchies
 
-        self._get_task_properties = (
-            get_task_properties if get_task_properties is not None else _return_none
-        )
-
-        self._get_hierarchy_properties = (
-            get_hierarchy_properties
-            if get_hierarchy_properties is not None
-            else _return_none
-        )
-
-        self._get_dependency_properties = (
-            get_dependency_properties
-            if get_dependency_properties is not None
-            else _return_none
-        )
-
-        self._additional_hierarchies = (
-            additional_hierarchies
-            if additional_hierarchies is not None
-            else set[tuple[tasks.UID, tasks.UID]]()
-        )
-
-        if not self._additional_hierarchies.isdisjoint(
-            self._graph.hierarchy_graph().hierarchies()
+        if (
+            self._additional_hierarchies is not None
+            and not self._additional_hierarchies.relationships.isdisjoint(
+                self._graph.hierarchy_graph().hierarchies()
+            )
         ):
             msg = "Additional hierarchies must not overlap with graph hierarchies"
             raise ValueError(msg)
 
-        self._additional_dependencies = (
-            additional_dependencies
-            if additional_dependencies is not None
-            else set[tuple[tasks.UID, tasks.UID]]()
-        )
+        self._additional_dependencies = additional_dependencies
 
-        if not self._additional_dependencies.isdisjoint(
-            self._graph.dependency_graph().dependencies()
+        if (
+            self._additional_dependencies is not None
+            and not self._additional_dependencies.relationships.isdisjoint(
+                self._graph.dependency_graph().dependencies()
+            )
         ):
             msg = "Additional dependencies must not overlap with graph dependencies"
             raise ValueError(msg)
-
-        self._get_additional_hierarchy_properties = (
-            get_additional_hierarchy_properties
-            if get_additional_hierarchy_properties is not None
-            else _return_none
-        )
-
-        self._get_additional_dependency_properties = (
-            get_additional_dependency_properties
-            if get_additional_dependency_properties is not None
-            else _return_none
-        )
 
         self._on_node_left_click = on_node_left_click
 
@@ -190,109 +179,67 @@ class StaticTaskNetworkGraph(tk.Frame):
     def update_graph(
         self,
         graph: tasks.INetworkGraphView | None = None,
-        get_task_annotation_text: Callable[[tasks.UID], str | None]
-        | None
-        | DefaultSentinel = DefaultSentinel.DEFAULT,
-        get_task_properties: Callable[[tasks.UID], TaskDrawingProperties | None]
-        | None
-        | DefaultSentinel = DefaultSentinel.DEFAULT,
+        get_task_annotation_text: Callable[[tasks.UID], str | None] | None = None,
+        get_task_properties: Callable[[tasks.UID], TaskDrawingProperties] | None = None,
         get_hierarchy_properties: Callable[
-            [tasks.UID, tasks.UID], RelationshipDrawingProperties | None
+            [tasks.UID, tasks.UID], RelationshipDrawingProperties
         ]
-        | None
-        | DefaultSentinel = DefaultSentinel.DEFAULT,
+        | None = None,
         get_dependency_properties: Callable[
-            [tasks.UID, tasks.UID], RelationshipDrawingProperties | None
+            [tasks.UID, tasks.UID], RelationshipDrawingProperties
         ]
+        | None = None,
+        additional_hierarchies: AdditionalRelationships
         | None
         | DefaultSentinel = DefaultSentinel.DEFAULT,
-        additional_hierarchies: Set[tuple[tasks.UID, tasks.UID]]
-        | None
-        | DefaultSentinel = DefaultSentinel.DEFAULT,
-        additional_dependencies: Set[tuple[tasks.UID, tasks.UID]]
+        additional_dependencies: AdditionalRelationships
         | None
         | DefaultSentinel = DefaultSentinel.DEFAULT,
         on_node_left_click: Callable[[tasks.UID], None]
-        | None
-        | DefaultSentinel = DefaultSentinel.DEFAULT,
-        get_additional_hierarchy_properties: Callable[
-            [tasks.UID, tasks.UID], RelationshipDrawingProperties | None
-        ]
-        | None
-        | DefaultSentinel = DefaultSentinel.DEFAULT,
-        get_additional_dependency_properties: Callable[
-            [tasks.UID, tasks.UID], RelationshipDrawingProperties | None
-        ]
         | None
         | DefaultSentinel = DefaultSentinel.DEFAULT,
     ) -> None:
         if graph is not None:
             self._graph = graph
 
-        if get_task_annotation_text is not DefaultSentinel.DEFAULT:
+        if get_task_annotation_text is not None:
             self._get_task_annotation_text = get_task_annotation_text
 
-        if get_task_properties is not DefaultSentinel.DEFAULT:
-            self._get_task_properties = (
-                get_task_properties if get_task_properties is not None else _return_none
-            )
+        if get_task_properties is not None:
+            self._get_task_properties = get_task_properties
 
-        if get_hierarchy_properties is not DefaultSentinel.DEFAULT:
-            self._get_hierarchy_properties = (
-                get_hierarchy_properties
-                if get_hierarchy_properties is not None
-                else _return_none
-            )
+        if get_hierarchy_properties is not None:
+            self._get_hierarchy_properties = get_hierarchy_properties
 
-        if get_dependency_properties is not DefaultSentinel.DEFAULT:
-            self._get_dependency_properties = (
-                get_dependency_properties
-                if get_dependency_properties is not None
-                else _return_none
-            )
-
-        if additional_dependencies is not DefaultSentinel.DEFAULT:
-            self._additional_dependencies = (
-                additional_dependencies
-                if additional_dependencies is not None
-                else set[tuple[tasks.UID, tasks.UID]]()
-            )
-
-        if not self._additional_dependencies.isdisjoint(
-            self._graph.dependency_graph().dependencies()
-        ):
-            msg = "Additional dependencies must not overlap with graph dependencies"
-            raise ValueError(msg)
+        if get_dependency_properties is not None:
+            self._get_dependency_properties = get_dependency_properties
 
         if additional_hierarchies is not DefaultSentinel.DEFAULT:
-            self._additional_hierarchies = (
-                additional_hierarchies
-                if additional_hierarchies is not None
-                else set[tuple[tasks.UID, tasks.UID]]()
-            )
+            self._additional_hierarchies = additional_hierarchies
 
-        if not self._additional_hierarchies.isdisjoint(
-            self._graph.hierarchy_graph().hierarchies()
-        ):
-            msg = "Additional hierarchies must not overlap with graph hierarchies"
-            raise ValueError(msg)
+            if (
+                self._additional_hierarchies is not None
+                and not self._additional_hierarchies.relationships.isdisjoint(
+                    self._graph.hierarchy_graph().hierarchies()
+                )
+            ):
+                msg = "Additional hierarchies must not overlap with graph hierarchies"
+                raise ValueError(msg)
+
+        if additional_dependencies is not DefaultSentinel.DEFAULT:
+            self._additional_dependencies = additional_dependencies
+
+            if (
+                self._additional_dependencies is not None
+                and not self._additional_dependencies.relationships.isdisjoint(
+                    self._graph.dependency_graph().dependencies()
+                )
+            ):
+                msg = "Additional dependencies must not overlap with graph dependencies"
+                raise ValueError(msg)
 
         if on_node_left_click is not DefaultSentinel.DEFAULT:
             self._on_node_left_click = on_node_left_click
-
-        if get_additional_hierarchy_properties is not DefaultSentinel.DEFAULT:
-            self._get_additional_hierarchy_properties = (
-                get_additional_hierarchy_properties
-                if get_additional_hierarchy_properties is not None
-                else _return_none
-            )
-
-        if get_additional_dependency_properties is not DefaultSentinel.DEFAULT:
-            self._get_additional_dependency_properties = (
-                get_additional_dependency_properties
-                if get_additional_dependency_properties is not None
-                else _return_none
-            )
 
         self._update_figure()
 
@@ -316,12 +263,10 @@ class StaticTaskNetworkGraph(tk.Frame):
 
         self._task_collections.clear()
 
-        tmp_task_positions = (
+        task_positions = (
             task_network_graph_drawing.calculate_task_positions_unnamed_method(
                 graph=self._graph,
-                task_cylinder_radius=task_network_graph_drawing.Radius(
-                    _TASK_CYLINDER_RADIUS
-                ),
+                task_cylinder_radius=_TASK_CYLINDER_RADIUS,
             )
         )
         self._task_positions = {
@@ -331,7 +276,7 @@ class StaticTaskNetworkGraph(tk.Frame):
                 y=position.depth,
                 z=position.hierarchy,
             )
-            for task, position in tmp_task_positions.items()
+            for task, position in task_positions.items()
         }
 
         self._update_task_cylinders()
@@ -351,10 +296,9 @@ class StaticTaskNetworkGraph(tk.Frame):
         if self._motion_notify_event_callback_id is not None:
             self._fig.canvas.mpl_disconnect(self._motion_notify_event_callback_id)
 
-        if self._get_task_annotation_text is not None:
-            self._motion_notify_event_callback_id = self._fig.canvas.mpl_connect(
-                _MOTION_NOTIFY_EVENT_NAME, self._on_motion_notify_event
-            )
+        self._motion_notify_event_callback_id = self._fig.canvas.mpl_connect(
+            _MOTION_NOTIFY_EVENT_NAME, self._on_motion_notify_event
+        )
 
         if self._button_release_event_callback_id is not None:
             self._fig.canvas.mpl_disconnect(self._button_release_event_callback_id)
@@ -399,9 +343,6 @@ class StaticTaskNetworkGraph(tk.Frame):
 
         # Really shouldn't ever fail this check, as only register for motion
         # notify event if I have an annotation-text function to call
-        if self._get_task_annotation_text is None:
-            return
-
         annotation_text = self._get_task_annotation_text(task_under_mouse)
 
         if annotation_text is None:
@@ -463,39 +404,18 @@ class StaticTaskNetworkGraph(tk.Frame):
 
         for task, position in self._task_positions.items():
             properties = self._get_task_properties(task)
-            colour = (
-                properties.colour
-                if properties is not None and properties.colour is not None
-                else graph_colours.DEFAULT_NODE_COLOUR
-            )
-            alpha = (
-                properties.alpha
-                if properties is not None and properties.alpha is not None
-                else _TASK_CYLINDER_ALPHA
-            )
 
             task_cylinder_properties = CylinderDrawingProperties(
-                colour=colour,
+                colour=properties.colour,
+                edge_colour=properties.edge_colour,
                 number_of_polygons=_TASK_CYLINDER_NUMBER_OF_POLYGONS,
-                alpha=alpha,
+                alpha=properties.alpha,
             )
 
             label_text = str(task)
 
-            label_colour = (
-                properties.label_colour
-                if properties is not None and properties.label_colour is not None
-                else graph_colours.DEFAULT_TEXT_COLOUR
-            )
-
-            label_alpha = (
-                properties.label_alpha
-                if properties is not None and properties.label_alpha is not None
-                else _TASK_LABEL_ALPHA
-            )
-
-            label_properties = LabelDrawingProperties(
-                colour=label_colour, alpha=label_alpha
+            label_properties = CylinderLabelDrawingProperties(
+                colour=properties.label_colour, alpha=properties.label_alpha
             )
 
             collection = plot_x_axis_cylinder(
@@ -503,7 +423,7 @@ class StaticTaskNetworkGraph(tk.Frame):
                 radius=_TASK_CYLINDER_RADIUS,
                 position=position,
                 properties=task_cylinder_properties,
-                label=Label(text=label_text, properties=label_properties),
+                label=CylinderLabel(text=label_text, properties=label_properties),
             )
 
             self._task_collections.append((task, collection))
@@ -521,21 +441,18 @@ class StaticTaskNetworkGraph(tk.Frame):
             arrow_target_y = subtask_position.y
             arrow_target_z = subtask_position.z
 
-            properties = self._get_additional_hierarchy_properties(supertask, subtask)
-
-            colour = (
-                properties.colour
-                if properties is not None and properties.colour is not None
-                else _DEFAULT_HIERARCHY_ARROW_COLOUR
-            )
+            properties = self._get_hierarchy_properties(supertask, subtask)
 
             arrow = Arrow3D(
                 [arrow_x, arrow_x],
                 [arrow_source_y, arrow_target_y],
                 [arrow_source_z, arrow_target_z],
-                arrowstyle="-|>",
                 mutation_scale=10,
-                color=colour,
+                color=str(properties.colour),
+                alpha=float(properties.alpha),
+                linestyle=str(properties.line_style),
+                connectionstyle=str(properties.connection_style),
+                arrowstyle=str(properties.arrow_style),
             )
 
             self._ax.add_artist(arrow)
@@ -559,29 +476,90 @@ class StaticTaskNetworkGraph(tk.Frame):
 
             properties = self._get_dependency_properties(dependee_task, dependent_task)
 
-            colour = (
-                properties.colour
-                if properties is not None and properties.colour is not None
-                else _DEFAULT_DEPENDENCY_ARROW_COLOUR
+            arrow = Arrow3D(
+                [arrow_source_x, arrow_target_x],
+                [arrow_source_y, arrow_target_y],
+                [arrow_source_z, arrow_target_z],
+                mutation_scale=10,
+                color=str(properties.colour),
+                alpha=float(properties.alpha),
+                linestyle=str(properties.line_style),
+                connectionstyle=str(properties.connection_style),
+                arrowstyle=str(properties.arrow_style),
+            )
+            self._ax.add_artist(arrow)
+
+    def _update_additional_hierarchy_arrows(self) -> None:
+        assert self._task_positions is not None
+
+        if self._additional_hierarchies is None:
+            return
+
+        for supertask, subtask in self._additional_hierarchies.relationships:
+            supertask_position = self._task_positions[supertask]
+            arrow_source_x = supertask_position.x_center
+            arrow_source_y = supertask_position.y
+            arrow_source_z = supertask_position.z
+
+            subtask_position = self._task_positions[subtask]
+            arrow_target_x = subtask_position.x_center
+            arrow_target_y = subtask_position.y
+            arrow_target_z = subtask_position.z
+
+            properties = self._additional_hierarchies.get_relationship_properties(
+                supertask, subtask
             )
 
             arrow = Arrow3D(
                 [arrow_source_x, arrow_target_x],
                 [arrow_source_y, arrow_target_y],
                 [arrow_source_z, arrow_target_z],
-                arrowstyle="-|>",
                 mutation_scale=10,
-                color=colour,
+                color=str(properties.colour),
+                alpha=float(properties.alpha),
+                linestyle=str(properties.line_style),
+                connectionstyle=str(properties.connection_style),
+                arrowstyle=str(properties.arrow_style),
             )
+
             self._ax.add_artist(arrow)
 
-    def _update_additional_hierarchy_arrows(self) -> None:
-        # TODO
-        pass
-
     def _update_additional_dependency_arrows(self) -> None:
-        # TODO
-        pass
+        assert self._task_positions is not None
+
+        if self._additional_dependencies is None:
+            return
+
+        for (
+            dependee_task,
+            dependent_task,
+        ) in self._additional_dependencies.relationships:
+            dependee_task_position = self._task_positions[dependee_task]
+            arrow_source_x = dependee_task_position.x_max
+            arrow_source_y = dependee_task_position.y
+            arrow_source_z = dependee_task_position.z
+
+            dependent_task_position = self._task_positions[dependent_task]
+            arrow_target_x = dependent_task_position.x_min
+            arrow_target_y = dependent_task_position.y
+            arrow_target_z = dependent_task_position.z
+
+            properties = self._additional_dependencies.get_relationship_properties(
+                dependee_task, dependent_task
+            )
+
+            arrow = Arrow3D(
+                [arrow_source_x, arrow_target_x],
+                [arrow_source_y, arrow_target_y],
+                [arrow_source_z, arrow_target_z],
+                mutation_scale=10,
+                color=str(properties.colour),
+                alpha=float(properties.alpha),
+                linestyle=str(properties.line_style),
+                connectionstyle=str(properties.connection_style),
+                arrowstyle=str(properties.arrow_style),
+            )
+            self._ax.add_artist(arrow)
 
     def _update_legend(self) -> None:
         # TODO
@@ -606,10 +584,10 @@ class StaticTaskNetworkGraph(tk.Frame):
             for task_position in self._task_positions.values():
                 x_min = min(x_min, task_position.x_min)
                 x_max = max(x_max, task_position.x_max)
-                y_min = min(y_min, task_position.y - _TASK_CYLINDER_RADIUS)
-                y_max = max(y_max, task_position.y + _TASK_CYLINDER_RADIUS)
-                z_min = min(z_min, task_position.z - _TASK_CYLINDER_RADIUS)
-                z_max = max(z_max, task_position.z + _TASK_CYLINDER_RADIUS)
+                y_min = min(y_min, task_position.y - float(_TASK_CYLINDER_RADIUS))
+                y_max = max(y_max, task_position.y + float(_TASK_CYLINDER_RADIUS))
+                z_min = min(z_min, task_position.z - float(_TASK_CYLINDER_RADIUS))
+                z_max = max(z_max, task_position.z + float(_TASK_CYLINDER_RADIUS))
 
             y = (y_min + y_max) / 2
         else:
@@ -639,7 +617,7 @@ class StaticTaskNetworkGraph(tk.Frame):
             zs=(z_min, z_min),
             arrowstyle="-|>",
             mutation_scale=10,
-            color=_AXIS_ARROW_COLOUR,
+            color=str(_AXIS_ARROW_COLOUR),
         )
         self._ax.add_artist(dependencies_arrow)
 
@@ -658,7 +636,7 @@ class StaticTaskNetworkGraph(tk.Frame):
             zs=(z_min, z_max),
             arrowstyle="-|>",
             mutation_scale=10,
-            color=_AXIS_ARROW_COLOUR,
+            color=str(_AXIS_ARROW_COLOUR),
         )
         self._ax.add_artist(hierarchies_arrow)
         self._ax.text(

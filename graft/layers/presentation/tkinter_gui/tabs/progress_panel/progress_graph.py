@@ -3,7 +3,20 @@ import tkinter as tk
 from graft import architecture
 from graft.domain import tasks
 from graft.layers.presentation.tkinter_gui import event_broker
+from graft.layers.presentation.tkinter_gui.helpers.colour import (
+    BLACK,
+    BLUE,
+    GREEN,
+    YELLOW,
+    Colour,
+)
+from graft.layers.presentation.tkinter_gui.helpers.static_task_network_graph.relationship_drawing_properties import (
+    RelationshipDrawingProperties,
+)
 from graft.layers.presentation.tkinter_gui.helpers.static_task_network_graph.static_task_network_graph import (
+    DEFAULT_STANDARD_DEPENDENCY_COLOUR,
+    DEFAULT_STANDARD_HIERARCHY_COLOUR,
+    DEFAULT_STANDARD_RELATIONSHIP_ALPHA,
     StaticTaskNetworkGraph,
 )
 from graft.layers.presentation.tkinter_gui.helpers.static_task_network_graph.task_drawing_properties import (
@@ -28,6 +41,14 @@ class ProgressGraph(tk.Frame):
             graph=tasks.NetworkGraph.empty(),
             get_task_annotation_text=self._get_formatted_task_name,
             get_task_properties=self._get_task_properties,
+            get_hierarchy_properties=lambda _, __: RelationshipDrawingProperties(
+                colour=DEFAULT_STANDARD_HIERARCHY_COLOUR,
+                alpha=DEFAULT_STANDARD_RELATIONSHIP_ALPHA,
+            ),
+            get_dependency_properties=lambda _, __: RelationshipDrawingProperties(
+                colour=DEFAULT_STANDARD_DEPENDENCY_COLOUR,
+                alpha=DEFAULT_STANDARD_RELATIONSHIP_ALPHA,
+            ),
             on_node_left_click=self._publish_task_as_selected,
         )
 
@@ -64,19 +85,19 @@ class ProgressGraph(tk.Frame):
         name = self._logic_layer.get_task_system().attributes_register()[task].name
         return _format_task_name_for_annotation(name)
 
-    def _get_task_colour(self, task: tasks.UID) -> str | None:
+    def _get_task_colour(self, task: tasks.UID) -> Colour:
         # TODO: Can make this more efficient by getting all task progresses at once
         match self._logic_layer.get_task_system().get_progress(task):
             case tasks.Progress.NOT_STARTED:
-                return "blue"
+                return BLUE
             case tasks.Progress.IN_PROGRESS:
-                return "yellow"
+                return YELLOW
             case tasks.Progress.COMPLETED:
-                return "green"
+                return GREEN
 
     def _get_task_properties(self, task: tasks.UID) -> TaskDrawingProperties:
         colour = self._get_task_colour(task)
-        return TaskDrawingProperties(colour=colour)
+        return TaskDrawingProperties(colour=colour, label_colour=BLACK)
 
     def _publish_task_as_selected(self, task: tasks.UID) -> None:
         broker = event_broker.get_singleton()
