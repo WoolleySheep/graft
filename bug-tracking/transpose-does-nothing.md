@@ -1,0 +1,2 @@
+The transpose function in C:\Users\mattw\code\Python\graft\graft\layers\presentation\tkinter_gui\task_network_graph_drawing\depth_position_assignment\implementation\depth_indexes\transpose.py doesn't seem to be doing anything (aka: No transposes result in a better number of edge crosses).
+I'm loathe to get rid of it (as transpose is an important part of the sugiyama algorithm I based task network graph drawing of), but if you can't either fix it or change it to a useful form, it needs to go.
