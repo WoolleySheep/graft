@@ -158,15 +158,26 @@ class HierarchyCreationWindow(tk.Toplevel):
                 additional_hierarchies={(e.supertask, e.subtask)},
             )
             return
-        except tasks.HierarchyRelationshipConflictError as e:
+        except tasks.HierarchyIntroducesNetworkCycleError as e:
             helpers.NetworkGraphOperationFailedWindow(
                 master=self,
-                description_text="Introduces relationship conflict",
+                description_text="Introduces network cycle",
                 task_network=e.connecting_subgraph,
                 get_task_annotation_text=lambda task: format_task_name_for_annotation(
                     self._logic_layer.get_task_system().attributes_register()[task].name
                 ),
                 highlighted_tasks={e.supertask, e.subtask},
+                additional_hierarchies={(e.supertask, e.subtask)},
+            )
+            return
+        except tasks.HierarchyIntroducesDependencyDuplicationError as e:
+            helpers.NetworkGraphOperationFailedWindow(
+                master=self,
+                description_text="Introduces dependency duplication",
+                task_network=e.connecting_subgraph,
+                get_task_annotation_text=lambda task: format_task_name_for_annotation(
+                    self._logic_layer.get_task_system().attributes_register()[task].name
+                ),
                 additional_hierarchies={(e.supertask, e.subtask)},
             )
             return

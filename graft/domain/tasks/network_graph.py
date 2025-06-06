@@ -64,52 +64,8 @@ class HierarchyIntroducesNetworkCycleError(Exception):
         )
 
 
-class DependencyPathAlreadyExistsFromSuperTaskToSubTaskError(Exception):
-    """Raised when there is already a dependency path from supertask to subtask."""
-
-    def __init__(
-        self,
-        supertask: UID,
-        subtask: UID,
-        connecting_subgraph: DependencyGraph,
-        *args: tuple[Any, ...],
-        **kwargs: dict[str, Any],
-    ) -> None:
-        """Initialise DependencyPathAlreadyExistsFromSuperTaskToSubTaskError."""
-        self.supertask = supertask
-        self.subtask = subtask
-        self.connecting_subgraph = connecting_subgraph
-        super().__init__(
-            f"Dependency path already exists from supertask [{supertask}] to subtask [{subtask}].",
-            *args,
-            **kwargs,
-        )
-
-
-class DependencyPathAlreadyExistsFromSubTaskToSuperTaskError(Exception):
-    """Raised when there is already a dependency path from supertask to subtask."""
-
-    def __init__(
-        self,
-        supertask: UID,
-        subtask: UID,
-        connecting_subgraph: DependencyGraph,
-        *args: tuple[Any, ...],
-        **kwargs: dict[str, Any],
-    ) -> None:
-        """Initialise DependencyPathAlreadyExistsFromSubTaskToSuperTaskError."""
-        self.supertask = supertask
-        self.subtask = subtask
-        self.connecting_subgraph = connecting_subgraph
-        super().__init__(
-            f"Dependency path already exists from subtask [{subtask}] to supertask [{supertask}].",
-            *args,
-            **kwargs,
-        )
-
-
-class HierarchyRelationshipConflictError(Exception):
-    """Raised when a hierarchy would introduce a relationship conflict."""
+class HierarchyIntroducesDependencyDuplicationError(Exception):
+    """Raised when a hierarchy would introducea dependency duplication."""
 
     def __init__(
         self,
@@ -123,30 +79,7 @@ class HierarchyRelationshipConflictError(Exception):
         self.subtask = subtask
         self.connecting_subgraph = connecting_subgraph
         super().__init__(
-            f"Hierarchy from supertask [{supertask}] to subtask [{subtask}] would introduce a relationship conflict.",
-            *args,
-            **kwargs,
-        )
-
-class HierarchyIntroducesDependencyClashError(Exception):
-    """Raised when a dependency-clash would be introduced.
-
-    TODO: This exception is linked to a poorly named and understood condition.
-    Improve it when you can.
-    """
-
-    def __init__(
-        self,
-        supertask: UID,
-        subtask: UID,
-        *args: tuple[Any, ...],
-        **kwargs: dict[str, Any],
-    ) -> None:
-        """Initialise HierarchyIntroducessubtaskClashError."""
-        self.supertask = supertask
-        self.subtask = subtask
-        super().__init__(
-            f"Hierarchy introduces dependency clash between [{supertask}] and [{subtask}].",
+            f"Hierarchy from supertask [{supertask}] to subtask [{subtask}] would duplicate a dependency.",
             *args,
             **kwargs,
         )
@@ -461,7 +394,7 @@ class NetworkGraph:
         self._dependency_graph.add_task(task)
 
     def validate_task_can_be_removed(self, task: UID, /) -> None:
-        """Validate that task can be remoed from the graph."""
+        """Validate that task can be removed from the graph."""
         self._dependency_graph.validate_task_can_be_removed(task)
         self._hierarchy_graph.validate_task_can_be_removed(task)
 
@@ -475,59 +408,89 @@ class NetworkGraph:
     def validate_hierarchy_can_be_added(self, supertask: UID, subtask: UID, /) -> None:
         """Validate that hierarchy can be added to the graph."""
 
-        def has_dependency_clash(self: Self, supertask: UID, subtask: UID) -> bool:
-            """Quite a complicated little check - read the description.
+        def has_dependency_duplication_with_upstream_hierarchy(
+            self: Self, supertask: UID, subtask: UID
+        ) -> bool:
+            """Check if there are duplicate dependencies with a dependee hierarchy.
 
-            Check if any of the dependent-linked-tasks of (the super-task or
-            superior-tasks of the super-task) and any dependent-linked-tasks of
-            (the sub-task or inferior-tasks of the sub-task) are (superior to or
-            inferior to or the same) as one another.
+            Aka: Check if any of the tasks one step upstream of the supertask are
+            superior-or-equal to any dependent-tasks of (the sub-task or inferior-tasks
+            of the sub-task).
             """
-            dependency_linked_tasks_of_superior_tasks_of_supertask = set[UID]()
-            for superior_task in itertools.chain(
+            tasks_a_single_step_upstream_of_the_supertask = set[UID]()
+            for supertask_or_its_superior_task in itertools.chain(
                 [supertask], self._hierarchy_graph.superior_tasks(supertask).tasks()
             ):
-                dependency_linked_tasks_of_superior_tasks_of_supertask.update(
-                    self._dependency_graph.dependee_tasks(superior_task)
-                )
-                dependency_linked_tasks_of_superior_tasks_of_supertask.update(
-                    self._dependency_graph.dependent_tasks(superior_task)
+                tasks_a_single_step_upstream_of_the_supertask.update(
+                    self._dependency_graph.dependee_tasks(
+                        supertask_or_its_superior_task
+                    )
                 )
 
-            if not dependency_linked_tasks_of_superior_tasks_of_supertask:
+            if not tasks_a_single_step_upstream_of_the_supertask:
                 return False
 
-            superior_tasks_of_dependency_linked_tasks_of_superior_tasks_of_supertask = (
-                self._hierarchy_graph.superior_tasks_multi(
-                    dependency_linked_tasks_of_superior_tasks_of_supertask
-                )
-            )
-            inferior_tasks_of_dependency_linked_tasks_of_superior_tasks_of_supertask = (
-                self._hierarchy_graph.inferior_tasks_multi(
-                    dependency_linked_tasks_of_superior_tasks_of_supertask
-                )
-            )
-
-            dependency_linked_tasks_of_inferior_tasks_of_subtask = set[UID]()
-            for inferior_task in itertools.chain(
+            tasks_a_single_step_upstream_of_the_supertask_and_their_inferior_tasks = {
+                *tasks_a_single_step_upstream_of_the_supertask,
+                *self._hierarchy_graph.inferior_tasks_multi(
+                    tasks_a_single_step_upstream_of_the_supertask
+                ).tasks(),
+            }
+            for subtask_or_its_inferior_task in itertools.chain(
                 [subtask], self._hierarchy_graph.inferior_tasks(subtask).tasks()
             ):
-                dependency_linked_tasks_of_inferior_tasks_of_subtask.update(
-                    self._dependency_graph.dependee_tasks(inferior_task)
-                )
-                dependency_linked_tasks_of_inferior_tasks_of_subtask.update(
-                    self._dependency_graph.dependent_tasks(inferior_task)
+                for dependee_task in self._dependency_graph.dependee_tasks(
+                    subtask_or_its_inferior_task
+                ):
+                    if (
+                        dependee_task
+                        in tasks_a_single_step_upstream_of_the_supertask_and_their_inferior_tasks
+                    ):
+                        return True
+
+            return False
+
+        def has_dependency_duplication_with_downstream_hierarchy(
+            self: Self, supertask: UID, subtask: UID
+        ) -> bool:
+            """Check if there are duplicate dependencies with a dependee hierarchy.
+
+             Aka: Check if any of the tasks one step downstream of the supertask
+            are superior-or-equal to any of the dependee-tasks of the (sub-task or
+            inferior-tasks of the sub-task).
+            """
+            tasks_a_single_step_downstream_of_the_supertask = set[UID]()
+            for supertask_or_its_superior_task in itertools.chain(
+                [supertask], self._hierarchy_graph.superior_tasks(supertask).tasks()
+            ):
+                tasks_a_single_step_downstream_of_the_supertask.update(
+                    self._dependency_graph.dependent_tasks(
+                        supertask_or_its_superior_task
+                    )
                 )
 
-            return any(
-                superior_tasks_of_dependency_linked_tasks_of_superior_tasks_of_supertask.tasks().contains(
-                    dependency_linked_tasks_of_inferior_tasks_of_subtask
-                )
-            ) or any(
-                inferior_tasks_of_dependency_linked_tasks_of_superior_tasks_of_supertask.tasks().contains(
-                    dependency_linked_tasks_of_inferior_tasks_of_subtask
-                )
-            )
+            if not tasks_a_single_step_downstream_of_the_supertask:
+                return False
+
+            tasks_a_single_step_downstream_of_the_supertask_and_their_inferior_tasks = {
+                *tasks_a_single_step_downstream_of_the_supertask,
+                *self._hierarchy_graph.inferior_tasks_multi(
+                    tasks_a_single_step_downstream_of_the_supertask
+                ).tasks(),
+            }
+            for subtask_or_its_inferior_task in itertools.chain(
+                [subtask], self._hierarchy_graph.inferior_tasks(subtask).tasks()
+            ):
+                for dependent_task in self._dependency_graph.dependent_tasks(
+                    subtask_or_its_inferior_task
+                ):
+                    if (
+                        dependent_task
+                        in tasks_a_single_step_downstream_of_the_supertask_and_their_inferior_tasks
+                    ):
+                        return True
+
+            return False
 
         self._hierarchy_graph.validate_hierarchy_can_be_added(supertask, subtask)
 
@@ -562,52 +525,156 @@ class NetworkGraph:
 
             connecting_subgraph.update_hierarchy(subtask_connecting_hierarchy_subgraph)
 
-            raise HierarchyRelationshipConflictError(
+            raise HierarchyIntroducesNetworkCycleError(
                 supertask=supertask,
                 subtask=subtask,
                 connecting_subgraph=connecting_subgraph,
             )
 
-        # Check if there is a stream path from the supertask or any supertask's inferiors to the subtask
-        supertask_and_its_inferior_tasks = set(
+        # Check if there is a stream path from the subtask or any subtasks's inferiors to the supertask
+        subtask_and_its_inferior_tasks = set(
             itertools.chain(
-                [supertask], self.hierarchy_graph().inferior_tasks(supertask).tasks()
+                [subtask], self.hierarchy_graph().inferior_tasks(subtask).tasks()
             )
         )
         if any(
-            task in supertask_and_its_inferior_tasks
-            for task in self.upstream_tasks(subtask)
+            task in subtask_and_its_inferior_tasks
+            for task in self.upstream_tasks(supertask)
         ):
-            subtask_upstream_subgraph, _ = self.upstream_subgraph(subtask)
-            supertask_inferior_tasks_subgraph = (
-                self.hierarchy_graph().inferior_tasks(supertask).subgraph()
+            # TODO: Have NetworkGraph.upstream_subgraph return a view of
+            # the network graph, same as HierarchyGraph.inferior_tasks
+            # returns a view of a hierarchy graph
+            supertask_upstream_subgraph, _ = self.upstream_subgraph(supertask)
+            subtask_inferior_tasks_subgraph = (
+                self.hierarchy_graph().inferior_tasks(subtask).subgraph()
             )
             intersecting_tasks = (
-                subtask_upstream_subgraph.tasks()
-                & supertask_inferior_tasks_subgraph.tasks()
+                supertask_upstream_subgraph.tasks()
+                & subtask_inferior_tasks_subgraph.tasks()
             )
-            supertask_connecting_hierarchy_subgraph = (
-                supertask_inferior_tasks_subgraph.superior_tasks_multi(
+            subtask_connecting_hierarchy_subgraph = (
+                subtask_inferior_tasks_subgraph.superior_tasks_multi(
                     intersecting_tasks
                 ).subgraph()
             )
             connecting_subgraph, _ = (
-                subtask_upstream_subgraph.downstream_subgraph_multi(intersecting_tasks)
+                supertask_upstream_subgraph.downstream_subgraph_multi(
+                    intersecting_tasks
+                )
             )
 
-            connecting_subgraph.update_hierarchy(
-                supertask_connecting_hierarchy_subgraph
-            )
+            connecting_subgraph.update_hierarchy(subtask_connecting_hierarchy_subgraph)
 
-            raise HierarchyRelationshipConflictError(
+            raise HierarchyIntroducesNetworkCycleError(
                 supertask=supertask,
                 subtask=subtask,
                 connecting_subgraph=connecting_subgraph,
             )
 
-        if has_dependency_clash(self, supertask, subtask):
+        if has_dependency_duplication_with_upstream_hierarchy(
+            self, supertask=supertask, subtask=subtask
+        ):
+            supertask_superior_subgraph = self._hierarchy_graph.superior_tasks(
+                supertask
+            ).subgraph()
+            tasks_a_single_step_upstream_of_the_supertask = set[UID]()
+            for supertask_or_its_superior_task in supertask_superior_subgraph.tasks():
+                tasks_a_single_step_upstream_of_the_supertask.update(
+                    self._dependency_graph.dependee_tasks(
+                        supertask_or_its_superior_task
+                    )
+                )
+
+            subtask_inferior_subgraph = self._hierarchy_graph.inferior_tasks(
+                subtask
+            ).subgraph()
+            dependee_tasks_of_either_subtask_or_inferior_task_of_subtask = set[UID]()
+            for subtask_or_its_inferior_task in subtask_inferior_subgraph.tasks():
+                dependee_tasks_of_either_subtask_or_inferior_task_of_subtask.update(
+                    self._dependency_graph.dependee_tasks(subtask_or_its_inferior_task)
+                )
+
+            inferior_subgraph_of_tasks_a_single_step_upstream_of_the_supertask = (
+                self._hierarchy_graph.inferior_tasks_multi(
+                    tasks_a_single_step_upstream_of_the_supertask,
+                    stop_condition=lambda task: task
+                    in dependee_tasks_of_either_subtask_or_inferior_task_of_subtask,
+                ).subgraph()
+            )
+            intersecting_tasks_in_upstream_hierarchy_subgraph = (
+                inferior_subgraph_of_tasks_a_single_step_upstream_of_the_supertask.tasks()
+                & dependee_tasks_of_either_subtask_or_inferior_task_of_subtask
+            )
+            upstream_hierarchy_subgraph = inferior_subgraph_of_tasks_a_single_step_upstream_of_the_supertask.superior_tasks_multi(
+                intersecting_tasks_in_upstream_hierarchy_subgraph
+            ).subgraph()
+
+            dependencies_that_link_hierarchy_subgraphs = list[tuple[UID, UID]]()
+            connecting_top_level_tasks = set[UID]()
+            for top_level_task in upstream_hierarchy_subgraph.top_level_tasks():
+                for dependent_task in self._dependency_graph.dependent_tasks(
+                    top_level_task
+                ):
+                    if dependent_task not in supertask_superior_subgraph.tasks():
+                        continue
+                    dependencies_that_link_hierarchy_subgraphs.append(
+                        (top_level_task, dependent_task)
+                    )
+                    connecting_top_level_tasks.add(dependent_task)
+
+            trimmed_supertask_superior_subgraph = (
+                supertask_superior_subgraph.inferior_tasks_multi(
+                    connecting_top_level_tasks
+                ).subgraph()
+            )
+
+            connecting_concrete_tasks = set[UID]()
+            for concrete_task in upstream_hierarchy_subgraph.concrete_tasks():
+                for dependent_task in self._dependency_graph.dependent_tasks(
+                    concrete_task
+                ):
+                    if dependent_task not in subtask_inferior_subgraph.tasks():
+                        continue
+                    dependencies_that_link_hierarchy_subgraphs.append(
+                        (concrete_task, dependent_task)
+                    )
+                    connecting_concrete_tasks.add(dependent_task)
+
+            trimmed_subtask_inferior_subgraph = (
+                subtask_inferior_subgraph.superior_tasks_multi(
+                    connecting_concrete_tasks
+                ).subgraph()
+            )
+
+            complete_subgraph = NetworkGraph.empty()
+            complete_subgraph.update_hierarchy(trimmed_supertask_superior_subgraph)
+            complete_subgraph.update_hierarchy(trimmed_subtask_inferior_subgraph)
+            complete_subgraph.update_hierarchy(upstream_hierarchy_subgraph)
+            for (
+                dependee_task,
+                dependent_task,
+            ) in dependencies_that_link_hierarchy_subgraphs:
+                complete_subgraph.add_dependency(dependee_task, dependent_task)
+
+            raise HierarchyIntroducesDependencyDuplicationError(
+                supertask=supertask,
+                subtask=subtask,
+                connecting_subgraph=complete_subgraph,
+            )
+
+        if has_dependency_duplication_with_downstream_hierarchy(
+            self, supertask=supertask, subtask=subtask
+        ):
             # TODO: Get relevant subgraph and return as part of exception
-            raise HierarchyIntroducesDependencyClashError(supertask, subtask)
+            pass
+
+        # if has_non_hierarchical_dependencies_with_neighbouring_hierarchy
+        # The (supertask or a superior task of the supertask) has a dependent task that
+        # is an inferior task to a (dependent task of the subtask or an inferior task
+        # of the subtask) OR
+        # The (supertask or a superior task of the supertask) has a dependee task that
+        # is an inferior task to a (dependee task of the subtask or an inferior task
+        # of the subtask)
 
     def add_hierarchy(self, supertask: UID, subtask: UID) -> None:
         """Create a new hierarchy between the specified tasks."""

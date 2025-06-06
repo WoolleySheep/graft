@@ -22,7 +22,7 @@ poetry install
 
 ### Launch poetry environment
 ```
-poetry shell
+poetry env activate
 ```
 
 ### Update dependencies
