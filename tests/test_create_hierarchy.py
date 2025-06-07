@@ -735,6 +735,42 @@ def test_create_hierarchy_failure_upstream_hierarchy_duplicates_dependency(
     task0 = tasks.UID(0)
     task1 = tasks.UID(1)
     task2 = tasks.UID(2)
+
+    system = empty_system
+    system.add_task(task0)
+    system.add_task(task1)
+    system.add_task(task2)
+    system.add_task_dependency(dependee_task=task0, dependent_task=task1)
+    system.add_task_dependency(dependee_task=task0, dependent_task=task2)
+
+    expected_subgraph = tasks.NetworkGraph.empty()
+    expected_subgraph.add_task(task0)
+    expected_subgraph.add_task(task1)
+    expected_subgraph.add_task(task2)
+    expected_subgraph.add_dependency(dependee_task=task0, dependent_task=task1)
+    expected_subgraph.add_dependency(dependee_task=task0, dependent_task=task2)
+
+    data_layer_mock.load_system.return_value = system
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
+
+    with pytest.raises(tasks.HierarchyIntroducesDependencyDuplicationError) as exc_info:
+        logic_layer.create_task_hierarchy(supertask=task1, subtask=task2)
+    assert exc_info.value.supertask == task1
+    assert exc_info.value.subtask == task2
+    assert exc_info.value.connecting_subgraph == expected_subgraph
+
+    data_layer_mock.load_system.assert_called_once()
+    assert data_layer_mock.save_system.called is False
+
+
+@mock.patch("graft.architecture.data.DataLayer", autospec=True)
+def test_create_hierarchy_failure_upstream_hierarchy_duplicates_dependency_2(
+    data_layer_mock: mock.MagicMock, empty_system: domain.System
+) -> None:
+    """Test the create_hierarchy method fails when an upstream hierarchy duplicates dependencies."""
+    task0 = tasks.UID(0)
+    task1 = tasks.UID(1)
+    task2 = tasks.UID(2)
     task3 = tasks.UID(3)
 
     system = empty_system
@@ -769,7 +805,7 @@ def test_create_hierarchy_failure_upstream_hierarchy_duplicates_dependency(
 
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
-def test_create_hierarchy_failure_upstream_hierarchy_duplicates_dependency_2(
+def test_create_hierarchy_failure_upstream_hierarchy_duplicates_dependency_3(
     data_layer_mock: mock.MagicMock, empty_system: domain.System
 ) -> None:
     """Test the create_hierarchy method fails when an upstream hierarchy duplicates dependencies."""
@@ -890,6 +926,42 @@ def test_create_hierarchy_failure_downstream_hierarchy_duplicates_dependency(
     task0 = tasks.UID(0)
     task1 = tasks.UID(1)
     task2 = tasks.UID(2)
+
+    system = empty_system
+    system.add_task(task0)
+    system.add_task(task1)
+    system.add_task(task2)
+    system.add_task_dependency(dependee_task=task0, dependent_task=task2)
+    system.add_task_dependency(dependee_task=task1, dependent_task=task2)
+
+    expected_subgraph = tasks.NetworkGraph.empty()
+    expected_subgraph.add_task(task0)
+    expected_subgraph.add_task(task1)
+    expected_subgraph.add_task(task2)
+    expected_subgraph.add_dependency(dependee_task=task0, dependent_task=task2)
+    expected_subgraph.add_dependency(dependee_task=task1, dependent_task=task2)
+
+    data_layer_mock.load_system.return_value = system
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
+
+    with pytest.raises(tasks.HierarchyIntroducesDependencyDuplicationError) as exc_info:
+        logic_layer.create_task_hierarchy(supertask=task0, subtask=task1)
+    assert exc_info.value.supertask == task0
+    assert exc_info.value.subtask == task1
+    assert exc_info.value.connecting_subgraph == expected_subgraph
+
+    data_layer_mock.load_system.assert_called_once()
+    assert data_layer_mock.save_system.called is False
+
+
+@mock.patch("graft.architecture.data.DataLayer", autospec=True)
+def test_create_hierarchy_failure_downstream_hierarchy_duplicates_dependency_2(
+    data_layer_mock: mock.MagicMock, empty_system: domain.System
+) -> None:
+    """Test the create_hierarchy method fails when an downstream hierarchy duplicates dependencies."""
+    task0 = tasks.UID(0)
+    task1 = tasks.UID(1)
+    task2 = tasks.UID(2)
     task3 = tasks.UID(3)
 
     system = empty_system
@@ -924,7 +996,7 @@ def test_create_hierarchy_failure_downstream_hierarchy_duplicates_dependency(
 
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
-def test_create_hierarchy_failure_downstream_hierarchy_duplicates_dependency_2(
+def test_create_hierarchy_failure_downstream_hierarchy_duplicates_dependency_3(
     data_layer_mock: mock.MagicMock, empty_system: domain.System
 ) -> None:
     """Test the create_hierarchy method fails when an downstream hierarchy duplicates dependencies."""
