@@ -1109,6 +1109,316 @@ def test_create_hierarchy_failure_downstream_hierarchy_duplicates_dependency_tri
     assert data_layer_mock.save_system.called is False
 
 
+@mock.patch("graft.architecture.data.DataLayer", autospec=True)
+def test_create_hierarchy_failure_upstream_hierarchy_dependency_crossover(
+    data_layer_mock: mock.MagicMock, empty_system: domain.System
+) -> None:
+    """Test the create_hierarchy method fails when an upstream hierarchy has a dependency crossover."""
+    task0 = tasks.UID(0)
+    task1 = tasks.UID(1)
+    task2 = tasks.UID(2)
+    task3 = tasks.UID(3)
+
+    system = empty_system
+    system.add_task(task0)
+    system.add_task(task1)
+    system.add_task(task2)
+    system.add_task(task3)
+    system.add_task_hierarchy(supertask=task0, subtask=task1)
+    system.add_task_dependency(dependee_task=task0, dependent_task=task2)
+    system.add_task_dependency(dependee_task=task1, dependent_task=task3)
+
+    expected_subgraph = tasks.NetworkGraph.empty()
+    expected_subgraph.add_task(task0)
+    expected_subgraph.add_task(task1)
+    expected_subgraph.add_task(task2)
+    expected_subgraph.add_task(task3)
+    expected_subgraph.add_hierarchy(supertask=task0, subtask=task1)
+    expected_subgraph.add_dependency(dependee_task=task0, dependent_task=task2)
+    expected_subgraph.add_dependency(dependee_task=task1, dependent_task=task3)
+
+    data_layer_mock.load_system.return_value = system
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
+
+    with pytest.raises(tasks.HierarchyIntroducesDependencyCrossoverError) as exc_info:
+        logic_layer.create_task_hierarchy(supertask=task3, subtask=task2)
+    assert exc_info.value.supertask == task3
+    assert exc_info.value.subtask == task2
+    assert exc_info.value.connecting_subgraph == expected_subgraph
+
+    data_layer_mock.load_system.assert_called_once()
+    assert data_layer_mock.save_system.called is False
+
+
+@mock.patch("graft.architecture.data.DataLayer", autospec=True)
+def test_create_hierarchy_failure_upstream_hierarchy_dependency_crossover_2(
+    data_layer_mock: mock.MagicMock, empty_system: domain.System
+) -> None:
+    """Test the create_hierarchy method fails when an upstream hierarchy has a dependency crossover."""
+    task0 = tasks.UID(0)
+    task1 = tasks.UID(1)
+    task2 = tasks.UID(2)
+    task3 = tasks.UID(3)
+    task4 = tasks.UID(4)
+    task5 = tasks.UID(5)
+    task6 = tasks.UID(6)
+    task7 = tasks.UID(7)
+
+    system = empty_system
+    system.add_task(task0)
+    system.add_task(task1)
+    system.add_task(task2)
+    system.add_task(task3)
+    system.add_task(task4)
+    system.add_task(task5)
+    system.add_task(task6)
+    system.add_task(task7)
+    system.add_task_hierarchy(supertask=task3, subtask=task2)
+    system.add_task_hierarchy(supertask=task2, subtask=task1)
+    system.add_task_hierarchy(supertask=task1, subtask=task0)
+    system.add_task_hierarchy(supertask=task4, subtask=task5)
+    system.add_task_hierarchy(supertask=task6, subtask=task7)
+    system.add_task_dependency(dependee_task=task0, dependent_task=task4)
+    system.add_task_dependency(dependee_task=task3, dependent_task=task7)
+
+    expected_subgraph = tasks.NetworkGraph.empty()
+    expected_subgraph.add_task(task0)
+    expected_subgraph.add_task(task1)
+    expected_subgraph.add_task(task2)
+    expected_subgraph.add_task(task3)
+    expected_subgraph.add_task(task4)
+    expected_subgraph.add_task(task5)
+    expected_subgraph.add_task(task6)
+    expected_subgraph.add_task(task7)
+    expected_subgraph.add_hierarchy(supertask=task3, subtask=task2)
+    expected_subgraph.add_hierarchy(supertask=task2, subtask=task1)
+    expected_subgraph.add_hierarchy(supertask=task1, subtask=task0)
+    expected_subgraph.add_hierarchy(supertask=task4, subtask=task5)
+    expected_subgraph.add_hierarchy(supertask=task6, subtask=task7)
+    expected_subgraph.add_dependency(dependee_task=task0, dependent_task=task4)
+    expected_subgraph.add_dependency(dependee_task=task3, dependent_task=task7)
+
+    data_layer_mock.load_system.return_value = system
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
+
+    with pytest.raises(tasks.HierarchyIntroducesDependencyCrossoverError) as exc_info:
+        logic_layer.create_task_hierarchy(supertask=task5, subtask=task6)
+    assert exc_info.value.supertask == task5
+    assert exc_info.value.subtask == task6
+    assert exc_info.value.connecting_subgraph == expected_subgraph
+
+    data_layer_mock.load_system.assert_called_once()
+    assert data_layer_mock.save_system.called is False
+
+
+@mock.patch("graft.architecture.data.DataLayer", autospec=True)
+def test_create_hierarchy_failure_upstream_hierarchy_dependency_crossover_trimmed(
+    data_layer_mock: mock.MagicMock, empty_system: domain.System
+) -> None:
+    """Test the create_hierarchy method fails when an upstream hierarchy has a dependency crossover and trims extrenous tasks from the subgraph in the exception."""
+    task0 = tasks.UID(0)
+    task1 = tasks.UID(1)
+    task2 = tasks.UID(2)
+    task3 = tasks.UID(3)
+    task4 = tasks.UID(4)
+    task5 = tasks.UID(5)
+    task6 = tasks.UID(6)
+    task7 = tasks.UID(7)
+
+    system = empty_system
+    system.add_task(task0)
+    system.add_task(task1)
+    system.add_task(task2)
+    system.add_task(task3)
+    system.add_task(task4)
+    system.add_task(task5)
+    system.add_task(task6)
+    system.add_task(task7)
+    system.add_task_hierarchy(supertask=task3, subtask=task2)
+    system.add_task_hierarchy(supertask=task2, subtask=task1)
+    system.add_task_hierarchy(supertask=task1, subtask=task0)
+    system.add_task_hierarchy(supertask=task4, subtask=task5)
+    system.add_task_hierarchy(supertask=task6, subtask=task7)
+    system.add_task_dependency(dependee_task=task1, dependent_task=task5)
+    system.add_task_dependency(dependee_task=task2, dependent_task=task6)
+
+    expected_subgraph = tasks.NetworkGraph.empty()
+    expected_subgraph.add_task(task1)
+    expected_subgraph.add_task(task2)
+    expected_subgraph.add_task(task5)
+    expected_subgraph.add_task(task6)
+    expected_subgraph.add_hierarchy(supertask=task2, subtask=task1)
+    expected_subgraph.add_dependency(dependee_task=task1, dependent_task=task5)
+    expected_subgraph.add_dependency(dependee_task=task2, dependent_task=task6)
+
+    data_layer_mock.load_system.return_value = system
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
+
+    with pytest.raises(tasks.HierarchyIntroducesDependencyCrossoverError) as exc_info:
+        logic_layer.create_task_hierarchy(supertask=task5, subtask=task6)
+    assert exc_info.value.supertask == task5
+    assert exc_info.value.subtask == task6
+    assert exc_info.value.connecting_subgraph == expected_subgraph
+
+    data_layer_mock.load_system.assert_called_once()
+    assert data_layer_mock.save_system.called is False
+
+
+@mock.patch("graft.architecture.data.DataLayer", autospec=True)
+def test_create_hierarchy_failure_downstream_hierarchy_dependency_crossover(
+    data_layer_mock: mock.MagicMock, empty_system: domain.System
+) -> None:
+    """Test the create_hierarchy method fails when an downstream hierarchy has a dependency crossover."""
+    task0 = tasks.UID(0)
+    task1 = tasks.UID(1)
+    task2 = tasks.UID(2)
+    task3 = tasks.UID(3)
+
+    system = empty_system
+    system.add_task(task0)
+    system.add_task(task1)
+    system.add_task(task2)
+    system.add_task(task3)
+    system.add_task_hierarchy(supertask=task2, subtask=task3)
+    system.add_task_dependency(dependee_task=task0, dependent_task=task2)
+    system.add_task_dependency(dependee_task=task1, dependent_task=task3)
+
+    expected_subgraph = tasks.NetworkGraph.empty()
+    expected_subgraph.add_task(task0)
+    expected_subgraph.add_task(task1)
+    expected_subgraph.add_task(task2)
+    expected_subgraph.add_task(task3)
+    expected_subgraph.add_hierarchy(supertask=task2, subtask=task3)
+    expected_subgraph.add_dependency(dependee_task=task0, dependent_task=task2)
+    expected_subgraph.add_dependency(dependee_task=task1, dependent_task=task3)
+
+    data_layer_mock.load_system.return_value = system
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
+
+    with pytest.raises(tasks.HierarchyIntroducesDependencyCrossoverError) as exc_info:
+        logic_layer.create_task_hierarchy(supertask=task1, subtask=task0)
+    assert exc_info.value.supertask == task1
+    assert exc_info.value.subtask == task0
+    assert exc_info.value.connecting_subgraph == expected_subgraph
+
+    data_layer_mock.load_system.assert_called_once()
+    assert data_layer_mock.save_system.called is False
+
+
+@mock.patch("graft.architecture.data.DataLayer", autospec=True)
+def test_create_hierarchy_failure_downstream_hierarchy_dependency_crossover_2(
+    data_layer_mock: mock.MagicMock, empty_system: domain.System
+) -> None:
+    """Test the create_hierarchy method fails when an downstream hierarchy has a dependency crossover."""
+    task0 = tasks.UID(0)
+    task1 = tasks.UID(1)
+    task2 = tasks.UID(2)
+    task3 = tasks.UID(3)
+    task4 = tasks.UID(4)
+    task5 = tasks.UID(5)
+    task6 = tasks.UID(6)
+    task7 = tasks.UID(7)
+
+    system = empty_system
+    system.add_task(task0)
+    system.add_task(task1)
+    system.add_task(task2)
+    system.add_task(task3)
+    system.add_task(task4)
+    system.add_task(task5)
+    system.add_task(task6)
+    system.add_task(task7)
+    system.add_task_hierarchy(supertask=task3, subtask=task2)
+    system.add_task_hierarchy(supertask=task1, subtask=task0)
+    system.add_task_hierarchy(supertask=task4, subtask=task5)
+    system.add_task_hierarchy(supertask=task5, subtask=task6)
+    system.add_task_hierarchy(supertask=task6, subtask=task7)
+    system.add_task_dependency(dependee_task=task0, dependent_task=task4)
+    system.add_task_dependency(dependee_task=task3, dependent_task=task7)
+
+    expected_subgraph = tasks.NetworkGraph.empty()
+    expected_subgraph.add_task(task0)
+    expected_subgraph.add_task(task1)
+    expected_subgraph.add_task(task2)
+    expected_subgraph.add_task(task3)
+    expected_subgraph.add_task(task4)
+    expected_subgraph.add_task(task5)
+    expected_subgraph.add_task(task6)
+    expected_subgraph.add_task(task7)
+    expected_subgraph.add_hierarchy(supertask=task3, subtask=task2)
+    expected_subgraph.add_hierarchy(supertask=task1, subtask=task0)
+    expected_subgraph.add_hierarchy(supertask=task4, subtask=task5)
+    expected_subgraph.add_hierarchy(supertask=task5, subtask=task6)
+    expected_subgraph.add_hierarchy(supertask=task6, subtask=task7)
+    expected_subgraph.add_dependency(dependee_task=task0, dependent_task=task4)
+    expected_subgraph.add_dependency(dependee_task=task3, dependent_task=task7)
+
+    data_layer_mock.load_system.return_value = system
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
+
+    with pytest.raises(tasks.HierarchyIntroducesDependencyCrossoverError) as exc_info:
+        logic_layer.create_task_hierarchy(supertask=task2, subtask=task1)
+    assert exc_info.value.supertask == task2
+    assert exc_info.value.subtask == task1
+    assert exc_info.value.connecting_subgraph == expected_subgraph
+
+    data_layer_mock.load_system.assert_called_once()
+    assert data_layer_mock.save_system.called is False
+
+
+@mock.patch("graft.architecture.data.DataLayer", autospec=True)
+def test_create_hierarchy_failure_downstream_hierarchy_dependency_crossover_trimmed(
+    data_layer_mock: mock.MagicMock, empty_system: domain.System
+) -> None:
+    """Test the create_hierarchy method fails when an downstream hierarchy has a dependency crossover and trims extrenous tasks from the subgraph in the exception."""
+    task0 = tasks.UID(0)
+    task1 = tasks.UID(1)
+    task2 = tasks.UID(2)
+    task3 = tasks.UID(3)
+    task4 = tasks.UID(4)
+    task5 = tasks.UID(5)
+    task6 = tasks.UID(6)
+    task7 = tasks.UID(7)
+
+    system = empty_system
+    system.add_task(task0)
+    system.add_task(task1)
+    system.add_task(task2)
+    system.add_task(task3)
+    system.add_task(task4)
+    system.add_task(task5)
+    system.add_task(task6)
+    system.add_task(task7)
+    system.add_task_hierarchy(supertask=task3, subtask=task2)
+    system.add_task_hierarchy(supertask=task1, subtask=task0)
+    system.add_task_hierarchy(supertask=task4, subtask=task5)
+    system.add_task_hierarchy(supertask=task5, subtask=task6)
+    system.add_task_hierarchy(supertask=task6, subtask=task7)
+    system.add_task_dependency(dependee_task=task1, dependent_task=task5)
+    system.add_task_dependency(dependee_task=task2, dependent_task=task6)
+
+    expected_subgraph = tasks.NetworkGraph.empty()
+    expected_subgraph.add_task(task1)
+    expected_subgraph.add_task(task2)
+    expected_subgraph.add_task(task5)
+    expected_subgraph.add_task(task6)
+    expected_subgraph.add_hierarchy(supertask=task5, subtask=task6)
+    expected_subgraph.add_dependency(dependee_task=task1, dependent_task=task5)
+    expected_subgraph.add_dependency(dependee_task=task2, dependent_task=task6)
+
+    data_layer_mock.load_system.return_value = system
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
+
+    with pytest.raises(tasks.HierarchyIntroducesDependencyCrossoverError) as exc_info:
+        logic_layer.create_task_hierarchy(supertask=task2, subtask=task1)
+    assert exc_info.value.supertask == task2
+    assert exc_info.value.subtask == task1
+    assert exc_info.value.connecting_subgraph == expected_subgraph
+
+    data_layer_mock.load_system.assert_called_once()
+    assert data_layer_mock.save_system.called is False
+
+
 @pytest.mark.parametrize("topside_task", [tasks.UID(0), tasks.UID(1), tasks.UID(2)])
 @pytest.mark.parametrize("bottomside_task", [tasks.UID(3), tasks.UID(4), tasks.UID(5)])
 @pytest.mark.parametrize(

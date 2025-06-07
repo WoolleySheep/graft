@@ -39,6 +39,7 @@ from graft.domain.tasks.network_graph import (
     DependencyIntroducesHierarchyClashError,
     DependencyIntroducesNetworkCycleError,
     DependencyIntroducesStreamCycleError,
+    HierarchyIntroducesDependencyCrossoverError,
     HierarchyIntroducesDependencyDuplicationError,
     HierarchyIntroducesNetworkCycleError,
     HierarchyPathAlreadyExistsFromDependeeTaskToDependentTaskError,

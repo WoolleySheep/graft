@@ -181,6 +181,17 @@ class HierarchyCreationWindow(tk.Toplevel):
                 additional_hierarchies={(e.supertask, e.subtask)},
             )
             return
+        except tasks.HierarchyIntroducesDependencyCrossoverError as e:
+            helpers.NetworkGraphOperationFailedWindow(
+                master=self,
+                description_text="Introduces dependency crossover",
+                task_network=e.connecting_subgraph,
+                get_task_annotation_text=lambda task: format_task_name_for_annotation(
+                    self._logic_layer.get_task_system().attributes_register()[task].name
+                ),
+                additional_hierarchies={(e.supertask, e.subtask)},
+            )
+            return
 
         broker = event_broker.get_singleton()
         broker.publish(event_broker.SystemModified())
