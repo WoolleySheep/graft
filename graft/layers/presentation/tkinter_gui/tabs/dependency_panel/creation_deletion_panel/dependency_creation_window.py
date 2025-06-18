@@ -101,13 +101,15 @@ class DependencyCreationWindow(tk.Toplevel):
         logger.info("Confirm dependency creation button clicked")
         self._create_dependency_between_selected_tasks_then_destroy_window()
 
+    def _get_selected_dependee_task(self) -> tasks.UID:
+        return _parse_task_uid_from_menu_option(self._selected_dependee_task.get())
+
+    def _get_selected_dependent_task(self) -> tasks.UID:
+        return _parse_task_uid_from_menu_option(self._selected_dependent_task.get())
+
     def _create_dependency_between_selected_tasks_then_destroy_window(self) -> None:
-        dependee_task = _parse_task_uid_from_menu_option(
-            self._selected_dependee_task.get()
-        )
-        dependent_task = _parse_task_uid_from_menu_option(
-            self._selected_dependent_task.get()
-        )
+        dependee_task = self._get_selected_dependee_task()
+        dependent_task = self._get_selected_dependent_task()
         try:
             self._logic_layer.create_task_dependency(dependee_task, dependent_task)
         except tasks.DependencyLoopError as e:

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import collections
-import functools
 import itertools
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any, Protocol, Self
@@ -21,6 +20,32 @@ from graft.domain.tasks.uid import UID, TasksView
 
 if TYPE_CHECKING:
     from collections.abc import Generator
+
+
+def _unique[T](iterable: Iterable[T]) -> Generator[T, None, None]:
+    """Yield unique items from an iterable."""
+    seen = set[T]()
+    for item in iterable:
+        if item in seen:
+            continue
+        seen.add(item)
+        yield item
+
+
+def _does_iterable_contain_values[T](
+    iterable: Iterable[T],
+) -> tuple[bool, Iterable[T]]:
+    """Check if an iterable contains values.
+
+    Returns an un-iterated copy of the iterable so the iterable can be used as if this
+    function was never called.
+    """
+    iterable1, iterable2 = itertools.tee(iterable)
+    try:
+        next(iterable1)
+    except StopIteration:
+        return False, iterable2
+    return True, iterable2
 
 
 class DependencyIntroducesNetworkCycleError(Exception):
@@ -102,6 +127,70 @@ class HierarchyIntroducesDependencyCrossoverError(Exception):
         self.connecting_subgraph = connecting_subgraph
         super().__init__(
             f"Hierarchy from supertask [{supertask}] to subtask [{subtask}] would crossover a dependency.",
+            *args,
+            **kwargs,
+        )
+
+
+class DependencyIntroducesDependencyDuplicationError(Exception):
+    """Raised when a dependency would introduce a dependency duplication."""
+
+    def __init__(
+        self,
+        dependee_task: UID,
+        dependent_task: UID,
+        connecting_subgraph: NetworkGraph,
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
+        self.dependee_task = dependee_task
+        self.dependent_task = dependent_task
+        self.connecting_subgraph = connecting_subgraph
+        super().__init__(
+            f"Dependency from dependee_task [{dependee_task}] to dependent_task [{dependent_task}] would duplicate a dependency.",
+            *args,
+            **kwargs,
+        )
+
+
+class DependencyIntroducesDependencyCrossoverError(Exception):
+    """Raised when a dependency would introduce a dependency crossover."""
+
+    def __init__(
+        self,
+        dependee_task: UID,
+        dependent_task: UID,
+        connecting_subgraph: NetworkGraph,
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
+        self.dependee_task = dependee_task
+        self.dependent_task = dependent_task
+        self.connecting_subgraph = connecting_subgraph
+        super().__init__(
+            f"Dependency from dependee_task [{dependee_task}] to dependent_task [{dependent_task}] would crossover a dependency.",
+            *args,
+            **kwargs,
+        )
+
+
+class DependencyBetweenHierarchyLevelsError(Exception):
+    """Raised when there a dependency is added between levels of a hierarchy."""
+
+    def __init__(
+        self,
+        dependee_task: UID,
+        dependent_task: UID,
+        connecting_subgraph: HierarchyGraph,
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
+        """Initialise HierarchyPathAlreadyExistsError."""
+        self.dependee_task = dependee_task
+        self.dependent_task = dependent_task
+        self.connecting_subgraph = connecting_subgraph
+        super().__init__(
+            f"Hierarchy path already exists from dependee-task [{dependee_task}] to dependent-task [{dependent_task}].",
             *args,
             **kwargs,
         )
@@ -514,25 +603,6 @@ class NetworkGraph:
 
             return False
 
-        def unique[T](iterable: Iterable[T]) -> Generator[T, None, None]:
-            """Yield unique items from an iterable."""
-            seen = set[T]()
-            for item in iterable:
-                if item not in seen:
-                    seen.add(item)
-                    yield item
-
-        def does_iterable_contain_values[T](
-            iterable: Iterable[T],
-        ) -> tuple[bool, Iterable[T]]:
-            """Check if an iterable contains values."""
-            iterable1, iterable2 = itertools.tee(iterable)
-            try:
-                next(iterable1)
-            except StopIteration:
-                return False, iterable2
-            return True, iterable2
-
         def has_dependency_crossover_with_upstream_hierarchy(
             self: Self, supertask: UID, subtask: UID
         ) -> bool:
@@ -545,7 +615,7 @@ class NetworkGraph:
             supertask_and_its_superior_tasks = itertools.chain(
                 [supertask], self._hierarchy_graph.superior_tasks(supertask).tasks()
             )
-            tasks_a_single_step_upstream_of_the_supertask = unique(
+            tasks_a_single_step_upstream_of_the_supertask = _unique(
                 itertools.chain.from_iterable(
                     map(
                         self._dependency_graph.dependee_tasks,
@@ -557,7 +627,7 @@ class NetworkGraph:
             (
                 has_tasks_upstream_of_the_supertask,
                 tasks_a_single_step_upstream_of_the_supertask,
-            ) = does_iterable_contain_values(
+            ) = _does_iterable_contain_values(
                 tasks_a_single_step_upstream_of_the_supertask
             )
             if not has_tasks_upstream_of_the_supertask:
@@ -573,7 +643,7 @@ class NetworkGraph:
                 [subtask], self._hierarchy_graph.inferior_tasks(subtask).tasks()
             )
 
-            dependee_tasks_of_subtask_and_its_inferior_tasks = unique(
+            dependee_tasks_of_subtask_and_its_inferior_tasks = _unique(
                 itertools.chain.from_iterable(
                     map(
                         self._dependency_graph.dependee_tasks,
@@ -600,7 +670,7 @@ class NetworkGraph:
             supertask_and_its_superior_tasks = itertools.chain(
                 [supertask], self._hierarchy_graph.superior_tasks(supertask).tasks()
             )
-            tasks_a_single_step_downstream_of_the_supertask = unique(
+            tasks_a_single_step_downstream_of_the_supertask = _unique(
                 itertools.chain.from_iterable(
                     map(
                         self._dependency_graph.dependent_tasks,
@@ -612,7 +682,7 @@ class NetworkGraph:
             (
                 has_tasks_downstream_of_the_supertask,
                 tasks_a_single_step_downstream_of_the_supertask,
-            ) = does_iterable_contain_values(
+            ) = _does_iterable_contain_values(
                 tasks_a_single_step_downstream_of_the_supertask
             )
             if not has_tasks_downstream_of_the_supertask:
@@ -628,7 +698,7 @@ class NetworkGraph:
                 [subtask], self._hierarchy_graph.inferior_tasks(subtask).tasks()
             )
 
-            dependent_tasks_of_subtask_and_its_inferior_tasks = unique(
+            dependent_tasks_of_subtask_and_its_inferior_tasks = _unique(
                 itertools.chain.from_iterable(
                     map(
                         self._dependency_graph.dependent_tasks,
