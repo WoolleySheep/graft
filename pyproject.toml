@@ -38,6 +38,7 @@ ignore = [
     "FA102",
     "PYI025",
     "TRY400",
+    "LOG014",
 ]
 
 [tool.ruff.lint.per-file-ignores]

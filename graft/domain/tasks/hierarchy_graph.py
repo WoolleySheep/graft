@@ -34,7 +34,7 @@ class HasSuperTasksError(Exception):
         self.supertasks = set(supertasks)
         formatted_supertasks = (str(supertask) for supertask in supertasks)
         super().__init__(
-            f"Task [{task}] has super-tasks [{", ".join(formatted_supertasks)}]",
+            f"Task [{task}] has super-tasks [{', '.join(formatted_supertasks)}]",
             *args,
             **kwargs,
         )
@@ -55,7 +55,7 @@ class HasSubTasksError(Exception):
         self.subtasks = set(subtasks)
         formatted_subtasks = (str(task) for task in subtasks)
         super().__init__(
-            f"Task [{task}] has sub-tasks [{", ".join(formatted_subtasks)}]",
+            f"Task [{task}] has sub-tasks [{', '.join(formatted_subtasks)}]",
             *args,
             **kwargs,
         )
@@ -570,7 +570,7 @@ class HierarchyGraph:
     def __repr__(self) -> str:
         """Return string representation of graph."""
         tasks_with_subtasks = (
-            f"{task!r}: {{{", ".join(repr(subtask) for subtask in subtasks)}}}"
+            f"{task!r}: {{{', '.join(repr(subtask) for subtask in subtasks)}}}"
             for task, subtasks in self.task_subtasks_pairs()
         )
         return f"{self.__class__.__name__}({{{', '.join(tasks_with_subtasks)}}})"
@@ -802,7 +802,7 @@ class HierarchyGraphView:
     def __str__(self) -> str:
         """Return string representation of graph."""
         tasks_with_subtasks = (
-            f"{task}: {{{", ".join(str(subtask) for subtask in subtasks)}}}"
+            f"{task}: {{{', '.join(str(subtask) for subtask in subtasks)}}}"
             for task, subtasks in self.task_subtasks_pairs()
         )
         return f"{{{', '.join(tasks_with_subtasks)}}}"
@@ -810,7 +810,7 @@ class HierarchyGraphView:
     def __repr__(self) -> str:
         """Return string representation of graph."""
         tasks_with_subtasks = (
-            f"{task!r}: {{{", ".join(repr(subtask) for subtask in subtasks)}}}"
+            f"{task!r}: {{{', '.join(repr(subtask) for subtask in subtasks)}}}"
             for task, subtasks in self.task_subtasks_pairs()
         )
         return f"{self.__class__.__name__}({{{', '.join(tasks_with_subtasks)}}})"

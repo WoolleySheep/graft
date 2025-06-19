@@ -42,7 +42,7 @@ class GUI(tk.Tk):
         )
         # I don't feel like making this class take base exception, so I'm just
         # going to live with the type mismatch and suppress the error
-        UnknownExceptionOperationFailedWindow(master=self, exception=exception)  # type: ignore[reportArgumentType]
+        UnknownExceptionOperationFailedWindow(master=self, exception=exception)
 
 
 def run(logic_layer: architecture.LogicLayer) -> None:

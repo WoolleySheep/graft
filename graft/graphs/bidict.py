@@ -103,7 +103,7 @@ class SetViewMapping[T: Hashable, S: Hashable](Mapping[T, SetView[S]]):
     def __repr__(self) -> str:
         """Return string representation of the mapping."""
         keys_with_values = (
-            f"{key!r}: {{{", ".join(repr(value) for value in values)}}}"
+            f"{key!r}: {{{', '.join(repr(value) for value in values)}}}"
             for key, values in self._mapping.items()
         )
         return f"{self.__class__.__name__}({{{', '.join(keys_with_values)}}})"
@@ -179,7 +179,7 @@ class BiDirectionalSetDict[T: Hashable](MutableMapping[T, SetView[T]]):
     def __repr__(self) -> str:
         """Return string representation of bidict."""
         keys_with_values = (
-            f"{key!r}: {{{", ".join(repr(value) for value in values)}}}"
+            f"{key!r}: {{{', '.join(repr(value) for value in values)}}}"
             for key, values in self._forward.items()
         )
         return f"{self.__class__.__name__}({{{', '.join(keys_with_values)}}})"

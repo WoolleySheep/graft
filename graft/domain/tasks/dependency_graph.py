@@ -29,7 +29,7 @@ class HasDependeeTasksError(Exception):
             str(dependee_task) for dependee_task in dependee_tasks
         )
         super().__init__(
-            f"Task [{task}] has dependee-tasks [{", ".join(formatted_dependee_tasks)}]",
+            f"Task [{task}] has dependee-tasks [{', '.join(formatted_dependee_tasks)}]",
             *args,
             **kwargs,
         )
@@ -52,7 +52,7 @@ class HasDependentTasksError(Exception):
             str(dependent_task) for dependent_task in dependent_tasks
         )
         super().__init__(
-            f"Task [{task}] has sub-tasks [{", ".join(formatted_dependent_tasks)}]",
+            f"Task [{task}] has sub-tasks [{', '.join(formatted_dependent_tasks)}]",
             *args,
             **kwargs,
         )
@@ -535,7 +535,7 @@ class DependencyGraph:
     def __repr__(self) -> str:
         """Return string representation of graph."""
         tasks_with_dependents = (
-            f"{task!r}: {{{", ".join(repr(dependent) for dependent in dependents)}}}"
+            f"{task!r}: {{{', '.join(repr(dependent) for dependent in dependents)}}}"
             for task, dependents in self.task_dependents_pairs()
         )
         return f"{self.__class__.__name__}({{{', '.join(tasks_with_dependents)}}})"
@@ -766,7 +766,7 @@ class DependencyGraphView:
     def __str__(self) -> str:
         """Return string representation of graph."""
         tasks_with_dependents = (
-            f"{task}: {{{", ".join(str(dependent) for dependent in dependents)}}}"
+            f"{task}: {{{', '.join(str(dependent) for dependent in dependents)}}}"
             for task, dependents in self.task_dependents_pairs()
         )
         return f"{{{', '.join(tasks_with_dependents)}}}"
@@ -774,7 +774,7 @@ class DependencyGraphView:
     def __repr__(self) -> str:
         """Return string representation of graph."""
         tasks_with_dependents = (
-            f"{task!r}: {{{", ".join(repr(dependent) for dependent in dependents)}}}"
+            f"{task!r}: {{{', '.join(repr(dependent) for dependent in dependents)}}}"
             for task, dependents in self.task_dependents_pairs()
         )
         return f"{self.__class__.__name__}({{{', '.join(tasks_with_dependents)}}})"

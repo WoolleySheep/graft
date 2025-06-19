@@ -8,7 +8,7 @@ from graft.layers.presentation.tkinter_gui.helpers import failed_operation_windo
 class UnknownExceptionOperationFailedWindow(
     failed_operation_window.OperationFailedWindow
 ):
-    def __init__(self, master: tk.Misc, exception: Exception) -> None:
+    def __init__(self, master: tk.Misc, exception: BaseException) -> None:
         super().__init__(master=master)
         self._restart_warning = ttk.Label(
             self, text="TO PRESERVE DATA INTEGRITY, RECOMMEND RESTARTING APP"

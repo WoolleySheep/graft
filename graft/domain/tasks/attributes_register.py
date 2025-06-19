@@ -89,7 +89,7 @@ class AttributesRegister(Mapping[UID, AttributesView]):
         task_attributes_pair = (
             f"{task!r}: {attributes!r}" for task, attributes in self.items()
         )
-        return f"{self.__class__.__name__}({{{", ".join(task_attributes_pair)}}})"
+        return f"{self.__class__.__name__}({{{', '.join(task_attributes_pair)}}})"
 
     def add(self, /, task: UID) -> None:
         """Add a new task."""
@@ -184,4 +184,4 @@ class AttributesRegisterView(Mapping[UID, AttributesView]):
         task_attributes_pair = (
             f"{task!r}: {attributes!r}" for task, attributes in self.items()
         )
-        return f"{self.__class__.__name__}({{{", ".join(task_attributes_pair)}}})"
+        return f"{self.__class__.__name__}({{{', '.join(task_attributes_pair)}}})"

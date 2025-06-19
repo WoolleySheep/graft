@@ -25,9 +25,7 @@ def _get_tasks_with_no_upstream_tasks(
     graph: tasks.INetworkGraphView,
 ) -> Generator[tasks.UID]:
     # None represents that we currently don't know if the task has upstream tasks
-    task_has_upstream_tasks: dict[tasks.UID, bool | None] = {
-        task: None for task in graph.tasks()
-    }
+    task_has_upstream_tasks: dict[tasks.UID, bool | None] = dict.fromkeys(graph.tasks())
 
     tasks_to_check = list(graph.hierarchy_graph().top_level_tasks())
 

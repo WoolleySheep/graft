@@ -110,7 +110,7 @@ class HasPredecessorsError(Exception):
         self.predecessors = set(predecessors)
         formatted_predecessors = (str(predecessor) for predecessor in predecessors)
         super().__init__(
-            f"Node [{node}] has predecessors [{", ".join(formatted_predecessors)}]"
+            f"Node [{node}] has predecessors [{', '.join(formatted_predecessors)}]"
         )
 
 
@@ -123,7 +123,7 @@ class HasSuccessorsError(Exception):
         self.successors = set(successors)
         formatted_successors = (str(successor) for successor in successors)
         super().__init__(
-            f"Node [{node}] has successors [{", ".join(formatted_successors)}]"
+            f"Node [{node}] has successors [{', '.join(formatted_successors)}]"
         )
 
 
@@ -878,7 +878,7 @@ class DirectedGraph[T: Hashable]:
     def __repr__(self) -> str:
         """Return string representation of digraph."""
         nodes_with_successors = (
-            f"{node!r}: {{{", ".join(repr(successor) for successor in successors)}}}"
+            f"{node!r}: {{{', '.join(repr(successor) for successor in successors)}}}"
             for node, successors in self.node_successors_pairs()
         )
         return f"{self.__class__.__name__}({{{', '.join(nodes_with_successors)}}})"
