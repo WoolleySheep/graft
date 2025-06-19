@@ -11,14 +11,12 @@ from graft.layers import logic
 
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
-def test_update_task_name_success_with_name(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
-) -> None:
+def test_update_task_name_success_with_name(data_layer_mock: mock.MagicMock) -> None:
     """Test the update_task_name method works when given a name."""
     task = tasks.UID(0)
     name = tasks.Name("Hello world")
 
-    system_with_one_task = empty_system
+    system_with_one_task = domain.System.empty()
     system_with_one_task.add_task(task)
 
     system_with_one_named_task = copy.deepcopy(system_with_one_task)
@@ -35,14 +33,12 @@ def test_update_task_name_success_with_name(
 
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
-def test_update_task_name_success_with_none(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
-) -> None:
+def test_update_task_name_success_with_none(data_layer_mock: mock.MagicMock) -> None:
     """Test the update_task_name method works when given no name."""
     task = tasks.UID(0)
     name = tasks.Name("Hello world")
 
-    system_with_one_unnamed_task = empty_system
+    system_with_one_unnamed_task = domain.System.empty()
     system_with_one_unnamed_task.add_task(task)
 
     system_with_one_named_task = copy.deepcopy(system_with_one_unnamed_task)
@@ -60,10 +56,11 @@ def test_update_task_name_success_with_none(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_update_task_name_failure_task_does_not_exist(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the update_task_name method fails when the task does not exist."""
     task = tasks.UID(0)
+    empty_system = domain.System.empty()
 
     data_layer_mock.load_system.return_value = empty_system
 

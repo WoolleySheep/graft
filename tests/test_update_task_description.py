@@ -12,13 +12,13 @@ from graft.layers import logic
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_update_task_description_success_with_description(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the update_task_description method works when given a description."""
     task = tasks.UID(0)
     description = tasks.Description("Hello world")
 
-    system_with_one_undescribed_task = empty_system
+    system_with_one_undescribed_task = domain.System.empty()
     system_with_one_undescribed_task.add_task(task)
 
     system_with_one_described_task = copy.deepcopy(system_with_one_undescribed_task)
@@ -38,13 +38,13 @@ def test_update_task_description_success_with_description(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_update_task_description_success_with_none(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the update_task_description method works when given no description."""
     task = tasks.UID(0)
     description = tasks.Description("Hello world")
 
-    system_with_one_undescribed_task = empty_system
+    system_with_one_undescribed_task = domain.System.empty()
     system_with_one_undescribed_task.add_task(task)
 
     system_with_one_described_task = copy.deepcopy(system_with_one_undescribed_task)
@@ -66,10 +66,11 @@ def test_update_task_description_success_with_none(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_update_task_description_failure_task_does_not_exist(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the update_task_description method fails when the task does not exist."""
     task = tasks.UID(0)
+    empty_system = domain.System.empty()
 
     data_layer_mock.load_system.return_value = empty_system
 

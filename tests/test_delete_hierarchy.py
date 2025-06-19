@@ -11,14 +11,12 @@ from graft.layers import logic
 
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
-def test_delete_hierarchy_success(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
-) -> None:
+def test_delete_hierarchy_success(data_layer_mock: mock.MagicMock) -> None:
     """Test the delete_hierarchy method succeeds as expected."""
     supertask = tasks.UID(0)
     subtask = tasks.UID(1)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(supertask)
     system.add_task(subtask)
 
@@ -38,13 +36,13 @@ def test_delete_hierarchy_success(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_delete_hierarchy_failure_supertask_not_exist(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the delete_hierarchy method fails when the supertask does not exist."""
     absent_supertask = tasks.UID(0)
     subtask = tasks.UID(1)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(subtask)
 
     data_layer_mock.load_system.return_value = system
@@ -61,13 +59,13 @@ def test_delete_hierarchy_failure_supertask_not_exist(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_delete_hierarchy_failure_subtask_not_exist(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the delete_hierarchy method fails when the subtask does not exist."""
     supertask = tasks.UID(0)
     absent_subtask = tasks.UID(1)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(supertask)
 
     data_layer_mock.load_system.return_value = system
@@ -84,12 +82,12 @@ def test_delete_hierarchy_failure_subtask_not_exist(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_delete_hierarchy_failure_hierarchy_loop(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the delete_hierarchy method fails when a hierarchy loop occurs."""
     task = tasks.UID(0)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(task)
 
     data_layer_mock.load_system.return_value = system
@@ -106,13 +104,13 @@ def test_delete_hierarchy_failure_hierarchy_loop(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_delete_hierarchy_failure_hierarchy_not_exist(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the delete_hierarchy method fails when the hierarchy does not exist."""
     supertask = tasks.UID(0)
     subtask = tasks.UID(1)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(supertask)
     system.add_task(subtask)
 

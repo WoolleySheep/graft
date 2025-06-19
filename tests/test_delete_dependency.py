@@ -11,14 +11,12 @@ from graft.layers import logic
 
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
-def test_delete_dependency_success(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
-) -> None:
+def test_delete_dependency_success(data_layer_mock: mock.MagicMock) -> None:
     """Test the delete_dependency method succeeds as expected."""
     dependee_task = tasks.UID(0)
     dependent_task = tasks.UID(1)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(dependee_task)
     system.add_task(dependent_task)
 
@@ -38,13 +36,13 @@ def test_delete_dependency_success(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_delete_dependency_failure_dependee_task_not_exists(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the delete_dependency method fails when the dependee task does not exist."""
     absent_dependee_task = tasks.UID(0)
     dependent_task = tasks.UID(1)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(dependent_task)
 
     data_layer_mock.load_system.return_value = system
@@ -61,13 +59,13 @@ def test_delete_dependency_failure_dependee_task_not_exists(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_delete_dependency_failure_dependent_task_not_exists(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the delete_dependency method fails when the dependent task does not exist."""
     dependee_task = tasks.UID(0)
     absent_dependent_task = tasks.UID(1)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(dependee_task)
 
     data_layer_mock.load_system.return_value = system
@@ -84,12 +82,12 @@ def test_delete_dependency_failure_dependent_task_not_exists(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_delete_dependency_failure_dependency_loop(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the delete_dependency method fails when a dependency loop occurs."""
     task = tasks.UID(0)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(task)
 
     data_layer_mock.load_system.return_value = system
@@ -106,13 +104,13 @@ def test_delete_dependency_failure_dependency_loop(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_delete_dependency_failure_dependency_not_exist(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the delete_dependency method fails when the dependency does not exist."""
     dependee_task = tasks.UID(0)
     dependent_task = tasks.UID(1)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(dependee_task)
     system.add_task(dependent_task)
 

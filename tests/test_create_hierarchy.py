@@ -12,14 +12,12 @@ from graft.layers import logic
 
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
-def test_create_hierarchy_success(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
-) -> None:
+def test_create_hierarchy_success(data_layer_mock: mock.MagicMock) -> None:
     """Test the create_hierarchy method works as expected."""
     supertask = tasks.UID(0)
     subtask = tasks.UID(1)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(supertask)
     system.add_task(subtask)
 
@@ -38,14 +36,14 @@ def test_create_hierarchy_success(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_hierarchy_failure_supertask_not_exist(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_hierarchy method fails when the supertask does not exist."""
     supertask = tasks.UID(0)
     subtask = tasks.UID(1)
     absent_supertask = tasks.UID(2)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(supertask)
     system.add_task(subtask)
 
@@ -63,14 +61,14 @@ def test_create_hierarchy_failure_supertask_not_exist(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_hierarchy_failure_subtask_not_exist(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_hierarchy method fails when the subtask does not exist."""
     supertask = tasks.UID(0)
     subtask = tasks.UID(1)
     absent_subtask = tasks.UID(2)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(supertask)
     system.add_task(subtask)
 
@@ -88,12 +86,12 @@ def test_create_hierarchy_failure_subtask_not_exist(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_hierarchy_failure_supertask_subtask_the_same(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_hierarchy method fails when the supertask and subtask are the same."""
     task = tasks.UID(0)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(task)
 
     data_layer_mock.load_system.return_value = system
@@ -110,13 +108,13 @@ def test_create_hierarchy_failure_supertask_subtask_the_same(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_hierarchy_failure_hierarchy_already_exists(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_hierarchy method fails when the hierarchy already exists."""
     supertask = tasks.UID(0)
     subtask = tasks.UID(1)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(supertask)
     system.add_task(subtask)
     system.add_task_hierarchy(supertask=supertask, subtask=subtask)
@@ -136,13 +134,13 @@ def test_create_hierarchy_failure_hierarchy_already_exists(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_hierarchy_failure_inverse_hierarchy_already_exists(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_hierarchy method fails when an inverse hierarchy already exists."""
     supertask = tasks.UID(0)
     subtask = tasks.UID(1)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(supertask)
     system.add_task(subtask)
     system.add_task_hierarchy(supertask=supertask, subtask=subtask)
@@ -168,14 +166,14 @@ def test_create_hierarchy_failure_inverse_hierarchy_already_exists(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_hierarchy_failure_introduces_cycle(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_hierarchy method fails when it introduces a cycle."""
     task0 = tasks.UID(0)
     task1 = tasks.UID(1)
     task2 = tasks.UID(2)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(task0)
     system.add_task(task1)
     system.add_task(task2)
@@ -205,7 +203,7 @@ def test_create_hierarchy_failure_introduces_cycle(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_hierarchy_failure_introduces_cycle_prunes_subgraph_correctly(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_hierarchy method fails when it introduces a cycle and.
 
@@ -216,7 +214,7 @@ def test_create_hierarchy_failure_introduces_cycle_prunes_subgraph_correctly(
     task2 = tasks.UID(2)
     task3 = tasks.UID(3)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(task0)
     system.add_task(task1)
     system.add_task(task2)
@@ -248,7 +246,7 @@ def test_create_hierarchy_failure_introduces_cycle_prunes_subgraph_correctly(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_hierarchy_failure_path_already_exists_from_supertask_to_subtask(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_hierarchy method fails when a path already exists from.
 
@@ -258,7 +256,7 @@ def test_create_hierarchy_failure_path_already_exists_from_supertask_to_subtask(
     task1 = tasks.UID(1)
     task2 = tasks.UID(2)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(task0)
     system.add_task(task1)
     system.add_task(task2)
@@ -288,7 +286,7 @@ def test_create_hierarchy_failure_path_already_exists_from_supertask_to_subtask(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_hierarchy_failure_path_already_exists_from_supertask_to_subtask_and_prunes_subgraph_correctly(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_hierarchy method fails when a path already exists from.
 
@@ -300,7 +298,7 @@ def test_create_hierarchy_failure_path_already_exists_from_supertask_to_subtask_
     task2 = tasks.UID(2)
     task3 = tasks.UID(3)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(task0)
     system.add_task(task1)
     system.add_task(task2)
@@ -332,7 +330,7 @@ def test_create_hierarchy_failure_path_already_exists_from_supertask_to_subtask_
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_hierarchy_failure_subtask_is_already_subtask_of_superior_task_of_supertask(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_hierarchy method fails when the subtask is already a.
 
@@ -342,7 +340,7 @@ def test_create_hierarchy_failure_subtask_is_already_subtask_of_superior_task_of
     task1 = tasks.UID(1)
     task2 = tasks.UID(2)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(task0)
     system.add_task(task1)
     system.add_task(task2)
@@ -372,7 +370,7 @@ def test_create_hierarchy_failure_subtask_is_already_subtask_of_superior_task_of
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_hierarchy_failure_subtask_is_already_subtask_of_superior_task_of_supertask_and_prunes_subgraph_correctly(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_hierarchy method fails when the subtask is already a.
 
@@ -384,7 +382,7 @@ def test_create_hierarchy_failure_subtask_is_already_subtask_of_superior_task_of
     task2 = tasks.UID(2)
     task3 = tasks.UID(3)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(task0)
     system.add_task(task1)
     system.add_task(task2)
@@ -497,7 +495,7 @@ def test_create_hierarchy_failure_supertask_is_already_supertask_of_inferior_tas
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_hierarchy_failure_dependency_path_from_supertask_to_subtask(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_hierarchy method fails when a dependency path already.
 
@@ -506,7 +504,7 @@ def test_create_hierarchy_failure_dependency_path_from_supertask_to_subtask(
     supertask = tasks.UID(0)
     subtask = tasks.UID(1)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(supertask)
     system.add_task(subtask)
     system.add_task_dependency(dependee_task=supertask, dependent_task=subtask)
@@ -532,7 +530,7 @@ def test_create_hierarchy_failure_dependency_path_from_supertask_to_subtask(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_hierarchy_failure_dependency_path_from_subtask_to_supertask(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_hierarchy method fails when a dependency path already.
 
@@ -541,7 +539,7 @@ def test_create_hierarchy_failure_dependency_path_from_subtask_to_supertask(
     supertask = tasks.UID(0)
     subtask = tasks.UID(1)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(supertask)
     system.add_task(subtask)
     system.add_task_dependency(dependee_task=subtask, dependent_task=supertask)
@@ -567,19 +565,17 @@ def test_create_hierarchy_failure_dependency_path_from_subtask_to_supertask(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_hierarchy_failure_stream_path_from_supertask_to_subtask(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_hierarchy method fails when a stream path already exists.
 
     from the supertask to the subtask.
     """
-    # TODO: Stop using "empty_system", just create an empty system in the test using the
-    # class constructor method
     task0 = tasks.UID(0)
     task1 = tasks.UID(1)
     task2 = tasks.UID(2)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(task0)
     system.add_task(task1)
     system.add_task(task2)
@@ -609,7 +605,7 @@ def test_create_hierarchy_failure_stream_path_from_supertask_to_subtask(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_hierarchy_failure_stream_path_from_subtask_to_supertask(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_hierarchy method fails when a stream path already exists.
 
@@ -619,7 +615,7 @@ def test_create_hierarchy_failure_stream_path_from_subtask_to_supertask(
     task1 = tasks.UID(1)
     task2 = tasks.UID(2)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(task0)
     system.add_task(task1)
     system.add_task(task2)
@@ -649,7 +645,7 @@ def test_create_hierarchy_failure_stream_path_from_subtask_to_supertask(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_hierarchy_failure_stream_path_from_supertask_to_inferior_task_of_subtask(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_hierarchy method fails when a stream path already exists.
 
@@ -659,7 +655,7 @@ def test_create_hierarchy_failure_stream_path_from_supertask_to_inferior_task_of
     task1 = tasks.UID(1)
     task2 = tasks.UID(2)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(task0)
     system.add_task(task1)
     system.add_task(task2)
@@ -689,7 +685,7 @@ def test_create_hierarchy_failure_stream_path_from_supertask_to_inferior_task_of
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_hierarchy_failure_stream_path_from_inferior_task_of_subtask_to_supertask(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_hierarchy method fails when a stream path already exists.
 
@@ -699,7 +695,7 @@ def test_create_hierarchy_failure_stream_path_from_inferior_task_of_subtask_to_s
     task1 = tasks.UID(1)
     task2 = tasks.UID(2)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(task0)
     system.add_task(task1)
     system.add_task(task2)
@@ -729,14 +725,14 @@ def test_create_hierarchy_failure_stream_path_from_inferior_task_of_subtask_to_s
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_hierarchy_failure_upstream_hierarchy_duplicates_dependency(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_hierarchy method fails when an upstream hierarchy duplicates dependencies."""
     task0 = tasks.UID(0)
     task1 = tasks.UID(1)
     task2 = tasks.UID(2)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(task0)
     system.add_task(task1)
     system.add_task(task2)
@@ -765,7 +761,7 @@ def test_create_hierarchy_failure_upstream_hierarchy_duplicates_dependency(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_hierarchy_failure_upstream_hierarchy_duplicates_dependency_2(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_hierarchy method fails when an upstream hierarchy duplicates dependencies."""
     task0 = tasks.UID(0)
@@ -773,7 +769,7 @@ def test_create_hierarchy_failure_upstream_hierarchy_duplicates_dependency_2(
     task2 = tasks.UID(2)
     task3 = tasks.UID(3)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(task0)
     system.add_task(task1)
     system.add_task(task2)
@@ -806,7 +802,7 @@ def test_create_hierarchy_failure_upstream_hierarchy_duplicates_dependency_2(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_hierarchy_failure_upstream_hierarchy_duplicates_dependency_3(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_hierarchy method fails when an upstream hierarchy duplicates dependencies."""
     task0 = tasks.UID(0)
@@ -818,7 +814,7 @@ def test_create_hierarchy_failure_upstream_hierarchy_duplicates_dependency_3(
     task6 = tasks.UID(6)
     task7 = tasks.UID(7)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(task0)
     system.add_task(task1)
     system.add_task(task2)
@@ -867,7 +863,7 @@ def test_create_hierarchy_failure_upstream_hierarchy_duplicates_dependency_3(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_hierarchy_failure_upstream_hierarchy_duplicates_dependency_trim(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_hierarchy method fails when an upstream hierarchy duplicates dependencies and trims extrenous tasks from the subgraph in the exception."""
     task0 = tasks.UID(0)
@@ -879,7 +875,7 @@ def test_create_hierarchy_failure_upstream_hierarchy_duplicates_dependency_trim(
     task6 = tasks.UID(6)
     task7 = tasks.UID(7)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(task0)
     system.add_task(task1)
     system.add_task(task2)
@@ -920,14 +916,14 @@ def test_create_hierarchy_failure_upstream_hierarchy_duplicates_dependency_trim(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_hierarchy_failure_downstream_hierarchy_duplicates_dependency(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_hierarchy method fails when an downstream hierarchy duplicates dependencies."""
     task0 = tasks.UID(0)
     task1 = tasks.UID(1)
     task2 = tasks.UID(2)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(task0)
     system.add_task(task1)
     system.add_task(task2)
@@ -956,7 +952,7 @@ def test_create_hierarchy_failure_downstream_hierarchy_duplicates_dependency(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_hierarchy_failure_downstream_hierarchy_duplicates_dependency_2(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_hierarchy method fails when an downstream hierarchy duplicates dependencies."""
     task0 = tasks.UID(0)
@@ -964,7 +960,7 @@ def test_create_hierarchy_failure_downstream_hierarchy_duplicates_dependency_2(
     task2 = tasks.UID(2)
     task3 = tasks.UID(3)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(task0)
     system.add_task(task1)
     system.add_task(task2)
@@ -997,7 +993,7 @@ def test_create_hierarchy_failure_downstream_hierarchy_duplicates_dependency_2(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_hierarchy_failure_downstream_hierarchy_duplicates_dependency_3(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_hierarchy method fails when an downstream hierarchy duplicates dependencies."""
     task0 = tasks.UID(0)
@@ -1009,7 +1005,7 @@ def test_create_hierarchy_failure_downstream_hierarchy_duplicates_dependency_3(
     task6 = tasks.UID(6)
     task7 = tasks.UID(7)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(task0)
     system.add_task(task1)
     system.add_task(task2)
@@ -1058,7 +1054,7 @@ def test_create_hierarchy_failure_downstream_hierarchy_duplicates_dependency_3(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_hierarchy_failure_downstream_hierarchy_duplicates_dependency_trim(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_hierarchy method fails when an downstream hierarchy duplicates dependencies and trims extrenous tasks from the subgraph in the exception."""
     task0 = tasks.UID(0)
@@ -1070,7 +1066,7 @@ def test_create_hierarchy_failure_downstream_hierarchy_duplicates_dependency_tri
     task6 = tasks.UID(6)
     task7 = tasks.UID(7)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(task0)
     system.add_task(task1)
     system.add_task(task2)
@@ -1111,7 +1107,7 @@ def test_create_hierarchy_failure_downstream_hierarchy_duplicates_dependency_tri
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_hierarchy_failure_upstream_hierarchy_dependency_crossover(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_hierarchy method fails when an upstream hierarchy has a dependency crossover."""
     task0 = tasks.UID(0)
@@ -1119,7 +1115,7 @@ def test_create_hierarchy_failure_upstream_hierarchy_dependency_crossover(
     task2 = tasks.UID(2)
     task3 = tasks.UID(3)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(task0)
     system.add_task(task1)
     system.add_task(task2)
@@ -1152,7 +1148,7 @@ def test_create_hierarchy_failure_upstream_hierarchy_dependency_crossover(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_hierarchy_failure_upstream_hierarchy_dependency_crossover_2(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_hierarchy method fails when an upstream hierarchy has a dependency crossover."""
     task0 = tasks.UID(0)
@@ -1164,7 +1160,7 @@ def test_create_hierarchy_failure_upstream_hierarchy_dependency_crossover_2(
     task6 = tasks.UID(6)
     task7 = tasks.UID(7)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(task0)
     system.add_task(task1)
     system.add_task(task2)
@@ -1213,7 +1209,7 @@ def test_create_hierarchy_failure_upstream_hierarchy_dependency_crossover_2(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_hierarchy_failure_upstream_hierarchy_dependency_crossover_trimmed(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_hierarchy method fails when an upstream hierarchy has a dependency crossover and trims extrenous tasks from the subgraph in the exception."""
     task0 = tasks.UID(0)
@@ -1225,7 +1221,7 @@ def test_create_hierarchy_failure_upstream_hierarchy_dependency_crossover_trimme
     task6 = tasks.UID(6)
     task7 = tasks.UID(7)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(task0)
     system.add_task(task1)
     system.add_task(task2)
@@ -1266,7 +1262,7 @@ def test_create_hierarchy_failure_upstream_hierarchy_dependency_crossover_trimme
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_hierarchy_failure_downstream_hierarchy_dependency_crossover(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_hierarchy method fails when an downstream hierarchy has a dependency crossover."""
     task0 = tasks.UID(0)
@@ -1274,7 +1270,7 @@ def test_create_hierarchy_failure_downstream_hierarchy_dependency_crossover(
     task2 = tasks.UID(2)
     task3 = tasks.UID(3)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(task0)
     system.add_task(task1)
     system.add_task(task2)
@@ -1307,7 +1303,7 @@ def test_create_hierarchy_failure_downstream_hierarchy_dependency_crossover(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_hierarchy_failure_downstream_hierarchy_dependency_crossover_2(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_hierarchy method fails when an downstream hierarchy has a dependency crossover."""
     task0 = tasks.UID(0)
@@ -1319,7 +1315,7 @@ def test_create_hierarchy_failure_downstream_hierarchy_dependency_crossover_2(
     task6 = tasks.UID(6)
     task7 = tasks.UID(7)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(task0)
     system.add_task(task1)
     system.add_task(task2)
@@ -1368,7 +1364,7 @@ def test_create_hierarchy_failure_downstream_hierarchy_dependency_crossover_2(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_hierarchy_failure_downstream_hierarchy_dependency_crossover_trimmed(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_hierarchy method fails when an downstream hierarchy has a dependency crossover and trims extrenous tasks from the subgraph in the exception."""
     task0 = tasks.UID(0)
@@ -1380,7 +1376,7 @@ def test_create_hierarchy_failure_downstream_hierarchy_dependency_crossover_trim
     task6 = tasks.UID(6)
     task7 = tasks.UID(7)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(task0)
     system.add_task(task1)
     system.add_task(task2)

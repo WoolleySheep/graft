@@ -11,14 +11,13 @@ from graft.layers import logic
 
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
-def test_create_dependency_success(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
-) -> None:
+def test_create_dependency_success(data_layer_mock: mock.MagicMock) -> None:
     """Test the create_dependency method succeeds as expected."""
+    system = domain.System.empty()
+
     dependee_task = tasks.UID(0)
     dependent_task = tasks.UID(1)
 
-    system = empty_system
     system.add_task(dependee_task)
     system.add_task(dependent_task)
 
@@ -41,14 +40,14 @@ def test_create_dependency_success(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_dependency_failure_dependee_task_not_exist(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_dependency method fails when the dependee task does not exist."""
     dependee_task = tasks.UID(0)
     dependent_task = tasks.UID(1)
     absent_dependee_task = tasks.UID(2)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(dependee_task)
     system.add_task(dependent_task)
 
@@ -68,14 +67,14 @@ def test_create_dependency_failure_dependee_task_not_exist(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_dependency_failure_dependent_task_not_exist(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_dependency method fails when the dependent task does not exist."""
     dependee_task = tasks.UID(0)
     dependent_task = tasks.UID(1)
     absent_dependent_task = tasks.UID(2)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(dependee_task)
     system.add_task(dependent_task)
 
@@ -95,12 +94,12 @@ def test_create_dependency_failure_dependent_task_not_exist(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_dependency_failure_dependent_task_dependee_task_the_same(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_dependency method fails when the dependent task and the dependee task are the same."""
     task = tasks.UID(0)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(task)
 
     data_layer_mock.load_system.return_value = system
@@ -117,13 +116,13 @@ def test_create_dependency_failure_dependent_task_dependee_task_the_same(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_dependency_failure_dependency_already_exists(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_dependency method fails when the dependency already exists."""
     dependee_task = tasks.UID(0)
     dependent_task = tasks.UID(1)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(dependee_task)
     system.add_task(dependent_task)
     system.add_task_dependency(
@@ -147,13 +146,13 @@ def test_create_dependency_failure_dependency_already_exists(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_dependency_failure_inverse_hierarchy_already_exists(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_dependency method fails when the inverse hierarchy already exists."""
     dependee_task = tasks.UID(0)
     dependent_task = tasks.UID(1)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(dependee_task)
     system.add_task(dependent_task)
     system.add_task_dependency(
@@ -183,14 +182,14 @@ def test_create_dependency_failure_inverse_hierarchy_already_exists(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_dependency_failure_introduces_cycle(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_dependency method fails when the dependency introduces a cycle."""
     task0 = tasks.UID(0)
     task1 = tasks.UID(1)
     task2 = tasks.UID(2)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(task0)
     system.add_task(task1)
     system.add_task(task2)
@@ -220,7 +219,7 @@ def test_create_dependency_failure_introduces_cycle(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_dependency_failure_introduces_cycle_prunes_subgraph_correctly(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_dependency method fails when the dependency introduces a cycle and prunes the subgraph correctly."""
     task0 = tasks.UID(0)
@@ -228,7 +227,7 @@ def test_create_dependency_failure_introduces_cycle_prunes_subgraph_correctly(
     task2 = tasks.UID(2)
     task3 = tasks.UID(3)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(task0)
     system.add_task(task1)
     system.add_task(task2)
@@ -260,7 +259,7 @@ def test_create_dependency_failure_introduces_cycle_prunes_subgraph_correctly(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_dependency_success_multiple_paths_allowed(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_dependency method succeeds even when there are multiple paths.
 
@@ -271,7 +270,7 @@ def test_create_dependency_success_multiple_paths_allowed(
     task1 = tasks.UID(1)
     task2 = tasks.UID(2)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(task0)
     system.add_task(task1)
     system.add_task(task2)
@@ -295,13 +294,13 @@ def test_create_dependency_success_multiple_paths_allowed(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_dependency_failure_hierarchy_path_from_dependee_task_to_dependent_task(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_dependency method fails when a hierarchy path already exists from the dependee-task to the dependent-task."""
     dependee_task = tasks.UID(0)
     dependent_task = tasks.UID(1)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(dependee_task)
     system.add_task(dependent_task)
     system.add_task_hierarchy(supertask=dependee_task, subtask=dependent_task)
@@ -331,13 +330,13 @@ def test_create_dependency_failure_hierarchy_path_from_dependee_task_to_dependen
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_dependency_failure_hierarchy_path_from_dependent_task_to_dependee_task(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_dependency method fails when a hierarchy path already exists from the dependent-task to the dependee-task."""
     dependee_task = tasks.UID(0)
     dependent_task = tasks.UID(1)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(dependee_task)
     system.add_task(dependent_task)
     system.add_task_hierarchy(supertask=dependent_task, subtask=dependee_task)
@@ -367,14 +366,14 @@ def test_create_dependency_failure_hierarchy_path_from_dependent_task_to_depende
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_dependency_failure_introduces_stream_cycle(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_dependency method fails when a stream cycle is introduced."""
     task0 = tasks.UID(0)
     task1 = tasks.UID(1)
     task2 = tasks.UID(2)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(task0)
     system.add_task(task1)
     system.add_task(task2)
@@ -397,7 +396,7 @@ def test_create_dependency_failure_introduces_stream_cycle(
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_dependency_failure_path_from_inferior_task_of_dependent_task_to_dependee_task(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_dependency method fails when a stream path already exists from an inferior task of the dependent-task to the dependee-task."""
     task0 = tasks.UID(0)
@@ -406,7 +405,7 @@ def test_create_dependency_failure_path_from_inferior_task_of_dependent_task_to_
     task3 = tasks.UID(3)
     task4 = tasks.UID(4)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(task0)
     system.add_task(task1)
     system.add_task(task2)
@@ -435,7 +434,7 @@ def test_create_dependency_failure_path_from_inferior_task_of_dependent_task_to_
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_dependency_failure_path_from_dependent_task_to_inferior_task_of_dependee_task(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_dependency method fails when a stream path already exists from the dependent-task to an inferior task of the dependee-task."""
     task0 = tasks.UID(0)
@@ -444,7 +443,7 @@ def test_create_dependency_failure_path_from_dependent_task_to_inferior_task_of_
     task3 = tasks.UID(3)
     task4 = tasks.UID(4)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(task0)
     system.add_task(task1)
     system.add_task(task2)
@@ -473,7 +472,7 @@ def test_create_dependency_failure_path_from_dependent_task_to_inferior_task_of_
 
 @mock.patch("graft.architecture.data.DataLayer", autospec=True)
 def test_create_dependency_failure_introduces_hierarchy_clash(
-    data_layer_mock: mock.MagicMock, empty_system: domain.System
+    data_layer_mock: mock.MagicMock,
 ) -> None:
     """Test the create_dependency method fails when a hierarchy clash is introduced."""
     task0 = tasks.UID(0)
@@ -481,7 +480,7 @@ def test_create_dependency_failure_introduces_hierarchy_clash(
     task2 = tasks.UID(2)
     task3 = tasks.UID(3)
 
-    system = empty_system
+    system = domain.System.empty()
     system.add_task(task0)
     system.add_task(task1)
     system.add_task(task2)
