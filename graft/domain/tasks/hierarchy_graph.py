@@ -200,18 +200,30 @@ def _reraise_edge_adding_exceptions_as_corresponding_hierarchy_adding_exceptions
         try:
             return fn(*args, **kwargs)
         except graphs.NodeDoesNotExistError as e:
+            assert isinstance(e.node, UID)
             raise TaskDoesNotExistError(e.node) from e
         except graphs.LoopError as e:
+            assert isinstance(e.node, UID)
             raise HierarchyLoopError(e.node) from e
         except graphs.EdgeAlreadyExistsError as e:
+            assert isinstance(e.source, UID)
+            assert isinstance(e.target, UID)
             raise HierarchyAlreadyExistsError(e.source, e.target) from e
         except graphs.IntroducesCycleError as e:
+            assert isinstance(e.source, UID)
+            assert isinstance(e.target, UID)
+            assert all(isinstance(node, UID) for node in e.connecting_subgraph.nodes())
+            connecting_subgraph = graphs.ReducedDirectedAcyclicGraph[UID]()
+            connecting_subgraph.update(e.connecting_subgraph)
             raise HierarchyIntroducesCycleError(
                 supertask=e.source,
                 subtask=e.target,
-                connecting_subgraph=HierarchyGraph(e.connecting_subgraph),
+                connecting_subgraph=HierarchyGraph(connecting_subgraph),
             ) from e
         except graphs.IntroducesRedundantEdgeError as e:
+            assert isinstance(e.source, UID)
+            assert isinstance(e.target, UID)
+            assert all(isinstance(node, UID) for node in e.subgraph.nodes())
             raise HierarchyIntroducesRedundantHierarchyError(
                 supertask=e.source,
                 subtask=e.target,
@@ -231,10 +243,13 @@ def _reraise_node_removing_exceptions_as_corresponding_task_removing_exceptions(
         try:
             return fn(*args, **kwargs)
         except graphs.NodeDoesNotExistError as e:
+            assert isinstance(e.node, UID)
             raise TaskDoesNotExistError(e.node) from e
         except graphs.HasPredecessorsError as e:
+            assert isinstance(e.node, UID)
             raise HasSuperTasksError(task=e.node, supertasks=e.predecessors) from e
         except graphs.HasSuccessorsError as e:
+            assert isinstance(e.node, UID)
             raise HasSubTasksError(task=e.node, subtasks=e.successors) from e
 
     return wrapper
@@ -261,6 +276,7 @@ class HierarchiesView(Set[tuple[UID, UID]]):
         try:
             return item in self._hierarchies
         except graphs.NodeDoesNotExistError as e:
+            assert isinstance(e.node, UID)
             raise TaskDoesNotExistError(e.node) from e
 
     def __iter__(self) -> Iterator[tuple[UID, UID]]:
@@ -651,8 +667,11 @@ class HierarchyGraph:
                 sources=source_tasks, targets=target_tasks
             )
         except graphs.NodeDoesNotExistError as e:
+            assert isinstance(e.node, UID)
             raise TaskDoesNotExistError(task=e.node) from e
         except graphs.NoConnectingSubgraphError as e:
+            assert all(isinstance(source, UID) for source in e.sources)
+            assert all(isinstance(target, UID) for target in e.targets)
             raise NoConnectingHierarchySubgraphError(
                 sources=e.sources, targets=e.targets
             ) from e
@@ -695,10 +714,14 @@ class HierarchyGraph:
         try:
             self._reduced_dag.remove_edge(source=supertask, target=subtask)
         except graphs.NodeDoesNotExistError as e:
+            assert isinstance(e.node, UID)
             raise TaskDoesNotExistError(e.node) from e
         except graphs.LoopError as e:
+            assert isinstance(e.node, UID)
             raise HierarchyLoopError(supertask) from e
         except graphs.EdgeDoesNotExistError as e:
+            assert isinstance(e.source, UID)
+            assert isinstance(e.target, UID)
             raise HierarchyDoesNotExistError(supertask, subtask) from e
 
     @helpers.reraise_node_does_not_exist_as_task_does_not_exist()

@@ -4,7 +4,7 @@ from typing import Final
 
 from graft import architecture
 from graft.domain import tasks
-from graft.layers.presentation.tkinter_gui import event_broker, graph_colours, helpers
+from graft.layers.presentation.tkinter_gui import event_broker, helpers
 from graft.layers.presentation.tkinter_gui.helpers.colour import RED, Colour
 from graft.layers.presentation.tkinter_gui.helpers.static_task_network_graph.relationship_drawing_properties import (
     RelationshipDrawingProperties,

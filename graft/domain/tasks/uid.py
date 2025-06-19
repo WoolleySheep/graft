@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 from collections.abc import Generator, Iterable, Iterator, Set
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from matplotlib.dates import SU
-
-from graft import graphs
+if TYPE_CHECKING:
+    from graft import graphs
 
 
 class InvalidUIDNumberError(Exception):

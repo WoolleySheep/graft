@@ -10,23 +10,23 @@ from graft.graphs import bidict as bd
 from graft.graphs import directed_graph, simple_directed_graph
 
 
-class UnderlyingDictHasCycleError[T: Hashable](Exception):
+class UnderlyingDictHasCycleError(Exception):
     """Underlying dictionary has a cycle."""
 
-    def __init__(self, dictionary: Mapping[T, Set[T]]) -> None:
+    def __init__(self, dictionary: Mapping[Any, Set[Any]]) -> None:
         """Initialize UnderlyingDictHasCycleError."""
         self.dictionary = dict(dictionary)
         super().__init__(f"underlying dictionary [{dictionary}] has a cycle")
 
 
-class IntroducesCycleError[T: Hashable, G: "DirectedAcyclicGraph"](Exception):
+class IntroducesCycleError(Exception):
     """Adding the edge introduces a cycle to the graph."""
 
     def __init__(
         self,
-        source: T,
-        target: T,
-        connecting_subgraph: G,
+        source: Hashable,
+        target: Hashable,
+        connecting_subgraph: DirectedAcyclicGraph[Any],
         *args: tuple[Any, ...],
         **kwargs: dict[str, Any],
     ) -> None:

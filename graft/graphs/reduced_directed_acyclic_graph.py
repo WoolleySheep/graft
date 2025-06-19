@@ -9,23 +9,23 @@ from graft.graphs import bidict as bd
 from graft.graphs import directed_acyclic_graph, directed_graph
 
 
-class UnderlyingDictHasRedundantEdgesError[T: Hashable](Exception):
+class UnderlyingDictHasRedundantEdgesError(Exception):
     """Underlying dictionary has redundant edges."""
 
-    def __init__(self, dictionary: Mapping[T, Set[T]]) -> None:
+    def __init__(self, dictionary: Mapping[Any, Set[Any]]) -> None:
         """Initialize UnderlyingDictHasRedundantEdgesError."""
         self.dictionary = dict(dictionary)
         super().__init__(f"underlying dictionary [{dictionary}] has redundant edges")
 
 
-class IntroducesRedundantEdgeError[T: Hashable](Exception):
+class IntroducesRedundantEdgeError(Exception):
     """Adding the edge introduces a redundant edge to the graph."""
 
     def __init__(
         self,
-        source: T,
-        target: T,
-        subgraph: ReducedDirectedAcyclicGraph[T],
+        source: Hashable,
+        target: Hashable,
+        subgraph: ReducedDirectedAcyclicGraph[Any],
         *args: tuple[Any, ...],
         **kwargs: dict[str, Any],
     ) -> None:

@@ -73,12 +73,12 @@ def _traverse[T: Hashable](
         nodes_to_check.extend(node_neighbours_map[node2])
 
 
-class NodeAlreadyExistsError[T: Hashable](Exception):
+class NodeAlreadyExistsError(Exception):
     """Raised when node already exists."""
 
     def __init__(
         self,
-        node: T,
+        node: Hashable,
         *args: tuple[Any, ...],
         **kwargs: dict[str, Any],
     ) -> None:
@@ -87,12 +87,12 @@ class NodeAlreadyExistsError[T: Hashable](Exception):
         super().__init__(f"node [{node}] already exists", *args, **kwargs)
 
 
-class NodeDoesNotExistError[T: Hashable](Exception):
+class NodeDoesNotExistError(Exception):
     """Raised when node does not exist."""
 
     def __init__(
         self,
-        node: T,
+        node: Hashable,
         *args: tuple[Any, ...],
         **kwargs: dict[str, Any],
     ) -> None:
@@ -101,10 +101,10 @@ class NodeDoesNotExistError[T: Hashable](Exception):
         super().__init__(f"node [{node}] does not exist", *args, **kwargs)
 
 
-class HasPredecessorsError[T: Hashable](Exception):
+class HasPredecessorsError(Exception):
     """Raised when a task has predecessors."""
 
-    def __init__(self, node: T, predecessors: Iterable[T]) -> None:
+    def __init__(self, node: Hashable, predecessors: Iterable[Any]) -> None:
         """Initialise HasPredecessorsError."""
         self.node = node
         self.predecessors = set(predecessors)
@@ -114,11 +114,11 @@ class HasPredecessorsError[T: Hashable](Exception):
         )
 
 
-class HasSuccessorsError[T: Hashable](Exception):
+class HasSuccessorsError(Exception):
     """Raised when a task has successors."""
 
-    def __init__(self, node: T, successors: Iterable[T]) -> None:
-        """Initialise HasSucessorsError."""
+    def __init__(self, node: Hashable, successors: Iterable[Any]) -> None:
+        """Initialise HasSuccessorsError."""
         self.node = node
         self.successors = set(successors)
         formatted_successors = (str(successor) for successor in successors)
@@ -127,13 +127,13 @@ class HasSuccessorsError[T: Hashable](Exception):
         )
 
 
-class EdgeAlreadyExistsError[T: Hashable](Exception):
+class EdgeAlreadyExistsError(Exception):
     """Raised when edge already exists."""
 
     def __init__(
         self,
-        source: T,
-        target: T,
+        source: Hashable,
+        target: Hashable,
         *args: tuple[Any, ...],
         **kwargs: dict[str, Any],
     ) -> None:
@@ -147,13 +147,13 @@ class EdgeAlreadyExistsError[T: Hashable](Exception):
         )
 
 
-class EdgeDoesNotExistError[T: Hashable](Exception):
+class EdgeDoesNotExistError(Exception):
     """Raised when edge does not exist."""
 
     def __init__(
         self,
-        source: T,
-        target: T,
+        source: Hashable,
+        target: Hashable,
         *args: tuple[Any, ...],
         **kwargs: dict[str, Any],
     ) -> None:
@@ -167,13 +167,13 @@ class EdgeDoesNotExistError[T: Hashable](Exception):
         )
 
 
-class NoConnectingSubgraphError[T: Hashable](Exception):
+class NoConnectingSubgraphError(Exception):
     """Raised when no connecting subgraph exists between two set of nodes."""
 
     def __init__(
         self,
-        sources: Iterable[T],
-        targets: Iterable[T],
+        sources: Iterable[Any],
+        targets: Iterable[Any],
         *args: tuple[Any, ...],
         **kwargs: dict[str, Any],
     ) -> None:

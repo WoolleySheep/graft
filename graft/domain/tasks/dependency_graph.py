@@ -175,12 +175,19 @@ def _reraise_edge_adding_exceptions_as_corresponding_dependency_adding_exception
         try:
             return fn(*args, **kwargs)
         except graphs.NodeDoesNotExistError as e:
+            assert isinstance(e.node, UID)
             raise TaskDoesNotExistError(e.node) from e
         except graphs.LoopError as e:
+            assert isinstance(e.node, UID)
             raise DependencyLoopError(e.node) from e
         except graphs.EdgeAlreadyExistsError as e:
+            assert isinstance(e.source, UID)
+            assert isinstance(e.target, UID)
             raise DependencyAlreadyExistsError(e.source, e.target) from e
         except graphs.IntroducesCycleError as e:
+            assert isinstance(e.source, UID)
+            assert isinstance(e.target, UID)
+            assert all(isinstance(node, UID) for node in e.connecting_subgraph.nodes())
             raise DependencyIntroducesCycleError(
                 dependee_task=e.source,
                 dependent_task=e.target,
@@ -200,12 +207,17 @@ def _reraise_node_removing_exceptions_as_corresponding_task_removing_exceptions(
         try:
             return fn(*args, **kwargs)
         except graphs.NodeDoesNotExistError as e:
+            assert isinstance(e.node, UID)
             raise TaskDoesNotExistError(e.node) from e
         except graphs.HasPredecessorsError as e:
+            assert isinstance(e.node, UID)
+            assert all(isinstance(predecessor, UID) for predecessor in e.predecessors)
             raise HasDependeeTasksError(
                 task=e.node, dependee_tasks=e.predecessors
             ) from e
         except graphs.HasSuccessorsError as e:
+            assert isinstance(e.node, UID)
+            assert all(isinstance(successor, UID) for successor in e.successors)
             raise HasDependentTasksError(
                 task=e.node, dependent_tasks=e.successors
             ) from e
@@ -238,6 +250,7 @@ class DependenciesView(Set[tuple[UID, UID]]):
         try:
             return item in self._dependencies
         except graphs.NodeDoesNotExistError as e:
+            assert isinstance(e.node, UID)
             raise TaskDoesNotExistError(e.node) from e
 
     def __iter__(self) -> Iterator[tuple[UID, UID]]:
@@ -460,7 +473,7 @@ class IDependencyGraphView(Protocol):
         ...
 
     def is_first(self, task: UID, /) -> bool:
-        """Check if task has no dependees."""
+        """Check if task has no dependee-tasks."""
         ...
 
     def first_tasks(self) -> Generator[UID, None, None]:
@@ -476,7 +489,7 @@ class IDependencyGraphView(Protocol):
         ...
 
     def is_isolated(self, task: UID, /) -> bool:
-        """Check if task has no dependents nor dependees."""
+        """Check if task has no dependents nor dependee-tasks."""
         ...
 
     def isolated_tasks(self) -> Generator[UID, None, None]:
@@ -561,10 +574,14 @@ class DependencyGraph:
         try:
             self._dag.remove_edge(source=dependee_task, target=dependent_task)
         except graphs.NodeDoesNotExistError as e:
+            assert isinstance(e.node, UID)
             raise TaskDoesNotExistError(e.node) from e
         except graphs.LoopError as e:
+            assert isinstance(e.node, UID)
             raise DependencyLoopError(e.node) from e
         except graphs.EdgeDoesNotExistError as e:
+            assert isinstance(e.source, UID)
+            assert isinstance(e.target, UID)
             raise DependencyDoesNotExistError(dependee_task, dependent_task) from e
 
     def tasks(self) -> TasksView:
@@ -666,8 +683,11 @@ class DependencyGraph:
                 sources=source_tasks, targets=target_tasks
             )
         except graphs.NodeDoesNotExistError as e:
+            assert isinstance(e.node, UID)
             raise TaskDoesNotExistError(task=e.node) from e
         except graphs.NoConnectingSubgraphError as e:
+            assert all(isinstance(source, UID) for source in e.sources)
+            assert all(isinstance(target, UID) for target in e.targets)
             raise NoConnectingDependencySubgraphError(
                 sources=source_tasks, targets=target_tasks
             ) from e
@@ -676,7 +696,7 @@ class DependencyGraph:
 
     @helpers.reraise_node_does_not_exist_as_task_does_not_exist()
     def is_first(self, task: UID, /) -> bool:
-        """Check if task has no dependees."""
+        """Check if task has no dependee-tasks."""
         return self._dag.is_root(task)
 
     def first_tasks(self) -> Generator[UID, None, None]:
@@ -694,7 +714,7 @@ class DependencyGraph:
 
     @helpers.reraise_node_does_not_exist_as_task_does_not_exist()
     def is_isolated(self, task: UID, /) -> bool:
-        """Check if task has no dependents nor dependees."""
+        """Check if task has no dependents nor dependee-tasks."""
         return self._dag.is_isolated(task)
 
     def isolated_tasks(self) -> Generator[UID, None, None]:
@@ -839,7 +859,7 @@ class DependencyGraphView:
         return self._graph.task_dependents_pairs()
 
     def is_first(self, task: UID, /) -> bool:
-        """Check if task has no dependees."""
+        """Check if task has no dependee-tasks."""
         return self._graph.is_first(task)
 
     def first_tasks(self) -> Generator[UID, None, None]:
@@ -855,7 +875,7 @@ class DependencyGraphView:
         return self._graph.last_tasks()
 
     def is_isolated(self, task: UID, /) -> bool:
-        """Check if task has no dependents nor dependees."""
+        """Check if task has no dependent-tasks nor dependee-tasks."""
         return self._graph.is_isolated(task)
 
     def isolated_tasks(self) -> Generator[UID, None, None]:

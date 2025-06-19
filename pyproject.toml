@@ -43,6 +43,7 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
 "tests/*" = ["S101"]
+"graft/*" = ["PT017"]
 
 [tool.autoflake]
 expand-star-imports = true

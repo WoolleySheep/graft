@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import collections
 import itertools
-from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any, Protocol, Self
 
 from graft.domain.tasks.dependency_graph import (
@@ -19,7 +18,7 @@ from graft.domain.tasks.hierarchy_graph import (
 from graft.domain.tasks.uid import UID, TasksView
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Generator, Iterable
 
 
 def _unique[T](iterable: Iterable[T]) -> Generator[T, None, None]:

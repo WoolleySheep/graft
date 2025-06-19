@@ -15,16 +15,16 @@ from graft.graphs import bidict as bd
 from graft.graphs import directed_graph
 
 
-class UnderlyingDictHasLoopsError[T: Hashable](Exception):
+class UnderlyingDictHasLoopsError(Exception):
     """Underlying dictionary has loops."""
 
-    def __init__(self, dictionary: Mapping[T, Set[T]]) -> None:
+    def __init__(self, dictionary: Mapping[Any, Set[Any]]) -> None:
         """Initialize UnderlyingDictHasLoopsError."""
         self.dictionary = dict(dictionary)
         super().__init__(f"underlying dictionary [{dictionary}] has loop(s)")
 
 
-class LoopError[T: Hashable](Exception):
+class LoopError(Exception):
     """Loop error.
 
     Raised when an edge is referenced that connects a node to itself, creating a
@@ -33,7 +33,7 @@ class LoopError[T: Hashable](Exception):
 
     def __init__(
         self,
-        node: T,
+        node: Hashable,
         *args: tuple[Any, ...],
         **kwargs: dict[str, Any],
     ) -> None:

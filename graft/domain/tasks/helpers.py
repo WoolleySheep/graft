@@ -42,6 +42,7 @@ def reraise_node_does_not_exist_as_task_does_not_exist() -> Generator[None, None
     try:
         yield
     except graphs.NodeDoesNotExistError as e:
+        assert isinstance(e.node, UID)
         raise TaskDoesNotExistError(e.node) from e
 
 
@@ -51,4 +52,5 @@ def reraise_node_already_exists_as_task_already_exists() -> Generator[None, None
     try:
         yield
     except graphs.NodeAlreadyExistsError as e:
+        assert isinstance(e.node, UID)
         raise TaskAlreadyExistsError(e.node) from e
