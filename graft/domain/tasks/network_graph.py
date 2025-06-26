@@ -466,7 +466,9 @@ class NetworkGraph:
         """Initialise NetworkGraph."""
         # TODO: Note that this approach does not guarantee that the resultant
         # NetworkGraph is valid; more validation will need to be done to ensure
-        # this.
+        # this. Could hack around this by instantiating an empty network, then adding
+        # every dependency and every hierarchy from the two respective arguments one at
+        # a time. But the real holy grail is to validate everything all at once.
         if dependency_graph.tasks() != hierarchy_graph.tasks():
             msg = "Tasks in dependency graph and hierarchy graph must be the same."
             raise ValueError(msg)
@@ -1216,7 +1218,7 @@ class NetworkGraph:
             connecting_subgraph = self._hierarchy_graph.connecting_subgraph(
                 dependee_task, dependent_task
             )
-            raise HierarchyPathAlreadyExistsFromDependeeTaskToDependentTaskError(
+            raise DependencyBetweenHierarchyLevelsError(
                 dependee_task=dependee_task,
                 dependent_task=dependent_task,
                 connecting_subgraph=connecting_subgraph,
@@ -1226,11 +1228,23 @@ class NetworkGraph:
             connecting_subgraph = self._hierarchy_graph.connecting_subgraph(
                 dependent_task, dependee_task
             )
-            raise HierarchyPathAlreadyExistsFromDependentTaskToDependeeTaskError(
+            raise DependencyBetweenHierarchyLevelsError(
                 dependee_task=dependee_task,
                 dependent_task=dependent_task,
                 connecting_subgraph=connecting_subgraph,
             )
+
+        if self._has_stream_path_from_source_or_inferior_task_of_source_to_target_or_inferior_task_of_target(
+            dependent_task, dependee_task
+        ):
+            # TODO: Create the subgraph and raise a DependencyIntroducesNetworkCycleError
+            pass
+
+        # TODO: Check for DependencyIntroducesNetworkCycleError
+        #   - Dependee-task or subtask of dependee-task is downstream of dependent-task or subtask of dependent-task
+        #   - And others (do upstream checks)
+        # TODO: Check for DependencyIntroducesDependencyDuplicationError
+        # TODO: Check for DependencyIntroducesDependencyCrossoverError
 
         if self.has_stream_path(dependent_task, dependee_task):
             # TODO: Get relevant subgraph and return as part of exception
@@ -1267,6 +1281,8 @@ class NetworkGraph:
         """Remove the specified dependency."""
         self._dependency_graph.remove_dependency(dependee_task, dependent_task)
 
+    # TODO: Replace update, update_hierarchy and update_dependency with a builder class
+    # to keep these helper functions away from the proper code
     def update(self, graph: INetworkGraphView) -> None:
         """Update the graph with the specified graph.
 
@@ -1335,10 +1351,44 @@ class NetworkGraph:
         The order of task yielding is neither breadth-first or depth-first - it
         just is what it is.
         """
+        return self.downstream_tasks_multi([task])
+
+    def upstream_tasks(self, task: UID, /) -> Generator[UID, None, None]:
+        """Return tasks upstream of task.
+
+        The order of task yielding is neither breadth-first or depth-first - it
+        just is what it is.
+        """
+        return self.upstream_tasks_multi([task])
+
+    def downstream_tasks_multi(
+        self, tasks: Iterable[UID]
+    ) -> Generator[UID, None, None]:
+        """Return tasks downstream of any of the tasks.
+
+        The order of task yielding is neither breadth-first or depth-first - it
+        just is what it is.
+        """
+        # TODO: Could potentially get clever here and only evaluate the necessary tasks,
+        # as yielding downstream tasks allows for a potential early exit.
+        # Would need to create some sort of container for a pop-left deque that only
+        # evaluates its starting iterable as needed
+        starting_tasks = list(tasks)
+
         downstream_tasks_to_check = collections.deque(
-            self._dependency_graph.dependent_tasks(task)
+            _unique(
+                itertools.chain.from_iterable(
+                    map(self._dependency_graph.dependent_tasks, starting_tasks)
+                )
+            )
         )
-        supertasks_to_check = collections.deque(self._hierarchy_graph.supertasks(task))
+        supertasks_to_check = collections.deque(
+            _unique(
+                itertools.chain.from_iterable(
+                    map(self._hierarchy_graph.supertasks, starting_tasks)
+                )
+            )
+        )
 
         visited_downstream_tasks = set[UID]()
         visited_supertasks = set[UID]()
@@ -1371,17 +1421,29 @@ class NetworkGraph:
                     self._dependency_graph.dependent_tasks(supertask)
                 )
 
-    def upstream_tasks(self, task: UID, /) -> Generator[UID, None, None]:
-        """Return tasks upstream of task.
+    def upstream_tasks_multi(
+        self, tasks: Iterable[UID], /
+    ) -> Generator[UID, None, None]:
+        """Return tasks upstream of any of the tasks.
 
         The order of task yielding is neither breadth-first or depth-first - it
         just is what it is.
         """
+        starting_tasks = list(tasks)
+
         upstream_tasks_to_check = collections.deque(
-            self._dependency_graph.dependee_tasks(task)
+            _unique(
+                itertools.chain.from_iterable(
+                    map(self._dependency_graph.dependee_tasks, starting_tasks)
+                )
+            )
         )
-        supertasks_to_check = collections.deque[UID](
-            self._hierarchy_graph.supertasks(task)
+        supertasks_to_check = collections.deque(
+            _unique(
+                itertools.chain.from_iterable(
+                    map(self._hierarchy_graph.supertasks, starting_tasks)
+                )
+            )
         )
 
         visited_upstream_tasks = set[UID]()
@@ -1450,6 +1512,33 @@ class NetworkGraph:
         return any(
             upstream_task in inferior_tasks_of_source
             for upstream_task in self.upstream_tasks(target_task)
+        )
+
+    def _has_stream_path_from_source_or_inferior_task_of_source_to_target_or_inferior_task_of_target(
+        self, source_task: UID, target_task: UID
+    ) -> bool:
+        """Check if there is a stream path from source-task or an inferior task of source-task to target-task or an inferior task of target-task."""
+        source_task_and_inferior_tasks_of_source = {
+            source_task,
+            *self._hierarchy_graph.inferior_tasks(source_task).tasks(),
+        }
+
+        target_task_and_inferior_tasks_of_target = itertools.chain(
+            [target_task],
+            self._hierarchy_graph.inferior_tasks(target_task).tasks(),
+        )
+
+        (
+            target_task_and_inferior_tasks_of_target1,
+            target_task_and_inferior_tasks_of_target2,
+        ) = itertools.tee(target_task_and_inferior_tasks_of_target)
+
+        return any(
+            task in source_task_and_inferior_tasks_of_source
+            for task in itertools.chain(
+                target_task_and_inferior_tasks_of_target1,
+                self.upstream_tasks_multi(target_task_and_inferior_tasks_of_target2),
+            )
         )
 
     def downstream_subgraph(self, task: UID, /) -> tuple[NetworkGraph, set[UID]]:

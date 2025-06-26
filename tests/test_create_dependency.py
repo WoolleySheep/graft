@@ -314,9 +314,7 @@ def test_create_dependency_failure_hierarchy_path_from_dependee_task_to_dependen
 
     logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
-    with pytest.raises(
-        tasks.HierarchyPathAlreadyExistsFromDependeeTaskToDependentTaskError
-    ) as exc_info:
+    with pytest.raises(tasks.DependencyBetweenHierarchyLevelsError) as exc_info:
         logic_layer.create_task_dependency(
             dependee_task=dependee_task, dependent_task=dependent_task
         )
@@ -350,9 +348,7 @@ def test_create_dependency_failure_hierarchy_path_from_dependent_task_to_depende
 
     logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
-    with pytest.raises(
-        tasks.HierarchyPathAlreadyExistsFromDependentTaskToDependeeTaskError
-    ) as exc_info:
+    with pytest.raises(tasks.DependencyBetweenHierarchyLevelsError) as exc_info:
         logic_layer.create_task_dependency(
             dependee_task=dependee_task, dependent_task=dependent_task
         )
