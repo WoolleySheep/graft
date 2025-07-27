@@ -4,7 +4,7 @@ from mpl_toolkits.mplot3d import proj3d
 
 
 class Arrow3D(patches.FancyArrowPatch):
-    """https://stackoverflow.com/questions/22867620/putting-arrowheads-on-vectors-in-a-3d-plot."""
+    """Https://stackoverflow.com/questions/22867620/putting-arrowheads-on-vectors-in-a-3d-plot."""
 
     # TODO: Fix the type errors this frankenstein class is throwing
 

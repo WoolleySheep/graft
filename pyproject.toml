@@ -1,27 +1,26 @@
-[tool.poetry]
+[project]
 name = "graft"
 version = "0.1.0"
 description = ""
-authors = ["Matt Woolley <matt.wool@live.com.au>"]
-license = "GNU GENERAL PUBLIC LICENSE"
+authors = [{ name = "Matt Woolley", email = "matt.wool@live.com.au" }]
+requires-python = ">= 3.12, < 3.14"
 readme = "README.md"
+license = "GNU GENERAL PUBLIC LICENSE"
+dependencies = ["networkx>=3,<4", "matplotlib>=3,<4"]
 
-[tool.poetry.dependencies]
-python = ">= 3.12, < 3.14"
-networkx = "^3"
-matplotlib = "^3"
-
-[tool.poetry.group.dev.dependencies]
-ruff = "^0"
-pylint = "^3"
-autoflake = "^2"
-pydocstringformatter = "^0"
-vulture = "^2"
-pytest = "^7"
-pytest-mock = "^3"
-pytest-cov = "^4"
-pyright = "^1"
-pyinstaller = "^6"
+[dependency-groups]
+dev = [
+    "ruff>=0,<1",
+    "pylint>=3,<4",
+    "autoflake>=2,<3",
+    "pydocstringformatter>=0,<1",
+    "vulture>=2,<3",
+    "pytest>=7,<8",
+    "pytest-mock>=3,<4",
+    "pytest-cov>=4,<5",
+    "pyright>=1,<2",
+    "pyinstaller>=6,<7",
+]
 
 [tool.ruff]
 line-length = 88
@@ -49,6 +48,9 @@ ignore = [
 "tests/*" = ["S101"]
 "graft/*" = ["PT017"]
 
+[tool.ruff.lint.flake8-type-checking]
+strict = true
+
 [tool.autoflake]
 expand-star-imports = true
 remove-all-unused-imports = true
@@ -59,7 +61,3 @@ in-place = true
 
 [tool.pydocstringformatter]
 write = true
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"

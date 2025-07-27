@@ -11,23 +11,22 @@ TODO
 
 ## How to run GUI app
 ```
-python main.py
+uv run main.py
 ```
 
 ## For developers
-### Install developer dependencies
-```
-poetry install
-```
+### Prerequisities
+uv
 
-### Launch poetry environment
+### Launch virtual environment (Windows PowerShell)
 ```
-poetry env activate
+.venv\Scripts\Activate.ps1
 ```
 
 ### Update dependencies
 ```
-poetry update
+uv lock --upgrade
+uv sync
 ```
 
 ### Format

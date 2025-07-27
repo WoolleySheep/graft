@@ -60,7 +60,6 @@ from graft.domain.tasks.system import (
     NotConcreteTaskError,
     StartedDependentTasksError,
     StartedDependentTasksOfSuperiorTasksError,
-    StartedDependentTasksOfSupertaskError,
     SuperiorTasksHaveImportanceError,
     System,
     SystemView,

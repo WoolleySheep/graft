@@ -1483,14 +1483,30 @@ def test_create_hierarchy_failure_incomplete_dependee_tasks_of_supertask(
     system.add_task_dependency(dependee_task=task0, dependent_task=task1)
     system.set_task_progress(task=task2, progress=tasks.Progress.IN_PROGRESS)
 
+    expected_subsystem = tasks.System.empty()
+    expected_subsystem.add_task(task0)
+    expected_subsystem.add_task(task1)
+    expected_subsystem.add_task(task2)
+    expected_subsystem.add_dependency(dependee_task=task0, dependent_task=task1)
+    expected_subsystem.set_progress(task=task2, progress=tasks.Progress.IN_PROGRESS)
+
+    expected_upstream_task_incomplete_map = {
+        task0: tasks.Progress.NOT_STARTED,
+    }
+
     data_layer_mock.load_system.return_value = system
     logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
-    # TODO: Check all parameters of exception
     with pytest.raises(tasks.UpstreamTasksOfSupertaskHaveNotCompletedError) as exc_info:
         logic_layer.create_task_hierarchy(supertask=task1, subtask=task2)
     assert exc_info.value.supertask == task1
     assert exc_info.value.subtask == task2
+    assert exc_info.value.subtask_progress is tasks.Progress.IN_PROGRESS
+    assert (
+        exc_info.value.upstream_task_incomplete_map
+        == expected_upstream_task_incomplete_map
+    )
+    assert exc_info.value.subsystem == expected_subsystem
 
     data_layer_mock.load_system.assert_called_once()
     assert data_layer_mock.save_system.called is False
@@ -1515,14 +1531,82 @@ def test_create_hierarchy_failure_incomplete_dependee_tasks_of_superior_task_of_
     system.add_task_dependency(dependee_task=task2, dependent_task=task0)
     system.set_task_progress(task=task3, progress=tasks.Progress.IN_PROGRESS)
 
+    expected_subsystem = tasks.System.empty()
+    expected_subsystem.add_task(task0)
+    expected_subsystem.add_task(task1)
+    expected_subsystem.add_task(task2)
+    expected_subsystem.add_task(task3)
+    expected_subsystem.add_hierarchy(supertask=task0, subtask=task1)
+    expected_subsystem.add_dependency(dependee_task=task2, dependent_task=task0)
+    expected_subsystem.set_progress(task=task3, progress=tasks.Progress.IN_PROGRESS)
+
+    expected_upstream_task_incomplete_map = {task2: tasks.Progress.NOT_STARTED}
+
     data_layer_mock.load_system.return_value = system
     logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
-    # TODO: Check all parameters of exception
     with pytest.raises(tasks.UpstreamTasksOfSupertaskHaveNotCompletedError) as exc_info:
         logic_layer.create_task_hierarchy(supertask=task1, subtask=task3)
     assert exc_info.value.supertask == task1
     assert exc_info.value.subtask == task3
+    assert exc_info.value.subtask_progress is tasks.Progress.IN_PROGRESS
+    assert (
+        exc_info.value.upstream_task_incomplete_map
+        == expected_upstream_task_incomplete_map
+    )
+    assert exc_info.value.subsystem == expected_subsystem
+
+    data_layer_mock.load_system.assert_called_once()
+    assert data_layer_mock.save_system.called is False
+
+
+@mock.patch("graft.architecture.data.DataLayer", autospec=True)
+def test_create_hierarchy_failure_incomplete_dependee_task_of_supertask_with_trim(
+    data_layer_mock: mock.MagicMock,
+) -> None:
+    """Test that create_hierarchy fails when the subtask is started and a dependee task of the supertask is incomplete and excess tasks are trimmed."""
+    task0 = tasks.UID(0)
+    task1 = tasks.UID(1)
+    task2 = tasks.UID(2)
+    task3 = tasks.UID(3)
+    task4 = tasks.UID(4)
+
+    system = domain.System.empty()
+    system.add_task(task0)
+    system.add_task(task1)
+    system.add_task(task2)
+    system.add_task(task3)
+    system.add_task(task4)
+    system.add_task_hierarchy(supertask=task3, subtask=task1)
+    system.add_task_dependency(dependee_task=task0, dependent_task=task1)
+    system.add_task_dependency(dependee_task=task4, dependent_task=task1)
+    system.set_task_progress(task=task2, progress=tasks.Progress.IN_PROGRESS)
+    system.set_task_progress(task=task4, progress=tasks.Progress.COMPLETED)
+
+    expected_subsystem = tasks.System.empty()
+    expected_subsystem.add_task(task0)
+    expected_subsystem.add_task(task1)
+    expected_subsystem.add_task(task2)
+    expected_subsystem.add_dependency(dependee_task=task0, dependent_task=task1)
+    expected_subsystem.set_progress(task=task2, progress=tasks.Progress.IN_PROGRESS)
+
+    expected_upstream_task_incomplete_map = {
+        task0: tasks.Progress.NOT_STARTED,
+    }
+
+    data_layer_mock.load_system.return_value = system
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
+
+    with pytest.raises(tasks.UpstreamTasksOfSupertaskHaveNotCompletedError) as exc_info:
+        logic_layer.create_task_hierarchy(supertask=task1, subtask=task2)
+    assert exc_info.value.supertask == task1
+    assert exc_info.value.subtask == task2
+    assert exc_info.value.subtask_progress is tasks.Progress.IN_PROGRESS
+    assert (
+        exc_info.value.upstream_task_incomplete_map
+        == expected_upstream_task_incomplete_map
+    )
+    assert exc_info.value.subsystem == expected_subsystem
 
     data_layer_mock.load_system.assert_called_once()
     assert data_layer_mock.save_system.called is False
@@ -1536,8 +1620,8 @@ def test_create_hierarchy_failure_started_dependent_tasks_of_supertask(
     task0 = tasks.UID(0)
     task1 = tasks.UID(1)
     task2 = tasks.UID(2)
-    system = domain.System.empty()
 
+    system = domain.System.empty()
     system.add_task(task0)
     system.add_task(task1)
     system.add_task(task2)
@@ -1545,14 +1629,29 @@ def test_create_hierarchy_failure_started_dependent_tasks_of_supertask(
     system.set_task_progress(task=task0, progress=tasks.Progress.COMPLETED)
     system.set_task_progress(task=task1, progress=tasks.Progress.IN_PROGRESS)
 
+    expected_subsystem = tasks.System.empty()
+    expected_subsystem.add_task(task0)
+    expected_subsystem.add_task(task1)
+    expected_subsystem.add_task(task2)
+    expected_subsystem.add_dependency(dependee_task=task0, dependent_task=task1)
+    expected_subsystem.set_progress(task=task0, progress=tasks.Progress.COMPLETED)
+    expected_subsystem.set_progress(task=task1, progress=tasks.Progress.IN_PROGRESS)
+
+    expected_downstream_task_started_map = {task1: tasks.Progress.IN_PROGRESS}
+
     data_layer_mock.load_system.return_value = system
     logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
-    # TODO: Check all parameters of exception
     with pytest.raises(tasks.DownstreamTasksOfSupertaskHaveStartedError) as exc_info:
         logic_layer.create_task_hierarchy(supertask=task0, subtask=task2)
     assert exc_info.value.supertask == task0
     assert exc_info.value.subtask == task2
+    assert exc_info.value.subtask_progress is tasks.Progress.NOT_STARTED
+    assert (
+        exc_info.value.downstream_task_started_map
+        == expected_downstream_task_started_map
+    )
+    assert exc_info.value.subsystem == expected_subsystem
 
     data_layer_mock.load_system.assert_called_once()
     assert data_layer_mock.save_system.called is False
@@ -1567,8 +1666,8 @@ def test_create_hierarchy_failure_started_dependent_tasks_of_superior_tasks_of_s
     task1 = tasks.UID(1)
     task2 = tasks.UID(2)
     task3 = tasks.UID(3)
-    system = domain.System.empty()
 
+    system = domain.System.empty()
     system.add_task(task0)
     system.add_task(task1)
     system.add_task(task2)
@@ -1578,14 +1677,80 @@ def test_create_hierarchy_failure_started_dependent_tasks_of_superior_tasks_of_s
     system.set_task_progress(task=task1, progress=tasks.Progress.COMPLETED)
     system.set_task_progress(task=task2, progress=tasks.Progress.IN_PROGRESS)
 
+    expected_subsystem = tasks.System.empty()
+    expected_subsystem.add_task(task0)
+    expected_subsystem.add_task(task1)
+    expected_subsystem.add_task(task2)
+    expected_subsystem.add_task(task3)
+    expected_subsystem.add_hierarchy(supertask=task0, subtask=task1)
+    expected_subsystem.add_dependency(dependee_task=task0, dependent_task=task2)
+    expected_subsystem.set_progress(task=task1, progress=tasks.Progress.COMPLETED)
+    expected_subsystem.set_progress(task=task2, progress=tasks.Progress.IN_PROGRESS)
+
+    expected_downstream_task_started_map = {task2: tasks.Progress.IN_PROGRESS}
+
     data_layer_mock.load_system.return_value = system
     logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
-    # TODO: Check all parameters of exception
     with pytest.raises(tasks.DownstreamTasksOfSupertaskHaveStartedError) as exc_info:
         logic_layer.create_task_hierarchy(supertask=task1, subtask=task3)
     assert exc_info.value.supertask == task1
     assert exc_info.value.subtask == task3
+    assert exc_info.value.subtask_progress is tasks.Progress.NOT_STARTED
+    assert (
+        exc_info.value.downstream_task_started_map
+        == expected_downstream_task_started_map
+    )
+    assert exc_info.value.subsystem == expected_subsystem
+
+    data_layer_mock.load_system.assert_called_once()
+    assert data_layer_mock.save_system.called is False
+
+
+@mock.patch("graft.architecture.data.DataLayer", autospec=True)
+def test_create_hierarchy_failure_started_dependent_tasks_of_supertask_with_trim(
+    data_layer_mock: mock.MagicMock,
+) -> None:
+    """Test that create_hierarchy fails when the subtask is incomplete and a dependent task of the supertask is started and trim excess tasks."""
+    task0 = tasks.UID(0)
+    task1 = tasks.UID(1)
+    task2 = tasks.UID(2)
+    task3 = tasks.UID(3)
+
+    system = domain.System.empty()
+    system.add_task(task0)
+    system.add_task(task1)
+    system.add_task(task2)
+    system.add_task(task3)
+    system.add_task_dependency(dependee_task=task0, dependent_task=task1)
+    system.add_task_dependency(dependee_task=task0, dependent_task=task3)
+    system.set_task_progress(task=task0, progress=tasks.Progress.COMPLETED)
+    system.set_task_progress(task=task1, progress=tasks.Progress.IN_PROGRESS)
+    system.set_task_progress(task=task3, progress=tasks.Progress.NOT_STARTED)
+
+    expected_subsystem = tasks.System.empty()
+    expected_subsystem.add_task(task0)
+    expected_subsystem.add_task(task1)
+    expected_subsystem.add_task(task2)
+    expected_subsystem.add_dependency(dependee_task=task0, dependent_task=task1)
+    expected_subsystem.set_progress(task=task0, progress=tasks.Progress.COMPLETED)
+    expected_subsystem.set_progress(task=task1, progress=tasks.Progress.IN_PROGRESS)
+
+    expected_downstream_task_started_map = {task1: tasks.Progress.IN_PROGRESS}
+
+    data_layer_mock.load_system.return_value = system
+    logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
+
+    with pytest.raises(tasks.DownstreamTasksOfSupertaskHaveStartedError) as exc_info:
+        logic_layer.create_task_hierarchy(supertask=task0, subtask=task2)
+    assert exc_info.value.supertask == task0
+    assert exc_info.value.subtask == task2
+    assert exc_info.value.subtask_progress is tasks.Progress.NOT_STARTED
+    assert (
+        exc_info.value.downstream_task_started_map
+        == expected_downstream_task_started_map
+    )
+    assert exc_info.value.subsystem == expected_subsystem
 
     data_layer_mock.load_system.assert_called_once()
     assert data_layer_mock.save_system.called is False

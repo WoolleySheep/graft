@@ -204,34 +204,6 @@ class DownstreamTasksOfSupertaskHaveStartedError(Exception):
         )
 
 
-class StartedDependentTasksOfSupertaskError(Exception):
-    """Raised when a supertask has started dependent tasks.
-
-    Incomplete subtask cannot be connected, as dependent tasks depend on it
-    being completed.
-    """
-
-    def __init__(
-        self,
-        supertask: UID,
-        subtask: UID,
-        started_dependent_tasks_of_supertask_with_progress: Iterable[
-            tuple[UID, Progress]
-        ],
-        *args: tuple[Any, ...],
-        **kwargs: dict[str, Any],
-    ) -> None:
-        """Initialise StartedDependentTasksOfSupertaskError."""
-        self.supertask = supertask
-        self.subtask = subtask
-        self.started_dependent_tasks_of_supertask_with_progress = list(
-            started_dependent_tasks_of_supertask_with_progress
-        )
-        super().__init__(
-            f"Supertask [{supertask}] has started dependent tasks.", *args, **kwargs
-        )
-
-
 class MismatchedProgressForNewSupertaskError(Exception):
     """Raised when a new supertask has a progress different from its subtask.
 
@@ -536,9 +508,11 @@ class System:
 
     def __eq__(self, other: object) -> bool:
         """Check if two systems are equal."""
+        if not isinstance(other, System):
+            return NotImplemented
+
         return (
-            isinstance(other, System)
-            and self.attributes_register() == other.attributes_register()
+            self.attributes_register() == other.attributes_register()
             and self.network_graph() == other.network_graph()
         )
 
@@ -593,7 +567,7 @@ class System:
                         started_dependent_tasks_with_progress = (
                             (dependent_task, dependent_progress)
                             for dependent_task, dependent_progress in zip(
-                                dependent_tasks, self.get_progresses(dependent_tasks)
+                                dependent_tasks, self.get_progresses(dependent_tasks), strict=False
                             )
                             if dependent_progress is not Progress.NOT_STARTED
                         )
@@ -633,7 +607,7 @@ class System:
                         incomplete_dependee_tasks_with_progress = (
                             (dependee_task, dependee_progress)
                             for dependee_task, dependee_progress in zip(
-                                dependee_tasks, self.get_progresses(dependee_tasks)
+                                dependee_tasks, self.get_progresses(dependee_tasks), strict=False
                             )
                             if dependee_progress is not Progress.COMPLETED
                         )
@@ -804,7 +778,7 @@ class System:
                     dependee_tasks_of_supertask_and_its_superior_tasks,
                     self.get_progresses(
                         dependee_tasks_of_supertask_and_its_superior_tasks
-                    ),
+                    ), strict=False,
                 )
             )
 
@@ -843,6 +817,7 @@ class System:
                         incomplete_dependee_task_of_supertask_or_its_superior_task,
                         supertask_or_its_superior_task,
                     )
+            builder.add_task(subtask)
 
             raise UpstreamTasksOfSupertaskHaveNotCompletedError(
                 supertask=supertask,
@@ -894,7 +869,7 @@ class System:
                     dependent_tasks_of_supertask_and_its_superior_tasks,
                     self.get_progresses(
                         dependent_tasks_of_supertask_and_its_superior_tasks
-                    ),
+                    ), strict=False,
                 )
             )
 
@@ -935,6 +910,7 @@ class System:
                         supertask_or_its_superior_task,
                         started_dependent_task_of_supertask_or_its_superior_task,
                     )
+            builder.add_task(subtask)
 
             raise DownstreamTasksOfSupertaskHaveStartedError(
                 supertask=supertask,

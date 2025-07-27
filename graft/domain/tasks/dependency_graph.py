@@ -212,16 +212,6 @@ class ConnectionsDictDependencyGraphHasCycleError(Exception):
         super().__init__(f"Underlying dictionary [{dictionary}] has a cycle")
 
 
-class UnderlyingDictDependencyGraphHasRedundantEdgesError(Exception):
-    """Underlying dictionary has redundant edges."""
-
-    def __init__(self, dictionary: Mapping[Any, Set[Any]]) -> None:
-        self.dictionary = dict(dictionary)
-        super().__init__(
-            f"underlying dictionary [{dictionary}] has redundant dependencies"
-        )
-
-
 P = ParamSpec("P")
 R = TypeVar("R")
 

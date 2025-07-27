@@ -1,6 +1,5 @@
 import itertools
-from collections.abc import Collection, Mapping, MutableMapping, Sequence
-from typing import Callable
+from collections.abc import Callable, Collection, Mapping, MutableMapping, Sequence
 
 from graft import graphs
 from graft.layers.presentation.tkinter_gui.layered_graph_drawing.dummy_node import (

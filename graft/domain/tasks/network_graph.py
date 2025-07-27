@@ -2117,40 +2117,6 @@ class NetworkGraph:
                     self._dependency_graph.dependee_tasks(supertask)
                 )
 
-    def _has_stream_path_from_source_to_inferior_task_of_target(
-        self, source_task: UID, target_task: UID
-    ) -> bool:
-        """Check if there is a stream path from source-task to an inferior task of target-task."""
-        target_and_its_inferior_tasks = LazyContainer(
-            itertools.chain(
-                [target_task], self._hierarchy_graph.inferior_tasks([target_task])
-            )
-        )
-        source_and_its_downstream_tasks = itertools.chain(
-            [source_task], self.downstream_tasks([source_task])
-        )
-        return any(
-            task in target_and_its_inferior_tasks
-            for task in source_and_its_downstream_tasks
-        )
-
-    def _has_stream_path_from_inferior_task_of_source_to_target(
-        self, source_task: UID, target_task: UID
-    ) -> bool:
-        """Check if there is a stream path from an inferior task of source-task to target-task."""
-        source_and_its_inferior_tasks = LazyContainer(
-            itertools.chain(
-                [source_task], self._hierarchy_graph.inferior_tasks([source_task])
-            )
-        )
-        target_and_its_upstream_tasks = itertools.chain(
-            [target_task], self.upstream_tasks([target_task])
-        )
-        return any(
-            task in source_and_its_inferior_tasks
-            for task in target_and_its_upstream_tasks
-        )
-
     def _has_stream_path_from_source_or_inferior_task_of_source_to_target_or_inferior_task_of_target(
         self, source_task: UID, target_task: UID
     ) -> bool:

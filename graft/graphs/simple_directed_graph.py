@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from collections.abc import (
+    Callable,
     Generator,
     Hashable,
     Iterable,
 )
-from typing import Any, Callable, Literal, override
+from typing import Any, Literal, override
 
 from graft.graphs import directed_graph
 
@@ -63,12 +64,10 @@ class SimpleDirectedGraph[T: Hashable](directed_graph.DirectedGraph[T]):
         """Initialize simple digraph."""
         super().__init__(connections=connections)
 
-        nodes_with_loops = set[T]()
-        for node in self.nodes():
-            if node in self.successors(node):
-                nodes_with_loops.add(node)
-
-        if nodes_with_loops:
+        if self.has_loop():
+            nodes_with_loops = (
+                node for node in self.nodes() if node in self.successors(node)
+            )
             raise ConnectionsDictNodesHaveLoops(nodes=nodes_with_loops)
 
     @override
