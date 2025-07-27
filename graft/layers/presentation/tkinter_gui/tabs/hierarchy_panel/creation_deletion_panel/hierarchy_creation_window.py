@@ -5,6 +5,7 @@ from tkinter import ttk
 
 from graft import architecture
 from graft.domain import tasks
+from graft.domain.tasks.hierarchy_graph import HierarchyGraph
 from graft.layers.presentation.tkinter_gui import event_broker, helpers
 from graft.layers.presentation.tkinter_gui.helpers import (
     format_task_name_for_annotation,
@@ -190,6 +191,58 @@ class HierarchyCreationWindow(tk.Toplevel):
                     self._logic_layer.get_task_system().attributes_register()[task].name
                 ),
                 additional_hierarchies={(e.supertask, e.subtask)},
+            )
+            return
+        except tasks.MultipleImportancesInHierarchyError as e:
+            helpers.NetworkGraphOperationFailedWindow(
+                master=self,
+                description_text="Multiple importances in hierarchy",
+                task_network=e.subsystem.network_graph(),
+                get_task_annotation_text=lambda task: format_task_name_for_annotation(
+                    self._logic_layer.get_task_system().attributes_register()[task].name
+                ),
+                highlighted_tasks={
+                    *e.subsystem.network_graph().hierarchy_graph().top_level_tasks(),
+                    *e.subsystem.network_graph().hierarchy_graph().concrete_tasks(),
+                },
+                additional_hierarchies={(e.supertask, e.subtask)},
+            )
+            return
+        except tasks.UpstreamTasksOfSupertaskAreIncompleteError as e:
+            helpers.NetworkGraphOperationFailedWindow(
+                master=self,
+                description_text="Subtask is started, but upstream tasks are incomplete",
+                task_network=e.subsystem.network_graph(),
+                get_task_annotation_text=lambda task: format_task_name_for_annotation(
+                    self._logic_layer.get_task_system().attributes_register()[task].name
+                ),
+                highlighted_tasks=e.upstream_task_incomplete_map.keys(),
+                additional_hierarchies={(e.supertask, e.subtask)},
+            )
+            return
+        except tasks.DownstreamTasksOfSupertaskHaveStartedError as e:
+            helpers.NetworkGraphOperationFailedWindow(
+                master=self,
+                description_text="Subtask is incomplete, but downstream tasks have started",
+                task_network=e.subsystem.network_graph(),
+                get_task_annotation_text=lambda task: format_task_name_for_annotation(
+                    self._logic_layer.get_task_system().attributes_register()[task].name
+                ),
+                highlighted_tasks=e.downstream_task_started_map.keys(),
+                additional_hierarchies={(e.supertask, e.subtask)},
+            )
+            return
+        except tasks.MismatchedProgressForNewSupertaskError as e:
+            helpers.HierarchyGraphOperationFailedWindow(
+                master=self,
+                description_text=f"The progress [{e.supertask_progress}] of supertask [{e.supertask}] does not match the progress [{e.subtask_progress}] of subtask [{e.subtask}]",
+                hierarchy_graph=HierarchyGraph(
+                    [(e.supertask, [e.subtask]), (e.subtask, [])]
+                ),
+                get_task_annotation_text=lambda task: format_task_name_for_annotation(
+                    self._logic_layer.get_task_system().attributes_register()[task].name
+                ),
+                highlighted_hierarchies={(e.supertask, e.subtask)},
             )
             return
 

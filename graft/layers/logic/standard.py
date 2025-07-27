@@ -3,7 +3,7 @@
 import logging
 from typing import Final, override
 
-from graft import architecture
+from graft import architecture, domain
 from graft.domain import tasks
 from graft.domain.tasks.description import Description
 from graft.domain.tasks.uid import UID
@@ -92,6 +92,10 @@ class StandardLogicLayer(architecture.LogicLayer):
         """Return a view of the system."""
         return self._system.task_system()
 
+    def get_system(self) -> domain.SystemView:
+        """Return a view of the system."""
+        return domain.SystemView(self._system)
+
     @override
     def create_task_hierarchy(self, supertask: tasks.UID, subtask: tasks.UID) -> None:
         """Create a new hierarchy between the specified tasks."""
@@ -123,13 +127,3 @@ class StandardLogicLayer(architecture.LogicLayer):
             dependee_task=dependee_task, dependent_task=dependent_task
         )
         self._data_layer.save_system(system=self._system)
-
-    @override
-    def get_active_concrete_tasks_in_order_of_descending_priority(
-        self,
-    ) -> list[tuple[tasks.UID, tasks.Importance | None]]:
-        """Return the active concrete tasks in order of descending priority.
-
-        Tasks are paired with the maximum importance of downstream tasks.
-        """
-        return self._system.get_active_concrete_tasks_in_order_of_descending_priority()

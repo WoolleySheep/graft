@@ -61,7 +61,7 @@ from graft.domain.tasks.system import (
     System,
     SystemView,
     UpstreamTasksAreIncompleteError,
-    UpstreamTasksOfSupertaskHaveNotCompletedError,
+    UpstreamTasksOfSupertaskAreIncompleteError,
 )
 from graft.domain.tasks.uid import (
     UID,

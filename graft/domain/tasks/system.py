@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import collections
+import copy
 import itertools
 from typing import TYPE_CHECKING, Any, Protocol
 
@@ -110,7 +110,7 @@ class UpstreamTasksAreIncompleteError(Exception):
         )
 
 
-class UpstreamTasksOfSupertaskHaveNotCompletedError(Exception):
+class UpstreamTasksOfSupertaskAreIncompleteError(Exception):
     """Raised when tasks upstream of the supertask have not already completed.
 
     Started subtask cannot be connected, as upstream tasks must be completed
@@ -267,6 +267,10 @@ class ISystemView(Protocol):
 
     def __bool__(self) -> bool:
         """Check if the system is not empty."""
+        ...
+
+    def clone(self) -> System:
+        """Return a clone of the system."""
         ...
 
     def tasks(self) -> TasksView:
@@ -500,6 +504,10 @@ class System:
             self.attributes_register() == other.attributes_register()
             and self.network_graph() == other.network_graph()
         )
+
+    def clone(self) -> System:
+        """Return a clone of the system."""
+        return copy.deepcopy(self)
 
     def tasks(self) -> TasksView:
         """Return a view of the tasks in the system."""
@@ -874,7 +882,7 @@ class System:
                     )
             builder.add_task(subtask)
 
-            raise UpstreamTasksOfSupertaskHaveNotCompletedError(
+            raise UpstreamTasksOfSupertaskAreIncompleteError(
                 supertask=supertask,
                 subtask=subtask,
                 subtask_progress=subtask_progress,
@@ -1152,138 +1160,6 @@ class System:
         for task in tasks:
             yield get_importance_recursive(task, task_importance_map)
 
-    def _is_active(self, task: UID, /) -> bool:
-        """Check whether the specified task is active."""
-        match self.get_progress(task):
-            case Progress.COMPLETED:
-                return False
-            case Progress.IN_PROGRESS:
-                return True
-            case Progress.NOT_STARTED:
-                return all(
-                    progress is Progress.COMPLETED
-                    for progress in self.get_progresses(
-                        unique(
-                            itertools.chain.from_iterable(
-                                map(
-                                    self._network_graph.dependency_graph().dependee_tasks,
-                                    itertools.chain(
-                                        [task],
-                                        self._network_graph.hierarchy_graph().superior_tasks(
-                                            [task]
-                                        ),
-                                    ),
-                                )
-                            )
-                        )
-                    )
-                )
-
-    def _group_by_importance(
-        self, tasks: Iterable[UID], /
-    ) -> dict[Importance | None, list[UID]]:
-        """Return the specified tasks grouped by importance."""
-        importance_tasks_map = collections.defaultdict[Importance | None, list[UID]](
-            list
-        )
-        for task in tasks:
-            importance = self.get_importance(task)
-            importance_tasks_map[importance].append(task)
-
-        return importance_tasks_map
-
-    def get_active_concrete_tasks_in_order_of_descending_priority(
-        self,
-    ) -> list[tuple[UID, Importance | None]]:
-        """Return the active concrete tasks in order of descending priority.
-
-        Tasks are paired with the maximum importance of downstream tasks.
-        """
-
-        class PriorityScoreCard:
-            """Scorecard for calculating the priority of a task.
-
-            The general gist is that taskA is of higher priority than taskB if
-            it is upstream of a higher-importance task, and if it is further progressed.
-            """
-
-            def __init__(self, progress: Progress) -> None:
-                self.highest_importance: Importance | None = None
-                self.progress = progress
-
-            def add_downstream_importance(self, importance: Importance) -> None:
-                self.highest_importance = (
-                    max(self.highest_importance, importance)
-                    if self.highest_importance
-                    else importance
-                )
-
-            def __eq__(self, other: object) -> bool:
-                return (
-                    isinstance(other, PriorityScoreCard)
-                    and self.highest_importance is other.highest_importance
-                    and self.progress is other.progress
-                )
-
-            def __lt__(self, other: object) -> bool:
-                if not isinstance(other, PriorityScoreCard):
-                    raise NotImplementedError
-
-                # TODO: Surely this can be changed into one combined inequality
-                if not self.highest_importance:
-                    return False
-
-                if not other.highest_importance:
-                    return True
-
-                if self.highest_importance < other.highest_importance:
-                    return False
-
-                return self.progress < other.progress
-
-        concrete_tasks = list(self._network_graph.hierarchy_graph().concrete_tasks())
-
-        active_concrete_tasks_priority_score_cards_map = {
-            task: PriorityScoreCard(self._get_progress_of_concrete_task(task))
-            for task in concrete_tasks
-            if self._is_active(task)
-        }
-
-        incomplete_concrete_tasks = (
-            task
-            for task in concrete_tasks
-            if self._get_progress_of_concrete_task(task) is not Progress.COMPLETED
-        )
-        incomplete_concrete_tasks_grouped_by_importance = self._group_by_importance(
-            incomplete_concrete_tasks
-        )
-        for (
-            importance,
-            incomplete_concrete_tasks,
-        ) in incomplete_concrete_tasks_grouped_by_importance.items():
-            if importance is None:
-                continue
-            for incomplete_concrete_task in incomplete_concrete_tasks:
-                upstream_tasks = set(
-                    self._network_graph.upstream_tasks([incomplete_concrete_task])
-                )
-                upstream_tasks.add(incomplete_concrete_task)
-                for (
-                    task,
-                    priority_score_card,
-                ) in active_concrete_tasks_priority_score_cards_map.items():
-                    if task in upstream_tasks:
-                        priority_score_card.add_downstream_importance(importance)
-
-        return [
-            (task, score_card.highest_importance)
-            for task, score_card in sorted(
-                active_concrete_tasks_priority_score_cards_map.items(),
-                key=lambda x: x[1],
-                reverse=True,
-            )
-        ]
-
 
 class SystemView:
     """View of System."""
@@ -1303,6 +1179,10 @@ class SystemView:
             and self.attributes_register() == other.attributes_register()
             and self.network_graph() == other.network_graph()
         )
+
+    def clone(self) -> System:
+        """Return a clone of the system."""
+        return self._system.clone()
 
     def tasks(self) -> TasksView:
         """Return a view of the tasks in the system."""

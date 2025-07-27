@@ -3,6 +3,9 @@ from tkinter import ttk
 
 from graft import architecture
 from graft.domain import tasks
+from graft.domain.priority_order import (
+    get_active_concrete_tasks_in_descending_priority_order,
+)
 from graft.layers.presentation.tkinter_gui import event_broker
 from graft.layers.presentation.tkinter_gui.helpers import (
     importance_display,
@@ -50,8 +53,10 @@ class PriorityTreeView(ttk.Treeview):
     def _update_tasks(self) -> None:
         self.delete(*self.get_children())
 
-        for rank, (uid, importance) in enumerate(
-            self._logic_layer.get_active_concrete_tasks_in_order_of_descending_priority(),
+        for rank, (uid, importance, _, _) in enumerate(
+            get_active_concrete_tasks_in_descending_priority_order(
+                self._logic_layer.get_system()
+            ),
             start=1,
         ):
             name = self._logic_layer.get_task_system().attributes_register()[uid].name

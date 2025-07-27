@@ -1532,7 +1532,7 @@ def test_create_hierarchy_failure_incomplete_dependee_tasks_of_supertask(
     data_layer_mock.load_system.return_value = system
     logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
-    with pytest.raises(tasks.UpstreamTasksOfSupertaskHaveNotCompletedError) as exc_info:
+    with pytest.raises(tasks.UpstreamTasksOfSupertaskAreIncompleteError) as exc_info:
         logic_layer.create_task_hierarchy(supertask=task1, subtask=task2)
     assert exc_info.value.supertask == task1
     assert exc_info.value.subtask == task2
@@ -1580,7 +1580,7 @@ def test_create_hierarchy_failure_incomplete_dependee_tasks_of_superior_task_of_
     data_layer_mock.load_system.return_value = system
     logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
-    with pytest.raises(tasks.UpstreamTasksOfSupertaskHaveNotCompletedError) as exc_info:
+    with pytest.raises(tasks.UpstreamTasksOfSupertaskAreIncompleteError) as exc_info:
         logic_layer.create_task_hierarchy(supertask=task1, subtask=task3)
     assert exc_info.value.supertask == task1
     assert exc_info.value.subtask == task3
@@ -1632,7 +1632,7 @@ def test_create_hierarchy_failure_incomplete_dependee_task_of_supertask_with_tri
     data_layer_mock.load_system.return_value = system
     logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
-    with pytest.raises(tasks.UpstreamTasksOfSupertaskHaveNotCompletedError) as exc_info:
+    with pytest.raises(tasks.UpstreamTasksOfSupertaskAreIncompleteError) as exc_info:
         logic_layer.create_task_hierarchy(supertask=task1, subtask=task2)
     assert exc_info.value.supertask == task1
     assert exc_info.value.subtask == task2

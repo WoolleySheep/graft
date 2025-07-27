@@ -1,7 +1,7 @@
 import logging
 from typing import Final, override
 
-from graft import architecture
+from graft import architecture, domain
 from graft.domain import tasks
 
 logger: Final = logging.getLogger(__name__)
@@ -233,6 +233,17 @@ class LoggingDecoratorLogicLayer(architecture.LogicLayer):
         logger.debug("Got task system")
         return task_system
 
+    def get_system(self) -> domain.SystemView:
+        """Return a view of the system."""
+        logger.debug("Getting system")
+        try:
+            system = self._handler.get_system()
+        except Exception as e:
+            logger.warning("Failed to get system, exception [%s]", e)
+            raise
+        logger.debug("Got system")
+        return system
+
     @override
     def create_task_hierarchy(self, supertask: tasks.UID, subtask: tasks.UID) -> None:
         """Create a new hierarchy between the specified tasks."""
@@ -332,23 +343,3 @@ class LoggingDecoratorLogicLayer(architecture.LogicLayer):
             dependee_task,
             dependent_task,
         )
-
-    @override
-    def get_active_concrete_tasks_in_order_of_descending_priority(
-        self,
-    ) -> list[tuple[tasks.UID, tasks.Importance | None]]:
-        """Return the active concrete tasks in order of descending priority.
-
-        Tasks are paired with the maximum importance of downstream tasks.
-        """
-        logger.debug("Getting active concrete tasks in order of descending priority")
-        try:
-            active_concrete_tasks_in_order_of_descending_priority = self._handler.get_active_concrete_tasks_in_order_of_descending_priority()
-        except Exception as e:
-            logger.warning(
-                "Failed to get active concrete tasks in order of descending priority, exception [%s]",
-                e,
-            )
-            raise
-        logger.debug("Got active concrete tasks in order of descending priority")
-        return active_concrete_tasks_in_order_of_descending_priority

@@ -46,7 +46,7 @@ class NetworkGraphOperationFailedWindow(OperationFailedWindow):
         self,
         master: tk.Misc,
         description_text: str,
-        task_network: tasks.NetworkGraph,
+        task_network: tasks.INetworkGraphView,
         get_task_annotation_text: Callable[[tasks.UID], str | None],
         highlighted_tasks: Set[tasks.UID] | None = None,
         highlighted_hierarchies: Set[tuple[tasks.UID, tasks.UID]] | None = None,

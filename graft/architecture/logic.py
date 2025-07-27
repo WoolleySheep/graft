@@ -2,6 +2,7 @@
 
 import abc
 
+from graft import domain
 from graft.architecture import data
 from graft.domain import tasks
 
@@ -60,6 +61,10 @@ class LogicLayer(abc.ABC):
         """Return a view of the task system."""
 
     @abc.abstractmethod
+    def get_system(self) -> domain.SystemView:
+        """Return a view of the system."""
+
+    @abc.abstractmethod
     def create_task_hierarchy(self, supertask: tasks.UID, subtask: tasks.UID) -> None:
         """Create a new hierarchy between the specified tasks."""
 
@@ -78,12 +83,3 @@ class LogicLayer(abc.ABC):
         self, dependee_task: tasks.UID, dependent_task: tasks.UID
     ) -> None:
         """Delete the specified dependency."""
-
-    @abc.abstractmethod
-    def get_active_concrete_tasks_in_order_of_descending_priority(
-        self,
-    ) -> list[tuple[tasks.UID, tasks.Importance | None]]:
-        """Return the active concrete tasks in order of descending priority.
-
-        Tasks are paired with the maximum importance of downstream tasks.
-        """
