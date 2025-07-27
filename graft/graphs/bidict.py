@@ -4,20 +4,24 @@ from __future__ import annotations
 
 import itertools
 from collections.abc import (
-    Generator,
     Hashable,
     ItemsView,
-    Iterable,
-    Iterator,
-    KeysView,
     Mapping,
     MutableMapping,
     Set,
     ValuesView,
 )
-from typing import Any, TypeGuard
+from typing import TYPE_CHECKING, Any, TypeGuard
 
 from graft.utils import unique
+
+if TYPE_CHECKING:
+    from collections.abc import (
+        Generator,
+        Iterable,
+        Iterator,
+        KeysView,
+    )
 
 
 def invert_bidirectional_mapping[T: Hashable](

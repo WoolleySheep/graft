@@ -18,7 +18,7 @@ from graft.domain.tasks.network_graph import (
     NetworkSubgraphBuilder,
 )
 from graft.domain.tasks.progress import Progress
-from graft.domain.tasks.uid import UID, TasksView
+from graft.domain.tasks.uid import UID
 from graft.utils import unique
 
 if TYPE_CHECKING:
@@ -26,6 +26,7 @@ if TYPE_CHECKING:
 
     from graft.domain.tasks.description import Description
     from graft.domain.tasks.name import Name
+    from graft.domain.tasks.uid import TasksView
 
 
 class MultipleImportancesInHierarchyError(Exception):
@@ -567,7 +568,9 @@ class System:
                         started_dependent_tasks_with_progress = (
                             (dependent_task, dependent_progress)
                             for dependent_task, dependent_progress in zip(
-                                dependent_tasks, self.get_progresses(dependent_tasks), strict=False
+                                dependent_tasks,
+                                self.get_progresses(dependent_tasks),
+                                strict=False,
                             )
                             if dependent_progress is not Progress.NOT_STARTED
                         )
@@ -607,7 +610,9 @@ class System:
                         incomplete_dependee_tasks_with_progress = (
                             (dependee_task, dependee_progress)
                             for dependee_task, dependee_progress in zip(
-                                dependee_tasks, self.get_progresses(dependee_tasks), strict=False
+                                dependee_tasks,
+                                self.get_progresses(dependee_tasks),
+                                strict=False,
                             )
                             if dependee_progress is not Progress.COMPLETED
                         )
@@ -778,7 +783,8 @@ class System:
                     dependee_tasks_of_supertask_and_its_superior_tasks,
                     self.get_progresses(
                         dependee_tasks_of_supertask_and_its_superior_tasks
-                    ), strict=False,
+                    ),
+                    strict=False,
                 )
             )
 
@@ -869,7 +875,8 @@ class System:
                     dependent_tasks_of_supertask_and_its_superior_tasks,
                     self.get_progresses(
                         dependent_tasks_of_supertask_and_its_superior_tasks
-                    ), strict=False,
+                    ),
+                    strict=False,
                 )
             )
 

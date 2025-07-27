@@ -6,15 +6,10 @@ import copy
 import functools
 import itertools
 from collections.abc import (
-    Callable,
-    Generator,
     Hashable,
-    Iterable,
-    Iterator,
-    Mapping,
     Set,
 )
-from typing import Any, ParamSpec, Protocol, TypeVar
+from typing import TYPE_CHECKING, Any, Protocol
 
 from graft import graphs
 from graft.domain.tasks import helpers
@@ -25,6 +20,15 @@ from graft.graphs import (
     ConnectionsDictNodesHaveLoops,
     TargetsAreNotNotAlsoSourceNodesError,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import (
+        Callable,
+        Generator,
+        Iterable,
+        Iterator,
+        Mapping,
+    )
 
 
 class HasDependeeTasksError(Exception):
@@ -212,11 +216,10 @@ class ConnectionsDictDependencyGraphHasCycleError(Exception):
         super().__init__(f"Underlying dictionary [{dictionary}] has a cycle")
 
 
-P = ParamSpec("P")
-R = TypeVar("R")
-
-
-def _reraise_edge_adding_exceptions_as_corresponding_dependency_adding_exceptions(
+def _reraise_edge_adding_exceptions_as_corresponding_dependency_adding_exceptions[
+    **P,
+    R,
+](
     fn: Callable[P, R],
 ) -> Callable[P, R]:
     """Reraise exceptions raised be validate_edge_can_be_added exceptions as their corresponding validate_dependency_can_be_added exceptions."""
@@ -251,7 +254,7 @@ def _reraise_edge_adding_exceptions_as_corresponding_dependency_adding_exception
     return wrapper
 
 
-def _reraise_node_removing_exceptions_as_corresponding_task_removing_exceptions(
+def _reraise_node_removing_exceptions_as_corresponding_task_removing_exceptions[**P, R](
     fn: Callable[P, R],
 ) -> Callable[P, R]:
     """Reraise exceptions raised be validate_node_can_be_removed exceptions as their corresponding validate_task_can_be_removed exceptions."""

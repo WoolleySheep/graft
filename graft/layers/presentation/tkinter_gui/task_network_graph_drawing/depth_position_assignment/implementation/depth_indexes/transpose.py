@@ -115,7 +115,8 @@ def _triowise[T](iterable: Iterable[T]) -> Iterable[tuple[T, T, T]]:
     return zip(
         iterable1,
         itertools.islice(iterable2, 1, None),
-        itertools.islice(iterable3, 2, None), strict=False,
+        itertools.islice(iterable3, 2, None),
+        strict=False,
     )
 
 

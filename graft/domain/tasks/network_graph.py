@@ -3,10 +3,7 @@ from __future__ import annotations
 import collections
 import copy
 import itertools
-from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, Protocol, Self
-
-from pyparsing import deque
 
 from graft.domain.tasks.dependency_graph import (
     DependencyDoesNotExistError,
@@ -21,7 +18,7 @@ from graft.domain.tasks.hierarchy_graph import (
     HierarchyGraphView,
     HierarchySubgraphBuilder,
 )
-from graft.domain.tasks.uid import UID, TasksView
+from graft.domain.tasks.uid import UID
 from graft.utils import (
     CheckableIterable,
     LazyContainer,
@@ -31,7 +28,9 @@ from graft.utils import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Generator, Iterable
+    from collections.abc import Callable, Generator, Iterable
+
+    from graft.domain.tasks.uid import TasksView
 
 
 class DependencyIntroducesNetworkCycleError(Exception):
@@ -440,7 +439,7 @@ class NetworkSubgraphBuilder:
         tasks_with_checked_subtasks = set[UID]()
         tasks_with_checked_supertasks = set[UID]()
 
-        tasks_with_dependee_tasks = deque[UID]()
+        tasks_with_dependee_tasks = collections.deque[UID]()
         potential_supertask_hierarchies = collections.defaultdict[UID, set[UID]](set)
 
         while (
@@ -540,7 +539,7 @@ class NetworkSubgraphBuilder:
         tasks_with_checked_subtasks = set[UID]()
         tasks_with_checked_supertasks = set[UID]()
 
-        tasks_with_dependent_tasks = deque[UID]()
+        tasks_with_dependent_tasks = collections.deque[UID]()
         potential_supertask_hierarchies = collections.defaultdict[UID, set[UID]](set)
 
         while (

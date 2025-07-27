@@ -5,18 +5,22 @@ from __future__ import annotations
 import collections
 import itertools
 from collections.abc import (
-    Callable,
-    Generator,
     Hashable,
-    Iterable,
-    Iterator,
-    Mapping,
     Set,
 )
-from typing import Any, TypeGuard
+from typing import TYPE_CHECKING, Any, TypeGuard
 
 from graft.graphs import bidict as bd
 from graft.graphs.directed_graph_builder import DirectedGraphBuilder
+
+if TYPE_CHECKING:
+    from collections.abc import (
+        Callable,
+        Generator,
+        Iterable,
+        Iterator,
+        Mapping,
+    )
 
 
 class NodeAlreadyExistsError(Exception):

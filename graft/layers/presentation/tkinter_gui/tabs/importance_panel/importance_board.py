@@ -130,7 +130,8 @@ class ImportanceBoard(tk.Frame):
             self._logic_layer.get_task_system().tasks(),
             self._logic_layer.get_task_system().get_importances(
                 self._logic_layer.get_task_system().tasks()
-            ), strict=False,
+            ),
+            strict=False,
         ):
             match importance:
                 case Importance.HIGH | Importance.MEDIUM | Importance.LOW:

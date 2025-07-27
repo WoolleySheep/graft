@@ -4,18 +4,22 @@ from __future__ import annotations
 
 import collections
 from collections.abc import (
-    Callable,
-    Collection,
-    Generator,
     Hashable,
-    Iterable,
-    Mapping,
-    MutableMapping,
-    Set,
 )
-from typing import Any, Literal, override
+from typing import TYPE_CHECKING, Any, Literal, override
 
 from graft.graphs import simple_directed_graph
+
+if TYPE_CHECKING:
+    from collections.abc import (
+        Callable,
+        Collection,
+        Generator,
+        Iterable,
+        Mapping,
+        MutableMapping,
+        Set,
+    )
 
 
 class ConnectionsDictHasCycleError(Exception):

@@ -6,15 +6,10 @@ import copy
 import functools
 import itertools
 from collections.abc import (
-    Callable,
-    Generator,
     Hashable,
-    Iterable,
-    Iterator,
-    Mapping,
     Set,
 )
-from typing import Any, ParamSpec, Protocol, TypeVar
+from typing import TYPE_CHECKING, Any, Protocol
 
 from graft import graphs
 from graft.domain.tasks import helpers
@@ -32,6 +27,15 @@ from graft.graphs import (
     TargetsAreNotNotAlsoSourceNodesError,
     UnderlyingDictHasRedundantEdgesError,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import (
+        Callable,
+        Generator,
+        Iterable,
+        Iterator,
+        Mapping,
+    )
 
 
 class HasSuperTasksError(Exception):
@@ -247,11 +251,10 @@ class UnderlyingDictHierarchyGraphHasRedundantEdgesError(Exception):
         )
 
 
-P = ParamSpec("P")
-R = TypeVar("R")
-
-
-def _reraise_edge_adding_exceptions_as_corresponding_hierarchy_adding_exceptions(
+def _reraise_edge_adding_exceptions_as_corresponding_hierarchy_adding_exceptions[
+    **P,
+    R,
+](
     fn: Callable[P, R],
 ) -> Callable[P, R]:
     """Reraise exceptions raised be validate_edge_can_be_added exceptions as their corresponding validate_hierarchy_can_be_added exceptions."""
@@ -297,7 +300,7 @@ def _reraise_edge_adding_exceptions_as_corresponding_hierarchy_adding_exceptions
     return wrapper
 
 
-def _reraise_node_removing_exceptions_as_corresponding_task_removing_exceptions(
+def _reraise_node_removing_exceptions_as_corresponding_task_removing_exceptions[**P, R](
     fn: Callable[P, R],
 ) -> Callable[P, R]:
     """Reraise exceptions raised be validate_node_can_be_removed exceptions as their corresponding validate_task_can_be_removed exceptions."""

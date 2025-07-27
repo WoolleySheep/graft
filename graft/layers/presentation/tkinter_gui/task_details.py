@@ -55,7 +55,7 @@ def _get_progress_decrement(progress: Progress) -> Progress:
             return tasks.Progress.IN_PROGRESS
 
 
-def make_return_true(fn: Callable[P, Any]) -> Callable[P, Literal[True]]:
+def make_return_true[**P](fn: Callable[P, Any]) -> Callable[P, Literal[True]]:
     """Wrap a function so that it always returns true."""
 
     @functools.wraps(fn)

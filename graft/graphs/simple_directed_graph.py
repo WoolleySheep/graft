@@ -3,14 +3,18 @@
 from __future__ import annotations
 
 from collections.abc import (
-    Callable,
-    Generator,
     Hashable,
-    Iterable,
 )
-from typing import Any, Literal, override
+from typing import TYPE_CHECKING, Any, Literal, override
 
 from graft.graphs import directed_graph
+
+if TYPE_CHECKING:
+    from collections.abc import (
+        Callable,
+        Generator,
+        Iterable,
+    )
 
 
 class ConnectionsDictNodesHaveLoops(Exception):

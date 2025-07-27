@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Generator, Hashable, Iterable, Mapping, Set
-from typing import Any, Literal, override
+from collections.abc import Hashable
+from typing import TYPE_CHECKING, Any, Literal, override
 
 from graft.graphs import directed_acyclic_graph
 from graft.utils import LazyContainer
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Generator, Iterable, Mapping, Set
 
 
 class UnderlyingDictHasRedundantEdgesError(Exception):

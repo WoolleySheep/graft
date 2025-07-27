@@ -3,14 +3,18 @@ from __future__ import annotations
 import itertools
 from collections.abc import (
     Container,
-    Generator,
     Hashable,
     Iterable,
-    Iterator,
     Sequence,
     Set,
 )
-from typing import Any, overload
+from typing import TYPE_CHECKING, Any, overload
+
+if TYPE_CHECKING:
+    from collections.abc import (
+        Generator,
+        Iterator,
+    )
 
 
 class LazyContainer[T: Hashable](Container[T]):
