@@ -5,8 +5,8 @@ from __future__ import annotations
 from collections.abc import Callable, Generator, Hashable, Iterable, Mapping, Set
 from typing import Any, Literal, override
 
-from graft.graphs import bidict as bd
-from graft.graphs import directed_acyclic_graph, directed_graph
+from graft.graphs import directed_acyclic_graph
+from graft.utils import LazyContainer
 
 
 class UnderlyingDictHasRedundantEdgesError(Exception):
@@ -38,28 +38,39 @@ class IntroducesRedundantEdgeError(Exception):
         )
 
 
-class MultipleStartingNodesReducedDirectedAcyclicSubgraphView[T: Hashable](
-    directed_acyclic_graph.MultipleStartingNodesDirectedAcyclicSubgraphView[T]
+class IntroducesCycleToReducedGraphError(Exception):
+    """Adding the edge introduces a cycle to the graph."""
+
+    def __init__(
+        self,
+        source: Hashable,
+        target: Hashable,
+        connecting_subgraph: ReducedDirectedAcyclicGraph[Any],
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
+        """Initialize IntroducesCycleError."""
+        self.source = source
+        self.target = target
+        self.connecting_subgraph = connecting_subgraph
+        super().__init__(
+            f"edge [{source}] -> [{target}] introduces cycle to reduced graph",
+            *args,
+            **kwargs,
+        )
+
+
+class ReducedDirectedAcyclicSubgraphBuilder[T: Hashable](
+    directed_acyclic_graph.DirectedAcyclicSubgraphBuilder[T]
 ):
-    """Reduced directed acyclic subgraph view with multiple starting nodes."""
+    """Builder for a subgraph of a simple directed graph."""
+
+    def __init__(self, graph: ReducedDirectedAcyclicGraph[T]) -> None:
+        super().__init__(graph)
 
     @override
-    def subgraph(self) -> ReducedDirectedAcyclicGraph[T]:
-        subgraph = ReducedDirectedAcyclicGraph[T]()
-        self._populate_graph(graph=subgraph)
-        return subgraph
-
-
-class SingleStartingNodeReducedDirectedAcyclicSubgraphView[T: Hashable](
-    directed_acyclic_graph.SingleStartingNodeDirectedAcyclicSubgraphView[T]
-):
-    """Reduced directed acyclic subgraph view with a single starting node."""
-
-    @override
-    def subgraph(self) -> ReducedDirectedAcyclicGraph[T]:
-        subgraph = ReducedDirectedAcyclicGraph[T]()
-        self._populate_graph(graph=subgraph)
-        return subgraph
+    def build(self) -> ReducedDirectedAcyclicGraph[T]:
+        return ReducedDirectedAcyclicGraph(self._graph_builder.build().items())
 
 
 class ReducedDirectedAcyclicGraph[T: Hashable](
@@ -70,110 +81,105 @@ class ReducedDirectedAcyclicGraph[T: Hashable](
     Only the minimal number of edges to describe the graph is allowed.
     """
 
-    def __init__(self, bidict: bd.BiDirectionalSetDict[T] | None = None) -> None:
+    def __init__(
+        self, connections: Iterable[tuple[T, Iterable[T]]] | None = None
+    ) -> None:
         """Initialize ReducedDAG."""
-        super().__init__(bidict=bidict)
+        super().__init__(connections=connections)
 
         if super().has_redundant_edges():
+            # TODO: Get the redundant edges
             raise UnderlyingDictHasRedundantEdgesError(dictionary=self._bidict)
 
     @override
     def validate_edge_can_be_added(self, source: T, target: T) -> None:
         """Validate that edge can be added to digraph."""
-        super().validate_edge_can_be_added(source=source, target=target)
+        try:
+            super().validate_edge_can_be_added(source=source, target=target)
+        except directed_acyclic_graph.IntroducesCycleError:
+            # TODO: Fix this inefficient and kinda bad hack
+            connecting_subgraph = self.connecting_subgraph(
+                sources=[target], targets=[source]
+            )
+            raise IntroducesCycleToReducedGraphError(
+                source=source,
+                target=target,
+                connecting_subgraph=connecting_subgraph,
+            ) from None
 
-        if self.has_path(source=source, target=target):
-            subgraph = self.connecting_subgraph(source=source, target=target)
+        if target in self.descendants([source]):
+            connecting_subgraph = self.connecting_subgraph([source], [target])
             raise IntroducesRedundantEdgeError(
-                source=source, target=target, subgraph=subgraph
+                source=source, target=target, subgraph=connecting_subgraph
             )
 
-        target_predecessors = self.predecessors(target)
         if any(
-            source_ancestor in target_predecessors
-            for source_ancestor in self.ancestors(source).nodes()
+            source_ancestor in self.predecessors(target)
+            for source_ancestor in self.ancestors([source])
         ):
-            source_ancestors_subgraph = self.ancestors(
-                source, stop_condition=lambda node: node in target_predecessors
-            ).subgraph()
-            target_predecessors_in_subgraph = [
+            source_ancestors = LazyContainer(
+                self.ancestors(
+                    [source],
+                    stop_condition=lambda node: node in self.predecessors(target),
+                )
+            )
+            target_predecessors_in_source_ancestors = [
                 predecessor
-                for predecessor in target_predecessors
-                if predecessor in source_ancestors_subgraph.nodes()
+                for predecessor in self.predecessors(target)
+                if predecessor in source_ancestors
             ]
-            subgraph = source_ancestors_subgraph.descendants_multi(
-                target_predecessors_in_subgraph
-            ).subgraph()
-            subgraph.add_node(target)
-            for target_predecessor in target_predecessors_in_subgraph:
-                subgraph.add_edge(target_predecessor, target)
+            subgraph_builder = ReducedDirectedAcyclicSubgraphBuilder(self)
+            _ = subgraph_builder.add_descendants_subgraph(
+                target_predecessors_in_source_ancestors
+            )
+            for target_predecessor in target_predecessors_in_source_ancestors:
+                subgraph_builder.add_edge(target_predecessor, target)
+
             raise IntroducesRedundantEdgeError(
-                source=source, target=target, subgraph=subgraph
+                source=source, target=target, subgraph=subgraph_builder.build()
             )
 
-        source_successors = self.successors(source)
         if any(
-            target_descendant in source_successors
-            for target_descendant in self.descendants(target).nodes()
+            target_descendant in self.successors(source)
+            for target_descendant in self.descendants([target])
         ):
-            target_descendants_subgraph = self.descendants(
-                target, stop_condition=lambda node: node in source_successors
-            ).subgraph()
-            source_successors_in_subgraph = [
+            target_descendants = LazyContainer(
+                self.descendants(
+                    [target],
+                    stop_condition=lambda node: node in self.successors(source),
+                )
+            )
+            source_successors_in_target_descendants = [
                 successor
-                for successor in source_successors
-                if successor in target_descendants_subgraph.nodes()
+                for successor in self.successors(source)
+                if successor in target_descendants
             ]
-            subgraph = target_descendants_subgraph.ancestors_multi(
-                source_successors_in_subgraph
-            ).subgraph()
-            subgraph.add_node(source)
-            for source_successor in source_successors_in_subgraph:
-                subgraph.add_edge(source, source_successor)
+            subgraph_builder = ReducedDirectedAcyclicSubgraphBuilder(self)
+            _ = subgraph_builder.add_ancestors_subgraph(
+                source_successors_in_target_descendants
+            )
+            for source_successor in source_successors_in_target_descendants:
+                subgraph_builder.add_edge(source, source_successor)
+
             raise IntroducesRedundantEdgeError(
-                source=source, target=target, subgraph=subgraph
+                source=source, target=target, subgraph=subgraph_builder.build()
             )
 
     @override
-    def descendants(
-        self, node: T, /, stop_condition: Callable[[T], bool] | None = None
-    ) -> SingleStartingNodeReducedDirectedAcyclicSubgraphView[T]:
-        return SingleStartingNodeReducedDirectedAcyclicSubgraphView(
-            node, self._bidict, directed_graph.SubgraphType.DESCENDANTS, stop_condition
-        )
+    def descendants_subgraph(
+        self, nodes: Iterable[T], /, stop_condition: Callable[[T], bool] | None = None
+    ) -> ReducedDirectedAcyclicGraph[T]:
+        builder = ReducedDirectedAcyclicSubgraphBuilder[T](self)
+        _ = builder.add_descendants_subgraph(nodes, stop_condition)
+        return builder.build()
 
     @override
-    def descendants_multi(
-        self,
-        nodes: Iterable[T],
-        /,
-        stop_condition: Callable[[T], bool] | None = None,
-    ) -> MultipleStartingNodesReducedDirectedAcyclicSubgraphView[T]:
-        return MultipleStartingNodesReducedDirectedAcyclicSubgraphView(
-            nodes, self._bidict, directed_graph.SubgraphType.DESCENDANTS, stop_condition
-        )
-
-    @override
-    def ancestors(
-        self, node: T, /, stop_condition: Callable[[T], bool] | None = None
-    ) -> SingleStartingNodeReducedDirectedAcyclicSubgraphView[T]:
-        return SingleStartingNodeReducedDirectedAcyclicSubgraphView(
-            node,
-            self._bidict,
-            directed_graph.SubgraphType.ANCESTORS,
-            stop_condition,
-        )
-
-    @override
-    def ancestors_multi(
-        self,
-        nodes: Iterable[T],
-        /,
-        stop_condition: Callable[[T], bool] | None = None,
-    ) -> MultipleStartingNodesReducedDirectedAcyclicSubgraphView[T]:
-        return MultipleStartingNodesReducedDirectedAcyclicSubgraphView(
-            nodes, self._bidict, directed_graph.SubgraphType.ANCESTORS, stop_condition
-        )
+    def ancestors_subgraph(
+        self, nodes: Iterable[T], /, stop_condition: Callable[[T], bool] | None = None
+    ) -> ReducedDirectedAcyclicGraph[T]:
+        builder = ReducedDirectedAcyclicSubgraphBuilder[T](self)
+        _ = builder.add_ancestors_subgraph(nodes, stop_condition)
+        return builder.build()
 
     @override
     def has_redundant_edges(self) -> Literal[False]:
@@ -185,40 +191,28 @@ class ReducedDirectedAcyclicGraph[T: Hashable](
 
     @override
     def connecting_subgraph(
-        self, source: T, target: T
-    ) -> ReducedDirectedAcyclicGraph[T]:
-        """Return connecting subgraph from source to target."""
-        return self.connecting_subgraph_multi([source], [target])
-
-    @override
-    def connecting_subgraph_multi(
         self, sources: Iterable[T], targets: Iterable[T]
     ) -> ReducedDirectedAcyclicGraph[T]:
-        """Return connecting subgraph from sources to targets.
-
-        Every target must be reachable by one or more sources.
-        """
-        subgraph = ReducedDirectedAcyclicGraph[T]()
-        self._populate_graph_with_connecting(
-            graph=subgraph, sources=sources, targets=targets
-        )
-        return subgraph
+        builder = ReducedDirectedAcyclicSubgraphBuilder[T](self)
+        _ = builder.add_connecting_subgraph(sources, targets)
+        return builder.build()
 
     @override
-    def component(self, node: T) -> ReducedDirectedAcyclicGraph[T]:
-        subgraph = ReducedDirectedAcyclicGraph[T]()
-        self._populate_graph_with_component(graph=subgraph, node=node)
-        return subgraph
+    def component_subgraph(self, node: T) -> ReducedDirectedAcyclicGraph[T]:
+        builder = ReducedDirectedAcyclicSubgraphBuilder[T](self)
+        _ = builder.add_component_subgraph(node)
+        return builder.build()
 
     @override
-    def components(self) -> Generator[ReducedDirectedAcyclicGraph[T], None, None]:
-        # TODO: Find a more elegant way to DRY out this code rather than
-        # repeating it in every subclass
-        components = list[ReducedDirectedAcyclicGraph[T]]()
+    def component_subgraphs(
+        self,
+    ) -> Generator[ReducedDirectedAcyclicGraph[T], None, None]:
+        """Yield component subgraphs in the graph."""
+        checked_nodes = set[T]()
         for node in self.nodes():
-            if any(node in component.nodes() for component in components):
+            if node in checked_nodes:
                 continue
 
-            component = self.component(node)
+            component = self.component_subgraph(node)
+            checked_nodes.update(component.nodes())
             yield component
-            components.append(component)

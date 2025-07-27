@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Generator, Iterable, Iterator, Set
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from graft import graphs
+from collections.abc import Hashable, Iterator, Set
+from typing import Any
 
 
 class InvalidUIDNumberError(Exception):
@@ -82,11 +79,10 @@ class TasksView(Set[UID]):
 
     def __eq__(self, other: object) -> bool:
         """Check if two views are equal."""
-        return (
-            isinstance(other, TasksView)
-            and len(self) == len(other)
-            and all(task in other for task in self)
-        )
+        if not isinstance(other, TasksView):
+            return NotImplemented
+
+        return set(self._tasks) == set(other)
 
     def __str__(self) -> str:
         """Return string representation of view."""
@@ -96,69 +92,34 @@ class TasksView(Set[UID]):
         """Return string representation of view."""
         return f"tasks_view({', '.join(repr(task) for task in self._tasks)})"
 
-    def __sub__(self, other: Set[Any]) -> TasksView:
+    def __sub__(self, other: Set[Any]) -> set[UID]:
         """Return difference of two views."""
-        return TasksView(self._tasks - other)
+        return set(self._tasks - other)
 
-    def __and__(self, other: Set[Any]) -> TasksView:
+    def __and__(self, other: Set[Any]) -> set[UID]:
         """Return intersection of two views."""
-        return TasksView(self._tasks & other)
+        return set(self._tasks & other)
 
-    def __or__(self, other: Set[UID]) -> TasksView:
+    def __or__[G: Hashable](self, other: Set[G]) -> set[UID | G]:
         """Return union of two views."""
-        return TasksView(self._tasks | other)
+        return set(self._tasks | other)
 
-    def __xor__(self, other: Set[UID]) -> TasksView:
+    def __xor__[G: Hashable](self, other: Set[G]) -> set[UID | G]:
         """Return symmetric difference of two views."""
-        return TasksView(self._tasks ^ other)
+        return set(self._tasks ^ other)
 
+    def __le__(self, other: Set[Any]) -> bool:
+        """Subset test (self <= other)."""
+        return self._tasks <= other
 
-class SubgraphTasksView(Set[UID]):
-    """View of a set of task UIDs in a subgraph."""
+    def __lt__(self, other: Set[Any]) -> bool:
+        """Proper subset test (self < other)."""
+        return self._tasks < other
 
-    def __init__(self, subgraph_nodes: graphs.SubgraphNodesView[UID]) -> None:
-        self._subgraph_nodes = subgraph_nodes
+    def __ge__(self, other: Set[Any]) -> bool:
+        """Superset test (self >= other)."""
+        return self._tasks >= other
 
-    def __bool__(self) -> bool:
-        """Check if subgraph has any tasks."""
-        return bool(self._subgraph_nodes)
-
-    def __len__(self) -> int:
-        """Return number of tasks in subgraph."""
-        return len(self._subgraph_nodes)
-
-    def __contains__(self, item: object) -> bool:
-        """Check if item is a task in the subgraph."""
-        return item in self._subgraph_nodes
-
-    def __iter__(self) -> Iterator[UID]:
-        """Return iterator over tasks in view."""
-        return iter(self._subgraph_nodes)
-
-    def __eq__(self, other: object) -> bool:
-        """Check if two views are equal."""
-        return isinstance(other, SubgraphTasksView) and set(self) == set(other)
-
-    def contains(self, tasks: Iterable[UID]) -> Generator[bool, None, None]:
-        """Check if tasks are in the subgraph.
-
-        Theoretically faster than checking if the subgraph contains multiple tasks
-        one at a time, as can cache the parts of the subgraph already searched.
-        """
-        return self._subgraph_nodes.contains(tasks)
-
-    def __sub__(self, other: Set[Any]) -> SubgraphTasksView:
-        """Return difference of two views."""
-        raise NotImplementedError
-
-    def __and__(self, other: Set[Any]) -> SubgraphTasksView:
-        """Return intersection of two views."""
-        raise NotImplementedError
-
-    def __or__(self, other: Set[UID]) -> SubgraphTasksView:
-        """Return union of two views."""
-        raise NotImplementedError
-
-    def __xor__(self, other: Set[UID]) -> SubgraphTasksView:
-        """Return symmetric difference of two views."""
-        raise NotImplementedError
+    def __gt__(self, other: Set[Any]) -> bool:
+        """Proper superset test (self > other)."""
+        return self._tasks > other

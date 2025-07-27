@@ -144,7 +144,10 @@ def transpose(
             for shallower_task, deeper_task in list(depth_graph.edges()):
                 depth_graph.remove_edge(source=shallower_task, target=deeper_task)
 
-                if depth_graph.has_path(source=shallower_task, target=deeper_task):
+                if (
+                    shallower_task == deeper_task
+                    or deeper_task in depth_graph.descendants([shallower_task])
+                ):
                     # Swapping these two tasks will introduce a cycle, so don't
                     depth_graph.add_edge(source=shallower_task, target=deeper_task)
                     continue

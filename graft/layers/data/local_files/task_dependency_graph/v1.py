@@ -1,7 +1,6 @@
 import json
 from collections.abc import Generator, Iterable
 
-from graft import graphs
 from graft.domain import tasks
 
 
@@ -38,7 +37,8 @@ def _convert_dict_to_task_relationships(
 
 def encode_dependency_graph(graph: tasks.IDependencyGraphView) -> str:
     return json.dumps(
-        graph.task_dependents_pairs(), default=_convert_task_relationships_to_dict
+        ((task, graph.dependent_tasks(task)) for task in graph.tasks()),
+        default=_convert_task_relationships_to_dict,
     )
 
 
@@ -46,8 +46,4 @@ def decode_dependency_graph(text: str) -> tasks.DependencyGraph:
     dependency_relationships = json.loads(
         text, object_hook=_convert_dict_to_task_relationships
     )
-    return tasks.DependencyGraph(
-        dag=graphs.DirectedAcyclicGraph(
-            bidict=graphs.BiDirectionalSetDict(forward=dependency_relationships)
-        )
-    )
+    return tasks.DependencyGraph(dependency_relationships)

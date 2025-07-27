@@ -348,7 +348,7 @@ def generate_graph_with_dummy_tasks(
     """
     get_unique_dummy_task = _get_unique_dummy_uid_factory()
 
-    graph_with_dummies = tasks.NetworkGraph.clone(graph)
+    graph_with_dummies = graph.clone()
 
     task_or_dummy_to_scaled_relation_layers_map: dict[
         tasks.UID | DummyUID, TaskRelationLayers

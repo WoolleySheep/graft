@@ -67,7 +67,7 @@ def _get_level() -> int:
 def _silence_annoying_matplotlib_logging() -> None:
     r"""Stop matplotlib spamming DEBUG level logs that clutter up my files.
 
-    This is the stort of stuff they were throwing out:
+    This is the sort of stuff they were throwing out:
     - DEBUG:pyplot.py Loaded backend Agg version v2.2.
     - DEBUG:font_manager.py findfont: Matching sans\-serif:style=normal:variant=normal:weight=normal:stretch=normal:size=10.0.
     - DEBUG:font_manager.py findfont: score(FontEntry(fname=<PATH_TO_DEPENDENCIES>mpl-data\\fonts\\ttf\\DejaVuSerif-Bold.ttf', name='DejaVu Serif', style='normal', variant='normal', weight=700, stretch='normal', size='scalable')) = 10.335

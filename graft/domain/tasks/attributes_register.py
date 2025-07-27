@@ -185,3 +185,24 @@ class AttributesRegisterView(Mapping[UID, AttributesView]):
             f"{task!r}: {attributes!r}" for task, attributes in self.items()
         )
         return f"{self.__class__.__name__}({{{', '.join(task_attributes_pair)}}})"
+
+
+class AttributesSubregisterBuilder:
+    def __init__(self, register: IAttributesRegisterView) -> None:
+        self._register = register
+        self._task_to_attributes_map = dict[UID, Attributes]()
+
+    def add_task(self, task: UID, /) -> None:
+        if task not in self._register:
+            raise TaskDoesNotExistError(task=task)
+
+        attributes = self._register[task]
+        self._task_to_attributes_map[task] = Attributes(
+            name=attributes.name,
+            description=attributes.description,
+            importance=attributes.importance,
+            progress=attributes.progress,
+        )
+
+    def build(self) -> AttributesRegister:
+        return AttributesRegister(task_to_attributes_map=self._task_to_attributes_map)

@@ -3,20 +3,27 @@
 from __future__ import annotations
 
 import collections
-from collections.abc import Callable, Generator, Hashable, Iterable, Mapping, Set
+from collections.abc import (
+    Callable,
+    Collection,
+    Generator,
+    Hashable,
+    Iterable,
+    Mapping,
+    MutableMapping,
+    Set,
+)
 from typing import Any, Literal, override
 
-from graft.graphs import bidict as bd
-from graft.graphs import directed_graph, simple_directed_graph
+from graft.graphs import simple_directed_graph
 
 
-class UnderlyingDictHasCycleError(Exception):
+class ConnectionsDictHasCycleError(Exception):
     """Underlying dictionary has a cycle."""
 
     def __init__(self, dictionary: Mapping[Any, Set[Any]]) -> None:
-        """Initialize UnderlyingDictHasCycleError."""
         self.dictionary = dict(dictionary)
-        super().__init__(f"underlying dictionary [{dictionary}] has a cycle")
+        super().__init__(f"Underlying dictionary [{dictionary}] has a cycle")
 
 
 class IntroducesCycleError(Exception):
@@ -41,47 +48,41 @@ class IntroducesCycleError(Exception):
         )
 
 
-class MultipleStartingNodesDirectedAcyclicSubgraphView[T: Hashable](
-    simple_directed_graph.MultipleStartingNodesSimpleDirectedSubgraphView[T]
+class DirectedAcyclicSubgraphBuilder[T: Hashable](
+    simple_directed_graph.SimpleDirectedSubgraphBuilder[T]
 ):
-    """Directed acyclic subgraph view with multiple starting nodes."""
+    """Builder for a subgraph of a simple directed graph."""
+
+    def __init__(self, graph: DirectedAcyclicGraph[T]) -> None:
+        super().__init__(graph)
 
     @override
-    def subgraph(self) -> DirectedAcyclicGraph[T]:
-        subgraph = DirectedAcyclicGraph[T]()
-        self._populate_graph(graph=subgraph)
-        return subgraph
-
-
-class SingleStartingNodeDirectedAcyclicSubgraphView[T: Hashable](
-    simple_directed_graph.SingleStartingNodeSimpleDirectedSubgraphView[T]
-):
-    """Directed acyclic subgraph view with a single starting node."""
-
-    @override
-    def subgraph(self) -> DirectedAcyclicGraph[T]:
-        subgraph = DirectedAcyclicGraph[T]()
-        self._populate_graph(graph=subgraph)
-        return subgraph
+    def build(self) -> DirectedAcyclicGraph[T]:
+        return DirectedAcyclicGraph(self._graph_builder.build().items())
 
 
 class DirectedAcyclicGraph[T: Hashable](simple_directed_graph.SimpleDirectedGraph[T]):
     """Simple Digraph with no cycles."""
 
-    def __init__(self, bidict: bd.BiDirectionalSetDict[T] | None = None) -> None:
+    def __init__(
+        self, connections: Iterable[tuple[T, Iterable[T]]] | None = None
+    ) -> None:
         """Initialize DirectedAcyclicGraph."""
-        super().__init__(bidict=bidict)
+        super().__init__(connections=connections)
 
         if super().has_cycle():
-            raise UnderlyingDictHasCycleError(dictionary=self._bidict)
+            # TODO: Get the exact dictionary elements that form the cycle
+            raise ConnectionsDictHasCycleError(dictionary=self._bidict)
 
     @override
     def validate_edge_can_be_added(self, source: T, target: T) -> None:
         """Validate that edge can be added to digraph."""
         super().validate_edge_can_be_added(source, target)
 
-        if self.has_path(source=target, target=source):
-            connecting_subgraph = self.connecting_subgraph(source=target, target=source)
+        if source in self.descendants([target]):
+            connecting_subgraph = self.connecting_subgraph(
+                sources=[target], targets=[source]
+            )
             raise IntroducesCycleError(
                 source=source,
                 target=target,
@@ -89,45 +90,20 @@ class DirectedAcyclicGraph[T: Hashable](simple_directed_graph.SimpleDirectedGrap
             )
 
     @override
-    def descendants(
-        self, node: T, /, stop_condition: Callable[[T], bool] | None = None
-    ) -> SingleStartingNodeDirectedAcyclicSubgraphView[T]:
-        return SingleStartingNodeDirectedAcyclicSubgraphView(
-            node, self._bidict, directed_graph.SubgraphType.DESCENDANTS, stop_condition
-        )
+    def descendants_subgraph(
+        self, nodes: Iterable[T], /, stop_condition: Callable[[T], bool] | None = None
+    ) -> DirectedAcyclicGraph[T]:
+        builder = DirectedAcyclicSubgraphBuilder[T](self)
+        _ = builder.add_descendants_subgraph(nodes, stop_condition)
+        return builder.build()
 
     @override
-    def descendants_multi(
-        self,
-        nodes: Iterable[T],
-        /,
-        stop_condition: Callable[[T], bool] | None = None,
-    ) -> MultipleStartingNodesDirectedAcyclicSubgraphView[T]:
-        return MultipleStartingNodesDirectedAcyclicSubgraphView(
-            nodes, self._bidict, directed_graph.SubgraphType.DESCENDANTS, stop_condition
-        )
-
-    @override
-    def ancestors(
-        self, node: T, /, stop_condition: Callable[[T], bool] | None = None
-    ) -> SingleStartingNodeDirectedAcyclicSubgraphView[T]:
-        return SingleStartingNodeDirectedAcyclicSubgraphView(
-            node,
-            self._bidict,
-            directed_graph.SubgraphType.ANCESTORS,
-            stop_condition,
-        )
-
-    @override
-    def ancestors_multi(
-        self,
-        nodes: Iterable[T],
-        /,
-        stop_condition: Callable[[T], bool] | None = None,
-    ) -> MultipleStartingNodesDirectedAcyclicSubgraphView[T]:
-        return MultipleStartingNodesDirectedAcyclicSubgraphView(
-            nodes, self._bidict, directed_graph.SubgraphType.ANCESTORS, stop_condition
-        )
+    def ancestors_subgraph(
+        self, nodes: Iterable[T], /, stop_condition: Callable[[T], bool] | None = None
+    ) -> DirectedAcyclicGraph[T]:
+        builder = DirectedAcyclicSubgraphBuilder[T](self)
+        _ = builder.add_ancestors_subgraph(nodes, stop_condition)
+        return builder.build()
 
     @override
     def has_cycle(self) -> Literal[False]:
@@ -169,50 +145,117 @@ class DirectedAcyclicGraph[T: Hashable](simple_directed_graph.SimpleDirectedGrap
 
     def has_redundant_edges(self) -> bool:
         """Check if graph has edges that are not required for a reduced DAG."""
-        # TODO: Speed up using dynamic programming
-        for source, target in self.edges():
-            for successor in self.successors(source):
-                if successor == target:
-                    continue
-                if self.has_path(source=successor, target=target):
+
+        class LazyAncestors:
+            """Lazily iteration and membership testing, with dynamic accumulation."""
+
+            def __init__(
+                self,
+                node: T,
+                node_predecessors_map: Mapping[T, Collection[T]],
+                node_ancestors_map: MutableMapping[T, LazyAncestors],
+            ) -> None:
+                self._node_predecessors_map = node_predecessors_map
+                self._node_ancestors_map = node_ancestors_map
+
+                self._predecessors_unprocessed = collections.deque(
+                    node_predecessors_map[node]
+                )
+                self._ancestors = set(node_predecessors_map[node])
+
+            def _get_ancestors(self, node: T) -> LazyAncestors:
+                if node in self._node_ancestors_map:
+                    return self._node_ancestors_map[node]
+
+                ancestors = LazyAncestors(
+                    node=node,
+                    node_predecessors_map=self._node_predecessors_map,
+                    node_ancestors_map=self._node_ancestors_map,
+                )
+                self._node_ancestors_map[node] = ancestors
+                return ancestors
+
+            def __iter__(self) -> Generator[T, None, None]:
+                yield from self._ancestors
+
+                while self._predecessors_unprocessed:
+                    predecessor = self._predecessors_unprocessed[0]
+                    predecessor_ancestors = self._get_ancestors(predecessor)
+                    for predecessor_ancestor in predecessor_ancestors:
+                        if predecessor_ancestor in self._ancestors:
+                            continue
+                        yield predecessor_ancestor
+                    self._ancestors.update(predecessor_ancestors)
+                    _ = self._predecessors_unprocessed.popleft()
+
+            def __contains__(self, node: T) -> bool:
+                if node in self._ancestors:
                     return True
+
+                while self._predecessors_unprocessed:
+                    predecessor = self._predecessors_unprocessed[0]
+                    predecessor_ancestors = self._get_ancestors(predecessor)
+                    if node in predecessor_ancestors:
+                        return True
+                    self._ancestors.update(predecessor_ancestors)
+                    _ = self._predecessors_unprocessed.popleft()
+
+                return False
+
+        def get_ancestors(
+            node: T,
+            node_predecessors_map: Mapping[T, Collection[T]],
+            node_ancestors_map: MutableMapping[T, LazyAncestors],
+        ) -> LazyAncestors:
+            if node in node_ancestors_map:
+                return node_ancestors_map[node]
+
+            ancestors = LazyAncestors(
+                node,
+                node_predecessors_map=node_predecessors_map,
+                node_ancestors_map=node_ancestors_map,
+            )
+            node_ancestors_map[node] = ancestors
+            return ancestors
+
+        node_ancestors_map = dict[T, LazyAncestors]()
+
+        for source, target in self.edges():
+            target_ancestors = get_ancestors(
+                target,
+                node_predecessors_map=self._bidict.inverse,
+                node_ancestors_map=node_ancestors_map,
+            )
+            for successor in self.successors(source):
+                if successor not in target_ancestors:
+                    continue
+
+                return True
 
         return False
 
     @override
-    def connecting_subgraph(self, source: T, target: T) -> DirectedAcyclicGraph[T]:
-        """Return connecting subgraph from source to target."""
-        return self.connecting_subgraph_multi([source], [target])
-
-    @override
-    def connecting_subgraph_multi(
+    def connecting_subgraph(
         self, sources: Iterable[T], targets: Iterable[T]
     ) -> DirectedAcyclicGraph[T]:
-        """Return connecting subgraph from sources to targets.
-
-        Every target must be reachable by one or more sources.
-        """
-        subgraph = DirectedAcyclicGraph[T]()
-        self._populate_graph_with_connecting(
-            graph=subgraph, sources=sources, targets=targets
-        )
-        return subgraph
+        builder = DirectedAcyclicSubgraphBuilder[T](self)
+        _ = builder.add_connecting_subgraph(sources, targets)
+        return builder.build()
 
     @override
-    def component(self, node: T) -> DirectedAcyclicGraph[T]:
-        subgraph = DirectedAcyclicGraph[T]()
-        self._populate_graph_with_component(graph=subgraph, node=node)
-        return subgraph
+    def component_subgraph(self, node: T) -> DirectedAcyclicGraph[T]:
+        builder = DirectedAcyclicSubgraphBuilder[T](self)
+        _ = builder.add_component_subgraph(node)
+        return builder.build()
 
     @override
-    def components(self) -> Generator[DirectedAcyclicGraph[T], None, None]:
-        # TODO: Find a more elegant way to DRY out this code rather than
-        # repeating it in every subclass
-        components = list[DirectedAcyclicGraph[T]]()
+    def component_subgraphs(self) -> Generator[DirectedAcyclicGraph[T], None, None]:
+        """Yield component subgraphs in the graph."""
+        checked_nodes = set[T]()
         for node in self.nodes():
-            if any(node in component.nodes() for component in components):
+            if node in checked_nodes:
                 continue
 
-            component = self.component(node)
+            component = self.component_subgraph(node)
+            checked_nodes.update(component.nodes())
             yield component
-            components.append(component)

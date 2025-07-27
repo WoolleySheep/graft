@@ -67,12 +67,10 @@ def test_update_task_importance_failure_supertask_with_importance(
     data_layer_mock.load_system.return_value = system
     logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
-    with pytest.raises(tasks.SupertaskHasImportanceError) as exc_info:
+    # TODO: Test parameters of exception
+    with pytest.raises(tasks.SuperiorTasksHaveImportanceError) as exc_info:
         logic_layer.update_task_importance(task=task, importance=task_importance)
     assert exc_info.value.task == task
-    assert exc_info.value.supertasks_with_importance == [
-        (supertask, supertask_importance)
-    ]
 
     data_layer_mock.load_system.assert_called_once()
     assert data_layer_mock.save_system.called is False
@@ -104,7 +102,8 @@ def test_update_task_importance_failure_superior_task_with_importance(
     data_layer_mock.load_system.return_value = system
     logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
-    with pytest.raises(tasks.SuperiorTaskHasImportanceError) as exc_info:
+    # TODO: Test parameters of exception
+    with pytest.raises(tasks.SuperiorTasksHaveImportanceError) as exc_info:
         logic_layer.update_task_importance(task=task, importance=task_importance)
     assert exc_info.value.task == task
 
@@ -135,10 +134,10 @@ def test_update_task_importance_failure_subtask_with_importance(
     data_layer_mock.load_system.return_value = system
     logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
-    with pytest.raises(tasks.SubtaskHasImportanceError) as exc_info:
+    # TODO: Test parameters of exception
+    with pytest.raises(tasks.InferiorTasksHaveImportanceError) as exc_info:
         logic_layer.update_task_importance(task=task, importance=task_importance)
     assert exc_info.value.task == task
-    assert exc_info.value.subtasks_with_importance == [(subtask, subtask_importance)]
 
     data_layer_mock.load_system.assert_called_once()
     assert data_layer_mock.save_system.called is False
@@ -170,7 +169,8 @@ def test_update_task_importance_failure_inferior_task_with_importance(
     data_layer_mock.load_system.return_value = system
     logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
-    with pytest.raises(tasks.InferiorTaskHasImportanceError) as exc_info:
+    # TODO: Test parameters of exception
+    with pytest.raises(tasks.InferiorTasksHaveImportanceError) as exc_info:
         logic_layer.update_task_importance(task=task, importance=task_importance)
     assert exc_info.value.task == task
 

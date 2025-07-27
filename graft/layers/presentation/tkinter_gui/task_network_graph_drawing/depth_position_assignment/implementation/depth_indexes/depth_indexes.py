@@ -87,8 +87,10 @@ def _construct_depth_graph(
 
         for task1, task2 in itertools.pairwise(task_group_sorted_by_median_index):
             # No point adding an edge if it's already there, and we don't want to introduce any cycles
-            if (task1, task2) in depth_graph.edges() or depth_graph.has_path(
-                task2, task1
+            if (
+                (task1, task2) in depth_graph.edges()
+                or task1 == task2
+                or task1 in depth_graph.descendants([task2])
             ):
                 continue
 

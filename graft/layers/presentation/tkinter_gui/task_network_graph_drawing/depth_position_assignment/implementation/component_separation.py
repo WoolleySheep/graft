@@ -56,7 +56,7 @@ def get_depth_positions_with_component_adjustment(
                 max_=max(task_to_position_map[node] for node in component.tasks()),
             ),
         )
-        for component in graph.components()
+        for component in graph.component_subgraphs()
     )
 
     components_with_limits_sorted_by_min_position = sorted(

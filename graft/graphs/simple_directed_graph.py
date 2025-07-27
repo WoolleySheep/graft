@@ -6,22 +6,21 @@ from collections.abc import (
     Generator,
     Hashable,
     Iterable,
-    Mapping,
-    Set,
 )
 from typing import Any, Callable, Literal, override
 
-from graft.graphs import bidict as bd
 from graft.graphs import directed_graph
 
 
-class UnderlyingDictHasLoopsError(Exception):
-    """Underlying dictionary has loops."""
+class ConnectionsDictNodesHaveLoops(Exception):
+    """Connections used to construct the graph include loops."""
 
-    def __init__(self, dictionary: Mapping[Any, Set[Any]]) -> None:
-        """Initialize UnderlyingDictHasLoopsError."""
-        self.dictionary = dict(dictionary)
-        super().__init__(f"underlying dictionary [{dictionary}] has loop(s)")
+    def __init__(self, nodes: Iterable[Hashable]) -> None:
+        self.nodes = set(nodes)
+        formatted_nodes = (str(node) for node in self.nodes)
+        super().__init__(
+            f"Connections used to construct the graph have loops for nodes [{', '.join(formatted_nodes)}]"
+        )
 
 
 class LoopError(Exception):
@@ -42,83 +41,51 @@ class LoopError(Exception):
         super().__init__(f"loop [{node}]", *args, **kwargs)
 
 
-class MultipleStartingNodesSimpleDirectedSubgraphView[T: Hashable](
-    directed_graph.MultipleStartingNodesSubgraphView[T]
+class SimpleDirectedSubgraphBuilder[T: Hashable](
+    directed_graph.DirectedSubgraphBuilder[T]
 ):
-    """Simple digraph subgraph view with multiple starting nodes."""
+    """Builder for a subgraph of a simple directed graph."""
+
+    def __init__(self, graph: SimpleDirectedGraph[T]) -> None:
+        super().__init__(graph)
 
     @override
-    def subgraph(self) -> SimpleDirectedGraph[T]:
-        subgraph = SimpleDirectedGraph[T]()
-        self._populate_graph(graph=subgraph)
-        return subgraph
-
-
-class SingleStartingNodeSimpleDirectedSubgraphView[T: Hashable](
-    directed_graph.SingleStartingNodeSubgraphView[T]
-):
-    """Simple digraph subgraph view with a single starting node."""
-
-    @override
-    def subgraph(self) -> SimpleDirectedGraph[T]:
-        subgraph = SimpleDirectedGraph[T]()
-        self._populate_graph(graph=subgraph)
-        return subgraph
+    def build(self) -> SimpleDirectedGraph[T]:
+        return SimpleDirectedGraph(self._graph_builder.build().items())
 
 
 class SimpleDirectedGraph[T: Hashable](directed_graph.DirectedGraph[T]):
     """Digraph with no loops or parallel edges."""
 
-    def __init__(self, bidict: bd.BiDirectionalSetDict[T] | None = None) -> None:
+    def __init__(
+        self, connections: Iterable[tuple[T, Iterable[T]]] | None = None
+    ) -> None:
         """Initialize simple digraph."""
-        super().__init__(bidict=bidict)
+        super().__init__(connections=connections)
 
-        # TODO: Think of a a different exception, seeing as this is occurring in
-        # the initialiser
-        for node, successors in self._bidict.items():
-            if node in successors:
-                raise UnderlyingDictHasLoopsError(dictionary=self._bidict)
+        nodes_with_loops = set[T]()
+        for node in self.nodes():
+            if node in self.successors(node):
+                nodes_with_loops.add(node)
 
-    @override
-    def descendants(
-        self, node: T, /, stop_condition: Callable[[T], bool] | None = None
-    ) -> SingleStartingNodeSimpleDirectedSubgraphView[T]:
-        return SingleStartingNodeSimpleDirectedSubgraphView(
-            node, self._bidict, directed_graph.SubgraphType.DESCENDANTS, stop_condition
-        )
+        if nodes_with_loops:
+            raise ConnectionsDictNodesHaveLoops(nodes=nodes_with_loops)
 
     @override
-    def descendants_multi(
-        self,
-        nodes: Iterable[T],
-        /,
-        stop_condition: Callable[[T], bool] | None = None,
-    ) -> MultipleStartingNodesSimpleDirectedSubgraphView[T]:
-        return MultipleStartingNodesSimpleDirectedSubgraphView(
-            nodes, self._bidict, directed_graph.SubgraphType.DESCENDANTS, stop_condition
-        )
+    def descendants_subgraph(
+        self, nodes: Iterable[T], /, stop_condition: Callable[[T], bool] | None = None
+    ) -> SimpleDirectedGraph[T]:
+        builder = SimpleDirectedSubgraphBuilder[T](self)
+        builder.add_descendants_subgraph(nodes, stop_condition)
+        return builder.build()
 
     @override
-    def ancestors(
-        self, node: T, /, stop_condition: Callable[[T], bool] | None = None
-    ) -> SingleStartingNodeSimpleDirectedSubgraphView[T]:
-        return SingleStartingNodeSimpleDirectedSubgraphView(
-            node,
-            self._bidict,
-            directed_graph.SubgraphType.ANCESTORS,
-            stop_condition,
-        )
-
-    @override
-    def ancestors_multi(
-        self,
-        nodes: Iterable[T],
-        /,
-        stop_condition: Callable[[T], bool] | None = None,
-    ) -> MultipleStartingNodesSimpleDirectedSubgraphView[T]:
-        return MultipleStartingNodesSimpleDirectedSubgraphView(
-            nodes, self._bidict, directed_graph.SubgraphType.ANCESTORS, stop_condition
-        )
+    def ancestors_subgraph(
+        self, nodes: Iterable[T], /, stop_condition: Callable[[T], bool] | None = None
+    ) -> SimpleDirectedGraph[T]:
+        builder = SimpleDirectedSubgraphBuilder[T](self)
+        _ = builder.add_ancestors_subgraph(nodes, stop_condition)
+        return builder.build()
 
     @override
     def validate_edge_can_be_added(self, source: T, target: T) -> None:
@@ -147,34 +114,27 @@ class SimpleDirectedGraph[T: Hashable](directed_graph.DirectedGraph[T]):
             raise
 
     @override
-    def connecting_subgraph(self, source: T, target: T) -> SimpleDirectedGraph[T]:
-        return self.connecting_subgraph_multi([source], [target])
-
-    @override
-    def connecting_subgraph_multi(
+    def connecting_subgraph(
         self, sources: Iterable[T], targets: Iterable[T]
     ) -> SimpleDirectedGraph[T]:
-        subgraph = SimpleDirectedGraph[T]()
-        self._populate_graph_with_connecting(
-            graph=subgraph, sources=sources, targets=targets
-        )
-        return subgraph
+        builder = SimpleDirectedSubgraphBuilder[T](self)
+        _ = builder.add_connecting_subgraph(sources, targets)
+        return builder.build()
 
     @override
-    def component(self, node: T) -> SimpleDirectedGraph[T]:
-        subgraph = SimpleDirectedGraph[T]()
-        self._populate_graph_with_component(graph=subgraph, node=node)
-        return subgraph
+    def component_subgraph(self, node: T) -> SimpleDirectedGraph[T]:
+        builder = SimpleDirectedSubgraphBuilder[T](self)
+        _ = builder.add_component_subgraph(node)
+        return builder.build()
 
     @override
-    def components(self) -> Generator[SimpleDirectedGraph[T], None, None]:
-        # TODO: Find a more elegant way to DRY out this code rather than
-        # repeating it in every subclass
-        components = list[SimpleDirectedGraph[T]]()
+    def component_subgraphs(self) -> Generator[SimpleDirectedGraph[T], None, None]:
+        """Yield component subgraphs in the graph."""
+        checked_nodes = set[T]()
         for node in self.nodes():
-            if any(node in component.nodes() for component in components):
+            if node in checked_nodes:
                 continue
 
-            component = self.component(node)
+            component = self.component_subgraph(node)
+            checked_nodes.update(component.nodes())
             yield component
-            components.append(component)

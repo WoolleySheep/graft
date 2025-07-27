@@ -1,38 +1,37 @@
 """Graphs and associated Exceptions."""
 
-from graft.graphs.bidict import BiDirectionalSetDict, SetView
+from graft.graphs.bidict import BiDirectionalSetDict
 from graft.graphs.directed_acyclic_graph import (
+    ConnectionsDictHasCycleError,
     DirectedAcyclicGraph,
+    DirectedAcyclicSubgraphBuilder,
     IntroducesCycleError,
-    MultipleStartingNodesDirectedAcyclicSubgraphView,
-    SingleStartingNodeDirectedAcyclicSubgraphView,
 )
 from graft.graphs.directed_graph import (
     DirectedGraph,
+    DirectedSubgraphBuilder,
     EdgeAlreadyExistsError,
     EdgeDoesNotExistError,
     EdgesView,
     HasPredecessorsError,
     HasSuccessorsError,
-    MultipleStartingNodesSubgraphView,
     NoConnectingSubgraphError,
     NodeAlreadyExistsError,
     NodeDoesNotExistError,
     NodesView,
-    SingleStartingNodeSubgraphView,
-    SubgraphEdgesView,
-    SubgraphNodesView,
-    TraversalOrder,
+    TargetsAreNotNotAlsoSourceNodesError,
 )
+from graft.graphs.directed_graph_builder import DirectedGraphBuilder
 from graft.graphs.reduced_directed_acyclic_graph import (
+    IntroducesCycleToReducedGraphError,
     IntroducesRedundantEdgeError,
-    MultipleStartingNodesReducedDirectedAcyclicSubgraphView,
     ReducedDirectedAcyclicGraph,
-    SingleStartingNodeReducedDirectedAcyclicSubgraphView,
+    ReducedDirectedAcyclicSubgraphBuilder,
+    UnderlyingDictHasRedundantEdgesError,
 )
 from graft.graphs.simple_directed_graph import (
+    ConnectionsDictNodesHaveLoops,
     LoopError,
-    MultipleStartingNodesSimpleDirectedSubgraphView,
     SimpleDirectedGraph,
-    SingleStartingNodeSimpleDirectedSubgraphView,
+    SimpleDirectedSubgraphBuilder,
 )

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import collections
-import enum
 import itertools
 from collections.abc import (
     Callable,
@@ -17,60 +16,7 @@ from collections.abc import (
 from typing import Any, TypeGuard
 
 from graft.graphs import bidict as bd
-
-
-class TraversalOrder(enum.Enum):
-    DEPTH_FIRST = enum.auto()
-    BREADTH_FIRST = enum.auto()
-
-
-class SubgraphType(enum.Enum):
-    """Used with subgraph edges view."""
-
-    ANCESTORS = enum.auto()
-    DESCENDANTS = enum.auto()
-
-
-def _traverse[T: Hashable](
-    node: T,
-    node_neighbours_map: Mapping[T, Set[T]],
-    order: TraversalOrder,
-    stop_condition: Callable[[T], bool] | None = None,
-) -> Generator[T, None, None]:
-    """Traverse the graph from a given node, following the given traversal order.
-
-    Stop traversing beyond a specific node if the stop condition is met.
-
-    The starting node is not included in the yielded nodes, but it is checked
-    against the stop condition.
-
-    Extracted out into its own function due to the commonalities between
-    DFS/BFS and descendants/ancestors.
-    """
-    if node not in node_neighbours_map:
-        raise NodeDoesNotExistError(node)
-
-    if stop_condition is not None and stop_condition(node):
-        return
-
-    visited_nodes = set[T]([node])
-    nodes_to_check = collections.deque[T](node_neighbours_map[node])
-
-    match order:
-        case TraversalOrder.DEPTH_FIRST:
-            pop_next_node = nodes_to_check.pop  # Stack
-        case TraversalOrder.BREADTH_FIRST:
-            pop_next_node = nodes_to_check.popleft  # Queue
-
-    while nodes_to_check:
-        node2 = pop_next_node()
-        if node2 in visited_nodes:
-            continue
-        visited_nodes.add(node2)
-        yield node2
-        if stop_condition is not None and stop_condition(node2):
-            continue
-        nodes_to_check.extend(node_neighbours_map[node2])
+from graft.graphs.directed_graph_builder import DirectedGraphBuilder
 
 
 class NodeAlreadyExistsError(Exception):
@@ -190,6 +136,21 @@ class NoConnectingSubgraphError(Exception):
         )
 
 
+class TargetsAreNotNotAlsoSourceNodesError(Exception):
+    """Raised when some targets are not also sources."""
+
+    def __init__(
+        self,
+        targets: Iterable[Hashable],
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
+        self.targets = set(targets)
+        super().__init__(
+            f"targets [{self.targets}] are not also sources", *args, **kwargs
+        )
+
+
 class NodesView[T: Hashable](Set[T]):
     """View of a set of nodes."""
 
@@ -215,7 +176,10 @@ class NodesView[T: Hashable](Set[T]):
 
     def __eq__(self, other: object) -> bool:
         """Check if views are equal."""
-        return isinstance(other, NodesView) and set(self) == set(other)
+        if not isinstance(other, NodesView):
+            return NotImplemented
+
+        return set(self._nodes) == set(other)
 
     def __str__(self) -> str:
         """Return string representation of the nodes."""
@@ -225,21 +189,37 @@ class NodesView[T: Hashable](Set[T]):
         """Return string representation of the nodes."""
         return f"{self.__class__.__name__}{{{', '.join(repr(node) for node in self)}}}"
 
-    def __sub__(self, other: Set[Any]) -> NodesView[T]:
+    def __sub__(self, other: Set[Any]) -> set[T]:
         """Return difference of two views."""
-        return NodesView(self._nodes - other)
+        return set(self._nodes - other)
 
-    def __and__(self, other: Set[Any]) -> NodesView[T]:
+    def __and__(self, other: Set[Any]) -> set[T]:
         """Return intersection of two views."""
-        return NodesView(self._nodes & other)
+        return set(self._nodes & other)
 
-    def __or__(self, other: Set[T]) -> NodesView[T]:
+    def __or__[G: Hashable](self, other: Set[G]) -> set[T | G]:
         """Return union of two views."""
-        return NodesView(self._nodes | other)
+        return set(self._nodes | other)
 
-    def __xor__(self, other: Set[T]) -> NodesView[T]:
+    def __xor__[G: Hashable](self, other: Set[G]) -> set[T | G]:
         """Return symmetric difference of two views."""
-        return NodesView(self._nodes ^ other)
+        return set(self._nodes ^ other)
+
+    def __le__(self, other: Set[Any]) -> bool:
+        """Subset test (self <= other)."""
+        return self._nodes <= other
+
+    def __lt__(self, other: Set[Any]) -> bool:
+        """Proper subset test (self < other)."""
+        return self._nodes < other
+
+    def __ge__(self, other: Set[Any]) -> bool:
+        """Superset test (self >= other)."""
+        return self._nodes >= other
+
+    def __gt__(self, other: Set[Any]) -> bool:
+        """Proper superset test (self > other)."""
+        return self._nodes > other
 
 
 class EdgesView[T: Hashable](Set[tuple[T, T]]):
@@ -255,7 +235,10 @@ class EdgesView[T: Hashable](Set[tuple[T, T]]):
 
     def __eq__(self, other: object) -> bool:
         """Check if view is equal to other."""
-        return isinstance(other, EdgesView) and set(self) == set(other)
+        if not isinstance(other, EdgesView):
+            return NotImplemented
+
+        return len(self) == len(other) and all(edge in other for edge in self)
 
     def __len__(self) -> int:
         """Return number of edges in view."""
@@ -278,14 +261,14 @@ class EdgesView[T: Hashable](Set[tuple[T, T]]):
             )
 
         if not is_two_element_tuple_of_hashables(item):
-            raise TypeError
+            return NotImplemented
+
+        for node in item:
+            if node not in self._node_successors_map:
+                raise NodeDoesNotExistError(node=node)
 
         source, target = item
-
-        return (
-            source in self._node_successors_map
-            and target in self._node_successors_map[source]
-        )
+        return target in self._node_successors_map[source]
 
     def __iter__(self) -> Generator[tuple[T, T], None, None]:
         """Return generator over edges in view."""
@@ -307,557 +290,119 @@ class EdgesView[T: Hashable](Set[tuple[T, T]]):
         )
         return f"{self.__class__.__name__}({{{', '.join(formatted_node_successor_pairs)}}})"
 
-    def __sub__(self, other: Set[Any]) -> EdgesView[T]:
+    def __sub__(self, other: Set[Any]) -> set[tuple[T, T]]:
         """Return difference of two views."""
-        difference = dict[T, set[T]]()
-        for source, target in self:
-            if (source, target) in other:
-                continue
-            if source not in difference:
-                difference[source] = set[T]()
-            difference[source].add(target)
+        return {edge for edge in self if edge not in other}
 
-        return EdgesView(difference)
-
-    def __and__(self, other: Set[Any]) -> EdgesView[T]:
+    def __and__(self, other: Set[Any]) -> set[tuple[T, T]]:
         """Return intersection of two views."""
-        intersection = dict[T, set[T]]()
-        for source, target in self:
-            if (source, target) not in other:
-                continue
-            if source not in intersection:
-                intersection[source] = set[T]()
-            intersection[source].add(target)
+        return {edge for edge in self if edge in other}
 
-        return EdgesView(intersection)
-
-    def __or__(self, other: Set[tuple[T, T]]) -> EdgesView[T]:
+    def __or__[G: Hashable](self, other: Set[G]) -> set[tuple[T, T] | G]:
         """Return union of two views."""
-        union = {
-            source: set(targets)
-            for source, targets in self._node_successors_map.items()
+        return {*self, *other}
+
+    def __xor__[G: Hashable](self, other: Set[G]) -> set[tuple[T, T] | G]:
+        """Return symmetric difference of two views."""
+        return {
+            *(edge for edge in self if edge not in other),
+            *(edge for edge in other if edge not in self),
         }
-        for source, target in other:
-            if source not in union:
-                union[source] = set[T]()
-            union[source].add(target)
 
-        return EdgesView(union)
+    def __le__(self, other: Set[Any]) -> bool:
+        """Subset test (self <= other)."""
+        return all(edge in other for edge in self)
 
-    def __xor__(self, other: Set[tuple[T, T]]) -> EdgesView[T]:
-        """Return symmetric difference of two views."""
-        intersection = self & other
-        symmetric_difference = dict[T, set[T]]()
-        for source, target in itertools.chain(self, other):
-            if (source, target) in intersection:
-                continue
-            if source not in symmetric_difference:
-                symmetric_difference[source] = set[T]()
-            symmetric_difference[source].add(target)
+    def __lt__(self, other: Set[Any]) -> bool:
+        """Proper subset test (self < other)."""
+        return self <= other and len(self) < len(other)
 
-        return EdgesView(symmetric_difference)
+    def __ge__(self, other: Set[Any]) -> bool:
+        """Superset test (self >= other)."""
+        return all(edge in self for edge in other)
+
+    def __gt__(self, other: Set[Any]) -> bool:
+        """Proper superset test (self > other)."""
+        return self >= other and len(self) > len(other)
 
 
-class SubgraphNodesView[T: Hashable](Set[T]):
-    """View of the nodes in the subgraph."""
+class DirectedSubgraphBuilder[T: Hashable]:
+    """Builder for a subgraph of a directed graph."""
 
-    def __init__(
-        self,
-        starting_nodes: Iterable[T],
-        node_neighbours_map: Mapping[T, Set[T]],
-        stop_condition: Callable[[T], bool] | None = None,
-    ) -> None:
-        self._starting_nodes = set(starting_nodes)
+    def __init__(self, graph: DirectedGraph[T]) -> None:
+        self._graph = graph
+        self._graph_builder = DirectedGraphBuilder[T]()
 
-        if not self._starting_nodes:
-            # TODO: Add proper exception
-            msg = "starting nodes cannot be empty"
-            raise ValueError(msg)
+    def add_node(self, node: T, /) -> None:
+        if node not in self._graph.nodes():
+            raise NodeDoesNotExistError(node)
 
-        for node in self._starting_nodes:
-            if node not in node_neighbours_map:
-                raise NodeDoesNotExistError(node)
+        self._graph_builder.add_node(node)
 
-        self._node_neighbours_map = node_neighbours_map
-        self._stop_condition = stop_condition
+    def add_edge(self, source: T, target: T) -> None:
+        if (source, target) not in self._graph.edges():
+            raise EdgeDoesNotExistError(source=source, target=target)
 
-    def __bool__(self) -> bool:
-        """Check if any nodes in the subgraph."""
-        return any(
-            (self._stop_condition is None or not self._stop_condition(node))
-            and self._node_neighbours_map[node] > self._starting_nodes
-            for node in self._starting_nodes
+        self._graph_builder.add_edge(source=source, target=target)
+
+    def add_ancestors_subgraph(
+        self, nodes: Iterable[T], /, stop_condition: Callable[[T], bool] | None = None
+    ) -> set[T]:
+        """Add an ancestors subgraph."""
+        return self._graph_builder.add_ancestors_subgraph(
+            nodes,
+            get_predecessors=self._graph.predecessors,
+            stop_condition=stop_condition,
         )
 
-    def __eq__(self, other: object) -> bool:
-        """Check if subgraph nodes view is equal to other."""
-        return isinstance(other, SubgraphNodesView) and set(self) == set(other)
-
-    def __contains__(self, item: object) -> bool:
-        """Check if item is a node in the subgraph."""
-        if item in self._starting_nodes:
-            return False
-
-        visited_nodes = set[T]()
-        nodes_to_check = collections.deque(self._starting_nodes)
-
-        while nodes_to_check:
-            node = nodes_to_check.popleft()
-
-            if node in visited_nodes:
-                continue
-            visited_nodes.add(node)
-
-            if self._stop_condition is not None and self._stop_condition(node):
-                continue
-
-            if item in self._node_neighbours_map[node]:
-                return True
-
-            nodes_to_check.extend(self._node_neighbours_map[node])
-
-        return False
-
-    def __len__(self) -> int:
-        """Return number of nodes in the subgraph."""
-        return sum(1 for _ in self)
-
-    def __iter__(self) -> Generator[T, None, None]:
-        """Return generator over nodes in the subgraph."""
-        visited_nodes = set[T](self._starting_nodes)
-
-        nodes_to_check = collections.deque[T]()
-        for node in self._starting_nodes:
-            if self._stop_condition is not None and self._stop_condition(node):
-                continue
-            nodes_to_check.extend(self._node_neighbours_map[node])
-
-        while nodes_to_check:
-            node = nodes_to_check.popleft()
-
-            if node in visited_nodes:
-                continue
-            visited_nodes.add(node)
-
-            yield node
-
-            if self._stop_condition is not None and self._stop_condition(node):
-                continue
-
-            nodes_to_check.extend(self._node_neighbours_map[node])
-
-    def contains(self, nodes: Iterable[T]) -> Generator[bool, None, None]:
-        """Check if nodes are in the subgraph.
-
-        Theoretically faster than checking if the subgraph contains multiple nodes
-        one at a time, as can cache the parts of the subgraph already searched.
-        """
-
-        def contains_recursive(
-            node: T,
-            nodes_in_subgraph: set[T],
-            visited_nodes: set[T],
-            nodes_to_check: collections.deque[T],
-        ) -> bool:
-            if node not in self._node_neighbours_map:
-                return False
-
-            if node in self._starting_nodes:
-                return False
-
-            if node in nodes_in_subgraph:
-                return True
-
-            while nodes_to_check:
-                node2 = nodes_to_check.popleft()
-
-                if node2 in visited_nodes:
-                    continue
-                visited_nodes.add(node2)
-
-                if self._stop_condition is not None and self._stop_condition(node2):
-                    continue
-
-                nodes_to_check.extend(self._node_neighbours_map[node2])
-                nodes_in_subgraph.update(self._node_neighbours_map[node2])
-
-                if node in self._node_neighbours_map[node2]:
-                    return True
-
-            return False
-
-        nodes_in_subgraph = set[T]()
-        visited_nodes = set[T]()
-        nodes_to_check = collections.deque[T](self._starting_nodes)
-
-        for node in nodes:
-            yield contains_recursive(
-                node, nodes_in_subgraph, visited_nodes, nodes_to_check
-            )
-
-    def __sub__(self, other: Set[Any]) -> SubgraphNodesView[T]:
-        """Return difference of two views."""
-        raise NotImplementedError
-
-    def __and__(self, other: Set[Any]) -> SubgraphNodesView[T]:
-        """Return intersection of two views."""
-        raise NotImplementedError
-
-    def __or__(self, other: Set[T]) -> SubgraphNodesView[T]:
-        """Return union of two views."""
-        raise NotImplementedError
-
-    def __xor__(self, other: Set[T]) -> SubgraphNodesView[T]:
-        """Return symmetric difference of two views."""
-        raise NotImplementedError
-
-
-class SubgraphEdgesView[T: Hashable](Set[tuple[T, T]]):
-    """View of the edges in the subgraph."""
-
-    def __init__(
-        self,
-        starting_nodes: Iterable[T],
-        node_neighbours_map: Mapping[T, Set[T]],
-        subgraph_type: SubgraphType,
-        stop_condition: Callable[[T], bool] | None = None,
-    ) -> None:
-        self._starting_nodes = set(starting_nodes)
-
-        if not self._starting_nodes:
-            # TODO: Add proper exception
-            msg = "starting nodes cannot be empty"
-            raise ValueError(msg)
-
-        for node in self._starting_nodes:
-            if node not in node_neighbours_map:
-                raise NodeDoesNotExistError(node)
-
-        self._node_neighbours_map = node_neighbours_map
-        self._subgraph_type = subgraph_type
-        self._stop_condition = stop_condition
-
-    def __bool__(self) -> bool:
-        """Check if any edges in the subgraph."""
-        return any(
-            (self._stop_condition is None or not self._stop_condition(node))
-            and self._node_neighbours_map[node] > self._starting_nodes
-            for node in self._starting_nodes
+    def add_descendants_subgraph(
+        self, nodes: Iterable[T], /, stop_condition: Callable[[T], bool] | None = None
+    ) -> set[T]:
+        """Add a descendants subgraph."""
+        return self._graph_builder.add_descendants_subgraph(
+            nodes,
+            get_successors=self._graph.successors,
+            stop_condition=stop_condition,
         )
 
-    def __eq__(self, other: object) -> bool:
-        """Check if subgraph nodes view is equal to other."""
-        return isinstance(other, SubgraphNodesView) and set(self) == set(other)
+    def add_connecting_subgraph(
+        self, sources: Iterable[T], targets: Iterable[T]
+    ) -> set[T]:
+        sources1, sources2 = itertools.tee(sources)
+        targets1, targets2 = itertools.tee(targets)
 
-    def __contains__(self, item: object) -> bool:
-        """Check if item is an edge in the subgraph.
-
-        Note that this method will return false if either of the nodes
-        is not present in the graph. It could be argued this should throw a
-        TaskNotExist exception. Not sure yet.
-        """
-        # TODO: This is confusing, and I wrote it. Simplify if possible.
-
-        def is_two_element_tuple_of_hashables(item: object) -> TypeGuard[tuple[T, T]]:
-            """Check if item is a two element tuple of type Hashable.
-
-            Bit of a hack, as hashable counted as equivalent to type T (not
-            strictly true). Done to get around impossibility of runtime checking
-            of T.
-            """
-            return (
-                isinstance(item, tuple)
-                and len(item) == 2
-                and all(isinstance(element, Hashable) for element in item)
-            )
-
-        if not is_two_element_tuple_of_hashables(item):
-            raise TypeError
-
-        for node in item:
-            if node not in self._node_neighbours_map:
-                return False
-
-        match self._subgraph_type:
-            case SubgraphType.DESCENDANTS:
-                node, neighbour = item
-            case SubgraphType.ANCESTORS:
-                neighbour, node = item
-
-        visited_nodes = set[T]()
-        nodes_to_check = collections.deque(self._starting_nodes)
-
-        while nodes_to_check:
-            node2 = nodes_to_check.popleft()
-
-            if node2 in visited_nodes:
-                continue
-            visited_nodes.add(node2)
-
-            if node2 == node:
-                return (
-                    self._stop_condition is None or not self._stop_condition(node2)
-                ) and neighbour in self._node_neighbours_map[node]
-
-            nodes_to_check.extend(self._node_neighbours_map[node])
-
-        return False
-
-    def __iter__(self) -> Generator[tuple[T, T]]:
-        """Return generator over edges in the subgraph."""
-        visited_nodes = set[T]()
-        nodes_to_check = collections.deque[T](self._starting_nodes)
-
-        while nodes_to_check:
-            node = nodes_to_check.pop()
-
-            if node in visited_nodes:
-                continue
-            visited_nodes.add(node)
-
-            if self._stop_condition is not None and self._stop_condition(node):
-                continue
-
-            for neighbour in self._node_neighbours_map[node]:
-                match self._subgraph_type:
-                    case SubgraphType.DESCENDANTS:
-                        yield (node, neighbour)
-                    case SubgraphType.ANCESTORS:
-                        yield (neighbour, node)
-
-                nodes_to_check.append(neighbour)
-
-    def __len__(self) -> int:
-        """Return number of edges in the subgraph."""
-        return sum(1 for _ in self)
-
-    def contains(self, edges: Iterable[tuple[T, T]]) -> Generator[bool, None, None]:
-        """Check if edges are in the subgraph.
-
-        Theoretically faster than checking if the subgraph contains multiple edges
-        one at a time, as can cache the parts of the subgraph already searched.
-        """
-
-        def contains_recursive(
-            edge: tuple[T, T],
-            node_neighbours_in_subgraph: dict[T, set[T]],
-            visited_nodes: set[T],
-            nodes_to_check: collections.deque[T],
-        ) -> bool:
-            source, target = edge
-            if source not in self._node_neighbours_map:
-                return False
-
-            if source in node_neighbours_in_subgraph:
-                return target in node_neighbours_in_subgraph[source]
-
-            while nodes_to_check:
-                node = nodes_to_check.popleft()
-
-                if node in visited_nodes:
-                    continue
-                visited_nodes.add(node)
-
-                neighbours = (
-                    set(self._node_neighbours_map[node])
-                    if self._stop_condition is None or self._stop_condition(node)
-                    else set[T]()
-                )
-                node_neighbours_in_subgraph[node] = neighbours
-                nodes_to_check.extend(neighbours)
-
-                if node == source:
-                    return target in neighbours
-
-            return False
-
-        node_neighbours_in_subgraph = dict[T, set[T]]()
-        visited_nodes = set[T]()
-        nodes_to_check = collections.deque[T](self._starting_nodes)
-
-        for edge in edges:
-            yield contains_recursive(
-                edge, node_neighbours_in_subgraph, visited_nodes, nodes_to_check
-            )
-
-    def __sub__(self, other: Set[Any]) -> SubgraphEdgesView[T]:
-        """Return difference of two views."""
-        raise NotImplementedError
-
-    def __and__(self, other: Set[Any]) -> SubgraphEdgesView[T]:
-        """Return intersection of two views."""
-        raise NotImplementedError
-
-    def __or__(self, other: Set[tuple[T, T]]) -> SubgraphEdgesView[T]:
-        """Return union of two views."""
-        raise NotImplementedError
-
-    def __xor__(self, other: Set[tuple[T, T]]) -> SubgraphEdgesView[T]:
-        """Return symmetric difference of two views."""
-        raise NotImplementedError
-
-
-class MultipleStartingNodesSubgraphView[T: Hashable]:
-    """View of a subgraph with multiple starting nodes."""
-
-    def __init__(
-        self,
-        starting_nodes: Iterable[T],
-        node_successors_map: bd.BiDirectionalSetDict[T],
-        subgraph_type: SubgraphType,
-        stop_condition: Callable[[T], bool] | None = None,
-    ) -> None:
-        self._starting_nodes = set(starting_nodes)
-
-        if not self._starting_nodes:
-            # TODO: Add proper exception
-            msg = "starting nodes cannot be empty"
-            raise ValueError(msg)
-
-        for node in self._starting_nodes:
-            if node not in node_successors_map:
-                raise NodeDoesNotExistError(node)
-
-        match subgraph_type:
-            case SubgraphType.DESCENDANTS:
-                self._node_neighbours_map = node_successors_map
-            case SubgraphType.ANCESTORS:
-                self._node_neighbours_map = node_successors_map.inverse
-
-        self._subgraph_type = subgraph_type
-        self._stop_condition = stop_condition
-
-    def __bool__(self) -> bool:
-        """Check if subgraph is not empty."""
-        return bool(self.edges())
-
-    def __eq__(self, other: object) -> bool:
-        """Check if subgraph view is equal to other."""
-        return (
-            isinstance(other, MultipleStartingNodesSubgraphView)
-            and self.nodes() == other.nodes()
-            and self.edges() == other.edges()
+        return self._graph_builder.add_connecting_subgraph(
+            sources=sources1,
+            targets=targets1,
+            get_successors=self._graph.successors,
+            get_no_connecting_subgraph_exception=lambda: NoConnectingSubgraphError(
+                sources=sources2, targets=targets2
+            ),
         )
 
-    def nodes(self) -> SubgraphNodesView[T]:
-        """Return view of the nodes."""
-        return SubgraphNodesView(
-            self._starting_nodes, self._node_neighbours_map, self._stop_condition
+    def add_component_subgraph(self, node: T) -> set[T]:
+        """Add the component subgraph."""
+        return self._graph_builder.add_component_subgraph(
+            node,
+            get_successors=self._graph.successors,
+            get_predecessors=self._graph.predecessors,
         )
 
-    def edges(self) -> SubgraphEdgesView[T]:
-        """Return view of the edges."""
-        return SubgraphEdgesView(
-            self._starting_nodes,
-            self._node_neighbours_map,
-            self._subgraph_type,
-            self._stop_condition,
-        )
-
-    def _populate_graph(
-        self,
-        graph: DirectedGraph[T],
-    ) -> None:
-        """Populate a graph with the subgraph of the starting nodes.
-
-        Note that the starting nodes will be included.
-
-        Only meant to be called by subgraph to facilitate easy subclassing.
-
-        Be aware that if an exception is raised, the graph may be partially
-        populated.
-        """
-        for node in self._starting_nodes:
-            if node not in graph.nodes():
-                graph.add_node(node)
-
-        visited_nodes = set[T]()
-        nodes_to_check = collections.deque[T](self._starting_nodes)
-
-        while nodes_to_check:
-            node = nodes_to_check.pop()
-
-            if node in visited_nodes:
-                continue
-            visited_nodes.add(node)
-
-            if self._stop_condition and self._stop_condition(node):
-                continue
-
-            for neighbour in self._node_neighbours_map[node]:
-                if neighbour not in graph.nodes():
-                    graph.add_node(neighbour)
-
-                match self._subgraph_type:
-                    case SubgraphType.DESCENDANTS:
-                        source, target = node, neighbour
-                    case SubgraphType.ANCESTORS:
-                        source, target = neighbour, node
-
-                if (source, target) not in graph.edges():
-                    graph.add_edge(source, target)
-
-                nodes_to_check.append(neighbour)
-
-    def subgraph(self) -> DirectedGraph[T]:
-        """Return subgraph of the descendants of the node.
-
-        Note that the starting nodes will be included.
-        """
-        subgraph = DirectedGraph[T]()
-        self._populate_graph(graph=subgraph)
-        return subgraph
-
-
-class SingleStartingNodeSubgraphView[T: Hashable](MultipleStartingNodesSubgraphView[T]):
-    """View of a subgraph with a single starting node."""
-
-    def __init__(
-        self,
-        starting_node: T,
-        node_successors_map: bd.BiDirectionalSetDict[T],
-        subgraph_type: SubgraphType,
-        stop_condition: Callable[[T], bool] | None = None,
-    ) -> None:
-        if starting_node not in node_successors_map:
-            raise NodeDoesNotExistError(starting_node)
-
-        # Can reuse the methods in the multiple starting nodes version if we
-        # store the node in the starting nodes set
-        self._starting_nodes = set[T]([starting_node])
-
-        match subgraph_type:
-            case SubgraphType.DESCENDANTS:
-                self._node_neighbours_map = node_successors_map
-            case SubgraphType.ANCESTORS:
-                self._node_neighbours_map = node_successors_map.inverse
-
-        self._subgraph_type = subgraph_type
-        self._stop_condition = stop_condition
-
-    def traverse(
-        self, order: TraversalOrder = TraversalOrder.BREADTH_FIRST
-    ) -> Generator[T, None, None]:
-        """Return generator that traverses nodes in view in order.
-
-        Starts from the starting node, but does not include it.
-        """
-        assert len(self._starting_nodes) == 1
-
-        return _traverse(
-            node=next(iter(self._starting_nodes)),
-            node_neighbours_map=self._node_neighbours_map,
-            order=order,
-            stop_condition=self._stop_condition,
-        )
+    def build(self) -> DirectedGraph[T]:
+        return DirectedGraph(self._graph_builder.build().items())
 
 
 class DirectedGraph[T: Hashable]:
     """Digraph with no parallel edges."""
 
-    def __init__(self, bidict: bd.BiDirectionalSetDict[T] | None = None) -> None:
+    def __init__(
+        self, connections: Iterable[tuple[T, Iterable[T]]] | None = None
+    ) -> None:
         """Initialize digraph."""
-        self._bidict = bidict or bd.BiDirectionalSetDict[T]()
+        try:
+            self._bidict = bd.BiDirectionalSetDict[T](connections)
+        except bd.ValuesAreNotAlsoKeysError as e:
+            raise TargetsAreNotNotAlsoSourceNodesError(e.values) from e
 
     def __bool__(self) -> bool:
         """Check if digraph is not empty."""
@@ -865,11 +410,10 @@ class DirectedGraph[T: Hashable]:
 
     def __eq__(self, other: object) -> bool:
         """Check if digraph is equal to other."""
-        return (
-            isinstance(other, DirectedGraph)
-            and self.nodes() == other.nodes()
-            and self.edges() == other.edges()
-        )
+        if not isinstance(other, DirectedGraph):
+            return NotImplemented
+
+        return self.nodes() == other.nodes() and self.edges() == other.edges()
 
     def __str__(self) -> str:
         """Return string representation of digraph."""
@@ -878,8 +422,8 @@ class DirectedGraph[T: Hashable]:
     def __repr__(self) -> str:
         """Return string representation of digraph."""
         nodes_with_successors = (
-            f"{node!r}: {{{', '.join(repr(successor) for successor in successors)}}}"
-            for node, successors in self.node_successors_pairs()
+            f"{node!r}: {{{', '.join(repr(successor) for successor in self.successors(node))}}}"
+            for node in self.nodes()
         )
         return f"{self.__class__.__name__}({{{', '.join(nodes_with_successors)}}})"
 
@@ -946,150 +490,115 @@ class DirectedGraph[T: Hashable]:
 
     def successors(self, node: T, /) -> NodesView[T]:
         """Return successors of node."""
-        if node not in self.nodes():
-            raise NodeDoesNotExistError(node=node)
-
-        return NodesView(self._bidict[node])
+        try:
+            return NodesView(self._bidict[node])
+        except KeyError as e:
+            raise NodeDoesNotExistError(node) from e
 
     def predecessors(self, node: T, /) -> NodesView[T]:
         """Return predecessors of node."""
-        if node not in self.nodes():
-            raise NodeDoesNotExistError(node=node)
-
-        return NodesView(self._bidict.inverse[node])
+        try:
+            return NodesView(self._bidict.inverse[node])
+        except KeyError as e:
+            raise NodeDoesNotExistError(node) from e
 
     def descendants(
-        self,
-        node: T,
-        /,
-        stop_condition: Callable[[T], bool] | None = None,
-    ) -> SingleStartingNodeSubgraphView[T]:
-        """Descendants of node.
-
-        Stop searching beyond a specific node if the stop condition is met.
-        """
-        return SingleStartingNodeSubgraphView(
-            node, self._bidict, SubgraphType.DESCENDANTS, stop_condition
-        )
-
-    def descendants_multi(
         self, nodes: Iterable[T], /, stop_condition: Callable[[T], bool] | None = None
-    ) -> MultipleStartingNodesSubgraphView[T]:
-        """Descendants of several nodes.
+    ) -> Generator[T, None, None]:
+        """Yeild the descendants of several nodes."""
+        nodes1, nodes2 = itertools.tee(nodes)
 
-        Stop searching beyond a specific node if the stop condition is met.
-        """
-        return MultipleStartingNodesSubgraphView(
-            nodes, self._bidict, SubgraphType.DESCENDANTS, stop_condition
-        )
-
-    def ancestors(
-        self,
-        node: T,
-        /,
-        stop_condition: Callable[[T], bool] | None = None,
-    ) -> SingleStartingNodeSubgraphView[T]:
-        """Ancestors of node.
-
-        Stop searching beyond a specific node if the stop condition is met.
-        """
-        return SingleStartingNodeSubgraphView(
-            node, self._bidict, SubgraphType.ANCESTORS, stop_condition
-        )
-
-    def ancestors_multi(
-        self, nodes: Iterable[T], /, stop_condition: Callable[[T], bool] | None = None
-    ) -> MultipleStartingNodesSubgraphView[T]:
-        """Ancestors of several nodes.
-
-        Stop searching beyond a specific node if the stop condition is met.
-        """
-        return MultipleStartingNodesSubgraphView(
-            nodes, self._bidict, SubgraphType.ANCESTORS, stop_condition
-        )
-
-    def has_path(
-        self, source: T, target: T, stop_condition: Callable[[T], bool] | None = None
-    ) -> bool:
-        """Check if there's a connecting subgraph/path from source to target.
-
-        If the source and target are the same (and exist), will return True.
-        """
-        for node in [source, target]:
+        for node in nodes1:
             if node not in self.nodes():
                 raise NodeDoesNotExistError(node=node)
 
-        return (
-            source == target
-            or target in self.descendants(source, stop_condition=stop_condition).nodes()
-        )
-
-    def connecting_subgraph(self, source: T, target: T) -> DirectedGraph[T]:
-        """Return connecting subgraph from source to target."""
-        # TODO: Add stop condition parameter
-        return self.connecting_subgraph_multi([source], [target])
-
-    def component(self, node: T) -> DirectedGraph[T]:
-        """Return component containing node."""
-        subgraph = DirectedGraph[T]()
-        self._populate_graph_with_component(graph=subgraph, node=node)
-        return subgraph
-
-    def _populate_graph_with_component(self, graph: DirectedGraph[T], node: T) -> None:
-        """Populate a graph with the component containing the node.
-
-        Only meant to be called by component to facilitate easy subclassing.
-
-        Be aware that if an exception is raised, the graph may be partially
-        populated.
-        """
-        # TODO: Make this function more efficient - it feels rubbish
-        if node not in self.nodes():
-            raise NodeDoesNotExistError(node=node)
-
-        checked_nodes = set[T]()
-        nodes_to_check = collections.deque([node])
+        nodes_to_check = collections.deque(nodes2)
+        nodes_checked = set[T]()
 
         while nodes_to_check:
             node = nodes_to_check.popleft()
 
+            if node in nodes_checked:
+                continue
+
+            nodes_checked.add(node)
+            yield node
+
+            if stop_condition is not None and stop_condition(node):
+                continue
+
+            nodes_to_check.extend(self.successors(node))
+
+    def descendants_subgraph(
+        self, nodes: Iterable[T], /, stop_condition: Callable[[T], bool] | None = None
+    ) -> DirectedGraph[T]:
+        """Return the descendants subgraph of several nodes.
+
+        Stop searching beyond a specific node if the stop condition is met.
+        Includes the starting nodes.
+        """
+        builder = DirectedSubgraphBuilder[T](self)
+        _ = builder.add_descendants_subgraph(nodes, stop_condition)
+        return builder.build()
+
+    def ancestors(
+        self, nodes: Iterable[T], /, stop_condition: Callable[[T], bool] | None = None
+    ) -> Generator[T, None, None]:
+        """Yeild the ancestors of several nodes."""
+        nodes1, nodes2 = itertools.tee(nodes)
+
+        for node in nodes1:
+            if node not in self.nodes():
+                raise NodeDoesNotExistError(node=node)
+
+        nodes_to_check = collections.deque(nodes2)
+        nodes_checked = set[T]()
+
+        while nodes_to_check:
+            node = nodes_to_check.popleft()
+
+            if node in nodes_checked:
+                continue
+
+            nodes_checked.add(node)
+            yield node
+
+            if stop_condition is not None and stop_condition(node):
+                continue
+
+            nodes_to_check.extend(self.predecessors(node))
+
+    def ancestors_subgraph(
+        self, nodes: Iterable[T], /, stop_condition: Callable[[T], bool] | None = None
+    ) -> DirectedGraph[T]:
+        """Return the ancestors subgraph of several nodes.
+
+        Stop searching beyond a specific node if the stop condition is met.
+        Includes the starting nodes.
+        """
+        builder = DirectedSubgraphBuilder[T](self)
+        _ = builder.add_ancestors_subgraph(nodes, stop_condition)
+        return builder.build()
+
+    def component_subgraph(self, node: T) -> DirectedGraph[T]:
+        """Return component subgraph containing node."""
+        builder = DirectedSubgraphBuilder[T](self)
+        _ = builder.add_component_subgraph(node)
+        return builder.build()
+
+    def component_subgraphs(self) -> Generator[DirectedGraph[T], None, None]:
+        """Yield component subgraphs in the graph."""
+        # TODO: Repeating this same code in every subclass. Find a way to DRY it out
+        checked_nodes = set[T]()
+        for node in self.nodes():
             if node in checked_nodes:
                 continue
-            checked_nodes.add(node)
 
-            if node not in graph.nodes():
-                graph.add_node(node)
-
-            for predecessor in self.predecessors(node):
-                if predecessor not in graph.nodes():
-                    graph.add_node(predecessor)
-
-                if (predecessor, node) not in graph.edges():
-                    graph.add_edge(predecessor, node)
-
-                nodes_to_check.append(predecessor)
-
-            for successor in self.successors(node):
-                if successor not in graph.nodes():
-                    graph.add_node(successor)
-
-                if (node, successor) not in graph.edges():
-                    graph.add_edge(node, successor)
-
-                nodes_to_check.append(successor)
-
-    def components(self) -> Generator[DirectedGraph[T], None, None]:
-        """Yield components in the graph."""
-        components = list[DirectedGraph[T]]()
-        for node in self.nodes():
-            if any(node in component.nodes() for component in components):
-                continue
-
-            component = self.component(node)
+            component = self.component_subgraph(node)
+            checked_nodes.update(component.nodes())
             yield component
-            components.append(component)
 
-    def connecting_subgraph_multi(
+    def connecting_subgraph(
         self, sources: Iterable[T], targets: Iterable[T]
     ) -> DirectedGraph[T]:
         """Return connecting subgraph from sources to targets.
@@ -1097,41 +606,9 @@ class DirectedGraph[T: Hashable]:
         Every target must be reachable by one or more sources.
         """
         # TODO: Add stop condition parameter
-        subgraph = DirectedGraph[T]()
-        self._populate_graph_with_connecting(
-            graph=subgraph, sources=sources, targets=targets
-        )
-        return subgraph
-
-    def _populate_graph_with_connecting(
-        self,
-        graph: DirectedGraph[T],
-        sources: Iterable[T],
-        targets: Iterable[T],
-    ) -> None:
-        """Populate a graph with the subgraph connecting sources to targets.
-
-        Only meant to be called by connecting_subgraph and
-        connecting_subgraph_multi to facilitate easy subclassing. Be aware that
-        if an exception is raised, the graph may be partially populated.
-        """
-        # TODO: Add stop condition parameter
-        sources2 = list(sources)
-        targets2 = list(targets)
-
-        for node in itertools.chain(sources2, targets2):
-            if node not in self.nodes():
-                raise NodeDoesNotExistError(node=node)
-
-        sources_descendants_subgraph = self.descendants_multi(sources2).subgraph()
-        try:
-            connecting_subgraph = sources_descendants_subgraph.ancestors_multi(
-                targets2
-            ).subgraph()
-        except NodeDoesNotExistError as e:
-            raise NoConnectingSubgraphError(sources=sources2, targets=targets2) from e
-
-        graph.update(connecting_subgraph)
+        builder = DirectedSubgraphBuilder[T](self)
+        _ = builder.add_connecting_subgraph(sources, targets)
+        return builder.build()
 
     def is_root(self, node: T, /) -> bool:
         """Check if node is a root of the graph."""
@@ -1163,13 +640,6 @@ class DirectedGraph[T: Hashable]:
             if self.is_isolated(node):
                 yield node
 
-    def node_successors_pairs(
-        self,
-    ) -> Generator[tuple[T, NodesView[T]], None, None]:
-        """Yield all node-successors pairs."""
-        for node in self.nodes():
-            yield node, self.successors(node)
-
     def has_loop(self) -> bool:
         """Check if the graph has a loop."""
         return any(node in self.successors(node) for node in self.nodes())
@@ -1200,21 +670,3 @@ class DirectedGraph[T: Hashable]:
             and process_node(node, visited_nodes, current_subgraph_nodes)
             for node in self.nodes()
         )
-
-    def update(self, graph: DirectedGraph[T]) -> None:
-        """Update the graph with another graph.
-
-        Use this method with caution; the order in which nodes and edges are
-        added cannot be controlled, and they graph you're updating from may have
-        edges that are not allowed in the graph you're updating. As such, I
-        recommend only using it as a helper method when you know it won't fail.
-        """
-        for node in graph.nodes():
-            if node in self.nodes():
-                continue
-            self.add_node(node)
-
-        for source, target in graph.edges():
-            if (source, target) in self.edges():
-                continue
-            self.add_edge(source, target)

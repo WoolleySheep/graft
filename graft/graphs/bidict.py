@@ -1,6 +1,10 @@
 """Bi-directional dictionary with set-like values and associated exceptions."""
 
+from __future__ import annotations
+
+import itertools
 from collections.abc import (
+    Generator,
     Hashable,
     ItemsView,
     Iterable,
@@ -11,7 +15,9 @@ from collections.abc import (
     Set,
     ValuesView,
 )
-from typing import Any
+from typing import Any, TypeGuard
+
+from graft.utils import unique
 
 
 def invert_bidirectional_mapping[T: Hashable](
@@ -44,6 +50,19 @@ class ValueDoesNotExistError[T: Hashable](Exception):
         super().__init__(f"value [{value}] does not exist", *args, **kwargs)
 
 
+class ValuesAreNotAlsoKeysError(Exception):
+    """Raised when some values are not also keys."""
+
+    def __init__(
+        self,
+        values: Iterable[Hashable],
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
+        self.values = set(values)
+        super().__init__(f"values [{self.values}] are not also keys", *args, **kwargs)
+
+
 class SetView[T: Hashable](Set[T]):
     """View of a set."""
 
@@ -54,6 +73,13 @@ class SetView[T: Hashable](Set[T]):
     def __bool__(self) -> bool:
         """Check if SetView has any values."""
         return bool(self._set)
+
+    def __eq__(self, other: object) -> bool:
+        """Check if SetViews are equal."""
+        if not isinstance(other, SetView):
+            return NotImplemented
+
+        return set(self._set) == set(other)
 
     def __contains__(self, item: object) -> bool:
         """Check if item is in the set."""
@@ -67,6 +93,38 @@ class SetView[T: Hashable](Set[T]):
         """Return number of values in the set."""
         return len(self._set)
 
+    def __and__(self, other: Set[Any]) -> set[T]:
+        """Intersection operation (self & other)."""
+        return set(self._set & other)
+
+    def __or__[G: Hashable](self, other: Set[G]) -> set[T | G]:
+        """Union operation (self | other)."""
+        return set(self._set | other)
+
+    def __sub__(self, other: Set[Any]) -> set[T]:
+        """Difference operation (self - other)."""
+        return set(self._set - other)
+
+    def __xor__[G: Hashable](self, other: Set[G]) -> set[T | G]:
+        """Symmetric difference operation (self ^ other)."""
+        return set(self._set ^ other)
+
+    def __le__(self, other: Set[Any]) -> bool:
+        """Subset test (self <= other)."""
+        return self._set <= other
+
+    def __lt__(self, other: Set[Any]) -> bool:
+        """Proper subset test (self < other)."""
+        return self._set < other
+
+    def __ge__(self, other: Set[Any]) -> bool:
+        """Superset test (self >= other)."""
+        return self._set >= other
+
+    def __gt__(self, other: Set[Any]) -> bool:
+        """Proper superset test (self > other)."""
+        return self._set > other
+
     def __str__(self) -> str:
         """Return string representation of the set."""
         return f"{{{', '.join(str(value) for value in self._set)}}}"
@@ -76,12 +134,59 @@ class SetView[T: Hashable](Set[T]):
         return f"{self.__class__.__name__}({{{', '.join(repr(value) for value in self._set)}}})"
 
 
+class SetViewItemsView[T: Hashable, S: Hashable](ItemsView[T, SetView[S]]):
+    """ItemsView for SetViewMapping."""
+
+    def __init__(self, mapping: SetViewMapping[T, S]) -> None:
+        self._mapping = mapping
+
+    def __contains__(self, item: object) -> bool:
+        def is_two_element_tuple(item: object) -> TypeGuard[tuple[Any, Any]]:
+            """Check if item is a two element tuple.
+
+            Bit of a hack, as hashable counted as equivalent to type T (not
+            strictly true). Done to get around impossibility of runtime checking
+            of T.
+            """
+            return isinstance(item, tuple) and len(item) == 2
+
+        if not is_two_element_tuple(item):
+            return False
+
+        key, value = item
+        return key in self._mapping and self._mapping[key] == value
+
+    def __iter__(self) -> Generator[tuple[T, SetView[S]], None, None]:
+        for key in self._mapping:
+            yield (key, self._mapping[key])
+
+    def __len__(self) -> int:
+        return len(self._mapping)
+
+
+class SetViewValuesView[S: Hashable](ValuesView[SetView[S]]):
+    """ValuesView for SetViewMapping."""
+
+    def __init__(self, mapping: SetViewMapping[Any, S]) -> None:
+        self._mapping = mapping
+
+    def __contains__(self, value: object) -> bool:
+        return any(self._mapping[key] == value for key in self._mapping)
+
+    def __iter__(self) -> Generator[SetView[S], None, None]:
+        for key in self._mapping:
+            yield self._mapping[key]
+
+    def __len__(self) -> int:
+        return len(self._mapping)
+
+
 class SetViewMapping[T: Hashable, S: Hashable](Mapping[T, SetView[S]]):
     """Mapping with set-like view values."""
 
     def __init__(self, mapping: Mapping[T, Set[S]], /) -> None:
         """Initialise SetViewMapping."""
-        self._mapping: Mapping[T, Set[S]] = mapping
+        self._mapping = mapping
 
     def __iter__(self) -> Iterator[T]:
         """Return iterator over keys in the mapping."""
@@ -93,7 +198,19 @@ class SetViewMapping[T: Hashable, S: Hashable](Mapping[T, SetView[S]]):
 
     def __getitem__(self, key: T) -> SetView[S]:
         """Return SetView of values associated with key."""
-        return SetView[S](self._mapping[key])
+        return SetView(self._mapping[key])
+
+    def keys(self) -> KeysView[T]:
+        """Return KeysView of the mapping."""
+        return self._mapping.keys()
+
+    def values(self) -> SetViewValuesView[S]:
+        """Return ValuesView of SetViews."""
+        return SetViewValuesView(self)
+
+    def items(self) -> SetViewItemsView[T, S]:
+        """Return ItemsView of key-SetView pairs."""
+        return SetViewItemsView(self)
 
     def __str__(self) -> str:
         """Return string representation of the mapping."""
@@ -115,19 +232,32 @@ class BiDirectionalSetDict[T: Hashable](MutableMapping[T, SetView[T]]):
     Each key can have multiple unique values associated with it, and vice-versa.
     """
 
-    def __init__(self, forward: Iterable[tuple[T, Iterable[T]]] | None = None) -> None:
+    def __init__(
+        self, connections: Iterable[tuple[T, Iterable[T]]] | None = None
+    ) -> None:
         """Initialize bidict."""
         self._forward = (
-            {key: set(values) for (key, values) in forward}
-            if forward is not None
+            {key: set(values) for (key, values) in connections}
+            if connections is not None
             else dict[T, set[T]]()
         )
+
+        if any(
+            value not in self._forward
+            for value in itertools.chain.from_iterable(self._forward.values())
+        ):
+            values_that_are_not_also_keys = unique(
+                value not in self._forward
+                for value in itertools.chain.from_iterable(self._forward.values())
+            )
+            raise ValuesAreNotAlsoKeysError(values=values_that_are_not_also_keys)
+
         self._backward = invert_bidirectional_mapping(self._forward)
 
     @property
     def inverse(self) -> SetViewMapping[T, T]:
         """Return inverse view (value-to-keys mapping)."""
-        return SetViewMapping[T, T](self._backward)
+        return SetViewMapping(self._backward)
 
     def __bool__(self) -> bool:
         """Check if bidict has any keys."""
@@ -143,9 +273,10 @@ class BiDirectionalSetDict[T: Hashable](MutableMapping[T, SetView[T]]):
 
     def __eq__(self, other: object) -> bool:
         """Check if bidict is equal to other."""
-        return isinstance(other, BiDirectionalSetDict) and dict(self.items()) == dict(
-            other.items()
-        )
+        if not isinstance(other, BiDirectionalSetDict):
+            return NotImplemented
+
+        return dict(self.items()) == dict(other.items())
 
     def __getitem__(self, key: T) -> SetView[T]:
         """Return SetView over values of key."""
@@ -194,11 +325,11 @@ class BiDirectionalSetDict[T: Hashable](MutableMapping[T, SetView[T]]):
 
     def values(self) -> ValuesView[SetView[T]]:
         """Return ValuesView of bidict."""
-        return SetViewMapping[T, T](self._forward).values()
+        return SetViewMapping(self._forward).values()
 
     def items(self) -> ItemsView[T, SetView[T]]:
         """Return ItemsView of bidict."""
-        return SetViewMapping[T, T](self._forward).items()
+        return SetViewMapping(self._forward).items()
 
     def add(self, key: T, value: T | None = None) -> None:
         """Add value to values associated with key.

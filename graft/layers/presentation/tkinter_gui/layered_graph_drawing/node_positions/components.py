@@ -56,7 +56,7 @@ def get_node_positions_inter_component_adjustment[T: Hashable](
                 max_=max(node_positions[node] for node in component.nodes()),
             ),
         )
-        for component in graph.components()
+        for component in graph.component_subgraphs()
     )
 
     components_with_limits_sorted_by_min_position = sorted(

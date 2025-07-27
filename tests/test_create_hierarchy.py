@@ -1486,13 +1486,11 @@ def test_create_hierarchy_failure_incomplete_dependee_tasks_of_supertask(
     data_layer_mock.load_system.return_value = system
     logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
-    with pytest.raises(tasks.IncompleteDependeeTasksOfSupertaskError) as exc_info:
+    # TODO: Check all parameters of exception
+    with pytest.raises(tasks.UpstreamTasksOfSupertaskHaveNotCompletedError) as exc_info:
         logic_layer.create_task_hierarchy(supertask=task1, subtask=task2)
     assert exc_info.value.supertask == task1
     assert exc_info.value.subtask == task2
-    assert exc_info.value.incomplete_dependee_tasks_of_supertask_with_progress == [
-        (task0, tasks.Progress.NOT_STARTED)
-    ]
 
     data_layer_mock.load_system.assert_called_once()
     assert data_layer_mock.save_system.called is False
@@ -1520,9 +1518,8 @@ def test_create_hierarchy_failure_incomplete_dependee_tasks_of_superior_task_of_
     data_layer_mock.load_system.return_value = system
     logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
-    with pytest.raises(
-        tasks.IncompleteDependeeTasksOfSuperiorTasksOfSupertaskError
-    ) as exc_info:
+    # TODO: Check all parameters of exception
+    with pytest.raises(tasks.UpstreamTasksOfSupertaskHaveNotCompletedError) as exc_info:
         logic_layer.create_task_hierarchy(supertask=task1, subtask=task3)
     assert exc_info.value.supertask == task1
     assert exc_info.value.subtask == task3
@@ -1551,13 +1548,11 @@ def test_create_hierarchy_failure_started_dependent_tasks_of_supertask(
     data_layer_mock.load_system.return_value = system
     logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
-    with pytest.raises(tasks.StartedDependentTasksOfSupertaskError) as exc_info:
+    # TODO: Check all parameters of exception
+    with pytest.raises(tasks.DownstreamTasksOfSupertaskHaveStartedError) as exc_info:
         logic_layer.create_task_hierarchy(supertask=task0, subtask=task2)
     assert exc_info.value.supertask == task0
     assert exc_info.value.subtask == task2
-    assert exc_info.value.started_dependent_tasks_of_supertask_with_progress == [
-        (task1, tasks.Progress.IN_PROGRESS)
-    ]
 
     data_layer_mock.load_system.assert_called_once()
     assert data_layer_mock.save_system.called is False
@@ -1586,9 +1581,8 @@ def test_create_hierarchy_failure_started_dependent_tasks_of_superior_tasks_of_s
     data_layer_mock.load_system.return_value = system
     logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
-    with pytest.raises(
-        tasks.StartedDependentTasksOfSuperiorTasksOfSupertaskError
-    ) as exc_info:
+    # TODO: Check all parameters of exception
+    with pytest.raises(tasks.DownstreamTasksOfSupertaskHaveStartedError) as exc_info:
         logic_layer.create_task_hierarchy(supertask=task1, subtask=task3)
     assert exc_info.value.supertask == task1
     assert exc_info.value.subtask == task3

@@ -9,11 +9,17 @@ from typing import TYPE_CHECKING, Any, Protocol
 from graft.domain.tasks.attributes_register import (
     AttributesRegister,
     AttributesRegisterView,
+    AttributesSubregisterBuilder,
 )
 from graft.domain.tasks.importance import Importance
-from graft.domain.tasks.network_graph import NetworkGraph, NetworkGraphView
+from graft.domain.tasks.network_graph import (
+    NetworkGraph,
+    NetworkGraphView,
+    NetworkSubgraphBuilder,
+)
 from graft.domain.tasks.progress import Progress
 from graft.domain.tasks.uid import UID, TasksView
+from graft.utils import unique
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Iterable, MutableMapping
@@ -27,10 +33,16 @@ class MultipleImportancesInHierarchyError(Exception):
 
     def __init__(
         self,
+        supertask: UID,
+        subtask: UID,
+        subsystem: System,
         *args: tuple[Any, ...],
         **kwargs: dict[str, Any],
     ) -> None:
         """Initialise MultipleImportanceInHierarchyError."""
+        self.supertask = supertask
+        self.subtask = subtask
+        self.subsystem = subsystem
         super().__init__(
             "Multiple importances in hierarchy.",
             *args,
@@ -133,10 +145,10 @@ class IncompleteDependeeTasksOfSuperiorTasksError(Exception):
         )
 
 
-class IncompleteDependeeTasksOfSuperiorTasksOfSupertaskError(Exception):
-    """Raised when a supertask has incomplete dependee tasks of superior tasks.
+class UpstreamTasksOfSupertaskHaveNotCompletedError(Exception):
+    """Raised when tasks upstream of the supertask have not already completed.
 
-    Started subtask cannot be connected, as dependee tasks must be completed
+    Started subtask cannot be connected, as upstream tasks must be completed
     before the task can be started.
     """
 
@@ -145,6 +157,8 @@ class IncompleteDependeeTasksOfSuperiorTasksOfSupertaskError(Exception):
         supertask: UID,
         subtask: UID,
         subtask_progress: Progress,
+        incomplete_upstream_tasks: Iterable[tuple[UID, Progress]],
+        subsystem: System,
         *args: tuple[Any, ...],
         **kwargs: dict[str, Any],
     ) -> None:
@@ -152,6 +166,8 @@ class IncompleteDependeeTasksOfSuperiorTasksOfSupertaskError(Exception):
         self.supertask = supertask
         self.subtask = subtask
         self.subtask_progress = subtask_progress
+        self.upstream_task_incomplete_map = dict(incomplete_upstream_tasks)
+        self.subsystem = subsystem
         super().__init__(
             f"Supertask [{supertask}] has incomplete dependee tasks of superior tasks.",
             *args,
@@ -159,10 +175,10 @@ class IncompleteDependeeTasksOfSuperiorTasksOfSupertaskError(Exception):
         )
 
 
-class StartedDependentTasksOfSuperiorTasksOfSupertaskError(Exception):
-    """Raised when a supertask has started dependent tasks of superior tasks.
+class DownstreamTasksOfSupertaskHaveStartedError(Exception):
+    """Raised when tasks downstream of the supertask have already started.
 
-    Incomplete subtask cannot be connected, as dependent tasks depend on it being completed.
+    Incomplete subtask cannot be connected, as downstream tasks depend on it being completed.
     """
 
     def __init__(
@@ -170,6 +186,8 @@ class StartedDependentTasksOfSuperiorTasksOfSupertaskError(Exception):
         supertask: UID,
         subtask: UID,
         subtask_progress: Progress,
+        started_downstream_tasks: Iterable[tuple[UID, Progress]],
+        subsystem: System,
         *args: tuple[Any, ...],
         **kwargs: dict[str, Any],
     ) -> None:
@@ -177,38 +195,12 @@ class StartedDependentTasksOfSuperiorTasksOfSupertaskError(Exception):
         self.supertask = supertask
         self.subtask = subtask
         self.subtask_progress = subtask_progress
+        self.downstream_task_started_map = dict(started_downstream_tasks)
+        self.subsystem = subsystem
         super().__init__(
             f"Supertask [{supertask}] has started dependent tasks of superior tasks.",
             *args,
             **kwargs,
-        )
-
-
-class IncompleteDependeeTasksOfSupertaskError(Exception):
-    """Raised when a supertask has incomplete dependee tasks.
-
-    Started subtask cannot be connected, as dependee tasks must be completed
-    before the subtask can be started.
-    """
-
-    def __init__(
-        self,
-        supertask: UID,
-        subtask: UID,
-        incomplete_dependee_tasks_of_supertask_with_progress: Iterable[
-            tuple[UID, Progress]
-        ],
-        *args: tuple[Any, ...],
-        **kwargs: dict[str, Any],
-    ) -> None:
-        """Initialise IncompleteDependeeTasksOfSupertaskError."""
-        self.supertask = supertask
-        self.subtask = subtask
-        self.incomplete_dependee_tasks_of_supertask_with_progress = list(
-            incomplete_dependee_tasks_of_supertask_with_progress
-        )
-        super().__init__(
-            f"Supertask [{supertask}] has incomplete dependee tasks.", *args, **kwargs
         )
 
 
@@ -297,67 +289,37 @@ class DependeeIncompleteDependentStartedError(Exception):
         )
 
 
-class SupertaskHasImportanceError(Exception):
-    """Raised when a supertask has an importance."""
-
-    def __init__(
-        self,
-        task: UID,
-        supertasks_with_importance: Iterable[tuple[UID, Importance]],
-        *args: tuple[Any, ...],
-        **kwargs: dict[str, Any],
-    ) -> None:
-        """Initialise SupertaskHasImportanceError."""
-        self.task = task
-        self.supertasks_with_importance = list(supertasks_with_importance)
-        super().__init__(
-            f"Task [{task}] has supertasks with importance", *args, **kwargs
-        )
-
-
-class SuperiorTaskHasImportanceError(Exception):
+class SuperiorTasksHaveImportanceError(Exception):
     """Raised when a superior task has an importance."""
 
     def __init__(
         self,
         task: UID,
+        subsystem: System,
         *args: tuple[Any, ...],
         **kwargs: dict[str, Any],
     ) -> None:
         """Initialise SuperiorTaskHasImportanceError."""
         self.task = task
+        self.subsystem = subsystem
         super().__init__(
             f"Task [{task}] has superior tasks with importance", *args, **kwargs
         )
 
 
-class SubtaskHasImportanceError(Exception):
-    """Raised when a subtask has an importance."""
-
-    def __init__(
-        self,
-        task: UID,
-        subtasks_with_importance: Iterable[tuple[UID, Importance]],
-        *args: tuple[Any, ...],
-        **kwargs: dict[str, Any],
-    ) -> None:
-        """Initialise SubtaskHasImportanceError."""
-        self.task = task
-        self.subtasks_with_importance = list(subtasks_with_importance)
-        super().__init__(f"Task [{task}] has subtasks with importance", *args, **kwargs)
-
-
-class InferiorTaskHasImportanceError(Exception):
+class InferiorTasksHaveImportanceError(Exception):
     """Raised when a inferior task has an importance."""
 
     def __init__(
         self,
         task: UID,
+        subsystem: System,
         *args: tuple[Any, ...],
         **kwargs: dict[str, Any],
     ) -> None:
         """Initialise InferiorTaskHasImportanceError."""
         self.task = task
+        self.subsystem = subsystem
         super().__init__(
             f"Task [{task}] has inferior tasks with importance", *args, **kwargs
         )
@@ -428,6 +390,125 @@ class ISystemView(Protocol):
         ...
 
 
+class SubsystemBuilder:
+    """Builder for a subsystem of a system."""
+
+    def __init__(self, system: ISystemView) -> None:
+        self._system = system
+        self._network_graph_builder = NetworkSubgraphBuilder(
+            self._system.network_graph()
+        )
+        self._attributes_register_builder = AttributesSubregisterBuilder(
+            self._system.attributes_register()
+        )
+
+    def add_task(self, task: UID, /) -> None:
+        self._network_graph_builder.add_task(task)
+        self._attributes_register_builder.add_task(task)
+
+    def add_hierarchy(self, supertask: UID, subtask: UID) -> None:
+        self._network_graph_builder.add_hierarchy(supertask, subtask)
+        self._attributes_register_builder.add_task(supertask)
+        self._attributes_register_builder.add_task(subtask)
+
+    def add_dependency(self, dependee_task: UID, dependent_task: UID) -> None:
+        self._network_graph_builder.add_dependency(dependee_task, dependent_task)
+        self._attributes_register_builder.add_task(dependee_task)
+        self._attributes_register_builder.add_task(dependent_task)
+
+    def add_superior_subgraph(self, tasks: Iterable[UID], /) -> set[UID]:
+        added_tasks = self._network_graph_builder.add_superior_subgraph(tasks)
+        for task in added_tasks:
+            self._attributes_register_builder.add_task(task)
+        return added_tasks
+
+    def add_inferior_subgraph(self, tasks: Iterable[UID], /) -> set[UID]:
+        added_tasks = self._network_graph_builder.add_inferior_subgraph(tasks)
+        for task in added_tasks:
+            self._attributes_register_builder.add_task(task)
+        return added_tasks
+
+    def add_hierarchy_connecting_subgraph(
+        self, source_tasks: Iterable[UID], target_tasks: Iterable[UID]
+    ) -> set[UID]:
+        added_tasks = self._network_graph_builder.add_hierarchy_connecting_subgraph(
+            source_tasks, target_tasks
+        )
+        for task in added_tasks:
+            self._attributes_register_builder.add_task(task)
+        return added_tasks
+
+    def add_hierarchy_component_subgraph(self, task: UID) -> set[UID]:
+        added_tasks = self._network_graph_builder.add_hierarchy_component_subgraph(task)
+        for task_ in added_tasks:
+            self._attributes_register_builder.add_task(task_)
+        return added_tasks
+
+    def add_proceeding_subgraph(self, tasks: Iterable[UID], /) -> set[UID]:
+        added_tasks = self._network_graph_builder.add_proceeding_subgraph(tasks)
+        for task in added_tasks:
+            self._attributes_register_builder.add_task(task)
+        return added_tasks
+
+    def add_following_subgraph(self, tasks: Iterable[UID], /) -> set[UID]:
+        added_tasks = self._network_graph_builder.add_following_subgraph(tasks)
+        for task in added_tasks:
+            self._attributes_register_builder.add_task(task)
+        return added_tasks
+
+    def add_dependency_connecting_subgraph(
+        self, source_tasks: Iterable[UID], target_tasks: Iterable[UID]
+    ) -> set[UID]:
+        added_tasks = self._network_graph_builder.add_dependency_connecting_subgraph(
+            source_tasks, target_tasks
+        )
+        for task in added_tasks:
+            self._attributes_register_builder.add_task(task)
+        return added_tasks
+
+    def add_dependency_component_subgraph(self, task: UID) -> set[UID]:
+        added_tasks = self._network_graph_builder.add_dependency_component_subgraph(
+            task
+        )
+        for task in added_tasks:
+            self._attributes_register_builder.add_task(task)
+        return added_tasks
+
+    def add_upstream_subgraph(self, tasks: Iterable[UID], /) -> set[UID]:
+        added_tasks = self._network_graph_builder.add_upstream_subgraph(tasks)
+        for task in added_tasks:
+            self._attributes_register_builder.add_task(task)
+        return added_tasks
+
+    def add_downstream_subgraph(self, tasks: Iterable[UID], /) -> set[UID]:
+        added_tasks = self._network_graph_builder.add_downstream_subgraph(tasks)
+        for task in added_tasks:
+            self._attributes_register_builder.add_task(task)
+        return added_tasks
+
+    def add_connecting_subgraph(
+        self, source_tasks: Iterable[UID], target_tasks: Iterable[UID]
+    ) -> set[UID]:
+        added_tasks = self._network_graph_builder.add_connecting_subgraph(
+            source_tasks, target_tasks
+        )
+        for task in added_tasks:
+            self._attributes_register_builder.add_task(task)
+        return added_tasks
+
+    def add_component_subgraph(self, task: UID, /) -> set[UID]:
+        added_tasks = self._network_graph_builder.add_component_subgraph(task)
+        for task_ in added_tasks:
+            self._attributes_register_builder.add_task(task_)
+        return added_tasks
+
+    def build(self) -> System:
+        return System(
+            self._attributes_register_builder.build(),
+            self._network_graph_builder.build(),
+        )
+
+
 class System:
     """System of task information."""
 
@@ -493,38 +574,6 @@ class System:
         """Set the description of the specified task."""
         self._attributes_register.set_description(task, description)
 
-    def _get_dependent_tasks_of_superior_tasks(
-        self, task: UID, /
-    ) -> Generator[UID, None, None]:
-        """Get all the dependent tasks of all the superior tasks of the specified task."""
-        visited_dependent_tasks = set[UID]()
-        for superior_task in (
-            self._network_graph.hierarchy_graph().superior_tasks(task).tasks()
-        ):
-            for (
-                dependent_task
-            ) in self._network_graph.dependency_graph().dependent_tasks(superior_task):
-                if dependent_task in visited_dependent_tasks:
-                    continue
-                visited_dependent_tasks.add(dependent_task)
-                yield dependent_task
-
-    def _get_dependee_tasks_of_superior_tasks(
-        self, task: UID, /
-    ) -> Generator[UID, None, None]:
-        """Get all the dependee tasks of all the superior tasks of the specified task."""
-        visited_dependee_tasks = set[UID]()
-        for superior_task in (
-            self._network_graph.hierarchy_graph().superior_tasks(task).tasks()
-        ):
-            for dependee_task in self._network_graph.dependency_graph().dependee_tasks(
-                superior_task
-            ):
-                if dependee_task in visited_dependee_tasks:
-                    continue
-                visited_dependee_tasks.add(dependee_task)
-                yield dependee_task
-
     def set_progress(self, task: UID, progress: Progress) -> None:
         """Set the progress of the specified task."""
         current_progress = self._get_progress_of_concrete_task(task)
@@ -556,7 +605,16 @@ class System:
                     if any(
                         superior_dependent_progress is not Progress.NOT_STARTED
                         for superior_dependent_progress in self.get_progresses(
-                            self._get_dependent_tasks_of_superior_tasks(task)
+                            unique(
+                                itertools.chain.from_iterable(
+                                    map(
+                                        self._network_graph.dependency_graph().dependent_tasks,
+                                        self._network_graph.hierarchy_graph().superior_tasks(
+                                            [task]
+                                        ),
+                                    )
+                                )
+                            )
                         )
                     ):
                         # TODO: Add subgraph to error
@@ -587,7 +645,16 @@ class System:
                     if any(
                         superior_dependee_progress is not Progress.COMPLETED
                         for superior_dependee_progress in self.get_progresses(
-                            self._get_dependee_tasks_of_superior_tasks(task)
+                            unique(
+                                itertools.chain.from_iterable(
+                                    map(
+                                        self._network_graph.dependency_graph().dependee_tasks,
+                                        self._network_graph.hierarchy_graph().superior_tasks(
+                                            [task]
+                                        ),
+                                    )
+                                )
+                            )
                         )
                     ):
                         # TODO: Add subgraph to error
@@ -604,54 +671,47 @@ class System:
             return
 
         if any(
-            self._attributes_register[supertask].importance is not None
-            for supertask in self._network_graph.hierarchy_graph().supertasks(task)
-        ):
-            supertasks_with_importance = (
-                (supertask, supertask_importance)
-                for supertask in self._network_graph.hierarchy_graph().supertasks(task)
-                if (
-                    supertask_importance := self._attributes_register[
-                        supertask
-                    ].importance
-                )
-                is not None
-            )
-            raise SupertaskHasImportanceError(
-                task=task, supertasks_with_importance=supertasks_with_importance
-            )
-
-        if any(
             self._attributes_register[superior_task].importance is not None
-            for superior_task in self._network_graph.hierarchy_graph()
-            .superior_tasks(task)
-            .tasks()
+            for superior_task in self._network_graph.hierarchy_graph().superior_tasks(
+                [task]
+            )
         ):
-            # TODO: Get subgraph and importances
-            raise SuperiorTaskHasImportanceError(task=task)
+            superior_tasks = self._network_graph.hierarchy_graph().superior_tasks(
+                [task],
+                stop_condition=lambda task_: self._attributes_register[task_].importance
+                is not None,
+            )
+            superior_tasks_with_importance = filter(
+                lambda task_: self._attributes_register[task_].importance is not None,
+                superior_tasks,
+            )
+            builder = SubsystemBuilder(self)
+            builder.add_hierarchy_connecting_subgraph(
+                superior_tasks_with_importance, [task]
+            )
 
-        if any(
-            self._attributes_register[subtask].importance is not None
-            for subtask in self._network_graph.hierarchy_graph().subtasks(task)
-        ):
-            subtasks_with_importance = (
-                (subtask, subtask_importance)
-                for subtask in self._network_graph.hierarchy_graph().subtasks(task)
-                if (subtask_importance := self._attributes_register[subtask].importance)
-                is not None
-            )
-            raise SubtaskHasImportanceError(
-                task=task, subtasks_with_importance=subtasks_with_importance
-            )
+            raise SuperiorTasksHaveImportanceError(task=task, subsystem=builder.build())
 
         if any(
             self._attributes_register[inferior_task].importance is not None
-            for inferior_task in self._network_graph.hierarchy_graph()
-            .inferior_tasks(task)
-            .tasks()
+            for inferior_task in self._network_graph.hierarchy_graph().inferior_tasks(
+                [task]
+            )
         ):
-            # TODO: Get subgraph and importances
-            raise InferiorTaskHasImportanceError(task=task)
+            inferior_tasks = self._network_graph.hierarchy_graph().inferior_tasks(
+                [task],
+                stop_condition=lambda task_: self._attributes_register[task_].importance
+                is not None,
+            )
+            inferior_tasks_with_importance = filter(
+                lambda task_: self._attributes_register[task_].importance is not None,
+                inferior_tasks,
+            )
+            builder = SubsystemBuilder(self)
+            builder.add_hierarchy_connecting_subgraph(
+                [task], inferior_tasks_with_importance
+            )
+            raise InferiorTasksHaveImportanceError(task=task, subsystem=builder.build())
 
         self._attributes_register.set_importance(task, importance)
 
@@ -659,100 +719,230 @@ class System:
         """Create a new hierarchy between the specified tasks."""
         self._network_graph.validate_hierarchy_can_be_added(supertask, subtask)
 
-        if (
-            self._attributes_register[supertask].importance is not None
-            or any(
-                self._attributes_register[superior_task].importance is not None
-                for superior_task in self._network_graph.hierarchy_graph()
-                .superior_tasks(supertask)
-                .tasks()
+        if any(
+            self._attributes_register[task].importance is not None
+            for task in itertools.chain(
+                [supertask],
+                self._network_graph.hierarchy_graph().superior_tasks([supertask]),
             )
-        ) and (
-            self._attributes_register[subtask].importance is not None
-            or any(
-                self._attributes_register[inferior_task].importance is not None
-                for inferior_task in self._network_graph.hierarchy_graph()
-                .inferior_tasks(subtask)
-                .tasks()
+        ) and any(
+            self._attributes_register[task].importance is not None
+            for task in itertools.chain(
+                [subtask],
+                self._network_graph.hierarchy_graph().inferior_tasks([subtask]),
             )
         ):
-            # TODO: Get relevant subgraph and return as part of exception
-            raise MultipleImportancesInHierarchyError
+            supertask_and_its_superior_tasks_with_importances = filter(
+                lambda task: self._attributes_register[task].importance is not None,
+                itertools.chain(
+                    [supertask],
+                    self._network_graph.hierarchy_graph().superior_tasks([supertask]),
+                ),
+            )
+
+            subtask_and_its_inferior_tasks_with_importances = filter(
+                lambda task: self._attributes_register[task].importance is not None,
+                itertools.chain(
+                    [subtask],
+                    self._network_graph.hierarchy_graph().inferior_tasks([subtask]),
+                ),
+            )
+
+            builder = SubsystemBuilder(self)
+            builder.add_hierarchy_connecting_subgraph(
+                supertask_and_its_superior_tasks_with_importances,
+                [supertask],
+            )
+            builder.add_hierarchy_connecting_subgraph(
+                [subtask], subtask_and_its_inferior_tasks_with_importances
+            )
+
+            raise MultipleImportancesInHierarchyError(
+                supertask=supertask, subtask=subtask, subsystem=builder.build()
+            )
 
         subtask_progress = self.get_progress(subtask)
-        if subtask_progress is not Progress.NOT_STARTED:
-            if any(
-                dependee_progress is not Progress.COMPLETED
-                for dependee_progress in self.get_progresses(
-                    self._network_graph.dependency_graph().dependee_tasks(supertask)
-                )
-            ):
-                dependee_tasks_of_supertask = (
-                    self._network_graph.dependency_graph().dependee_tasks(supertask)
-                )
-                incomplete_dependee_tasks_of_supertask_with_progress = (
-                    (dependee_task, dependee_task_progress)
-                    for dependee_task, dependee_task_progress in zip(
-                        dependee_tasks_of_supertask,
-                        self.get_progresses(dependee_tasks_of_supertask),
+        if subtask_progress is not Progress.NOT_STARTED and any(
+            progress is not Progress.COMPLETED
+            for progress in self.get_progresses(
+                unique(
+                    itertools.chain.from_iterable(
+                        map(
+                            self._network_graph.dependency_graph().dependee_tasks,
+                            itertools.chain(
+                                [supertask],
+                                self._network_graph.hierarchy_graph().superior_tasks(
+                                    [supertask]
+                                ),
+                            ),
+                        )
                     )
-                    if dependee_task_progress is not Progress.COMPLETED
                 )
-                raise IncompleteDependeeTasksOfSupertaskError(
-                    supertask=supertask,
-                    subtask=subtask,
-                    incomplete_dependee_tasks_of_supertask_with_progress=incomplete_dependee_tasks_of_supertask_with_progress,
+            )
+        ):
+            supertask_and_its_superior_tasks = list(
+                itertools.chain(
+                    [supertask],
+                    self._network_graph.hierarchy_graph().superior_tasks([supertask]),
                 )
+            )
 
-            if any(
-                progress is not Progress.COMPLETED
-                for progress in self.get_progresses(
-                    self._get_dependee_tasks_of_superior_tasks(supertask)
-                )
-            ):
-                # TODO: Get proper subgraph
-                raise IncompleteDependeeTasksOfSuperiorTasksOfSupertaskError(
-                    supertask=supertask,
-                    subtask=subtask,
-                    subtask_progress=subtask_progress,
-                )
-
-        if subtask is not Progress.COMPLETED:
-            if any(
-                progress is not Progress.NOT_STARTED
-                for progress in self.get_progresses(
-                    self._network_graph.dependency_graph().dependent_tasks(supertask)
-                )
-            ):
-                dependent_tasks_of_supertask = (
-                    self._network_graph.dependency_graph().dependent_tasks(supertask)
-                )
-                started_dependent_tasks_of_supertask_with_progress = (
-                    (task, progress)
-                    for task, progress in zip(
-                        dependent_tasks_of_supertask,
-                        self.get_progresses(dependent_tasks_of_supertask),
+            dependee_tasks_of_supertask_and_its_superior_tasks = list(
+                unique(
+                    itertools.chain.from_iterable(
+                        map(
+                            self._network_graph.dependency_graph().dependee_tasks,
+                            supertask_and_its_superior_tasks,
+                        )
                     )
-                    if progress is not Progress.NOT_STARTED
                 )
-                raise StartedDependentTasksOfSupertaskError(
-                    supertask=supertask,
-                    subtask=subtask,
-                    started_dependent_tasks_of_supertask_with_progress=started_dependent_tasks_of_supertask_with_progress,
-                )
+            )
 
-            if any(
-                progress is not Progress.NOT_STARTED
-                for progress in self.get_progresses(
-                    self._get_dependent_tasks_of_superior_tasks(supertask)
+            dependee_tasks_of_supertask_and_its_superior_tasks_with_progresses = (
+                (task, progress)
+                for task, progress in zip(
+                    dependee_tasks_of_supertask_and_its_superior_tasks,
+                    self.get_progresses(
+                        dependee_tasks_of_supertask_and_its_superior_tasks
+                    ),
                 )
+            )
+
+            incomplete_dependee_tasks_of_supertask_and_its_superior_tasks_to_progress_map = dict(
+                filter(
+                    lambda task_with_progress: task_with_progress[1]
+                    is not Progress.COMPLETED,
+                    dependee_tasks_of_supertask_and_its_superior_tasks_with_progresses,
+                )
+            )
+
+            supertask_and_its_superior_tasks_to_incomplete_dependee_tasks_map = {
+                task: incomplete_dependee_tasks
+                for task in supertask_and_its_superior_tasks
+                if (
+                    incomplete_dependee_tasks := (
+                        self._network_graph.dependency_graph().dependee_tasks(task)
+                        & incomplete_dependee_tasks_of_supertask_and_its_superior_tasks_to_progress_map.keys()
+                    )
+                )
+            }
+
+            builder = SubsystemBuilder(self)
+            builder.add_hierarchy_connecting_subgraph(
+                supertask_and_its_superior_tasks_to_incomplete_dependee_tasks_map.keys(),
+                [supertask],
+            )
+            for (
+                supertask_or_its_superior_task,
+                incomplete_dependee_tasks_of_supertask_or_its_superior_task,
+            ) in supertask_and_its_superior_tasks_to_incomplete_dependee_tasks_map.items():
+                for (
+                    incomplete_dependee_task_of_supertask_or_its_superior_task
+                ) in incomplete_dependee_tasks_of_supertask_or_its_superior_task:
+                    builder.add_dependency(
+                        incomplete_dependee_task_of_supertask_or_its_superior_task,
+                        supertask_or_its_superior_task,
+                    )
+
+            raise UpstreamTasksOfSupertaskHaveNotCompletedError(
+                supertask=supertask,
+                subtask=subtask,
+                subtask_progress=subtask_progress,
+                incomplete_upstream_tasks=incomplete_dependee_tasks_of_supertask_and_its_superior_tasks_to_progress_map.items(),
+                subsystem=builder.build(),
+            )
+
+        if subtask_progress is not Progress.COMPLETED and any(
+            progress is not Progress.NOT_STARTED
+            for progress in self.get_progresses(
+                unique(
+                    itertools.chain.from_iterable(
+                        map(
+                            self._network_graph.dependency_graph().dependent_tasks,
+                            itertools.chain(
+                                [supertask],
+                                self._network_graph.hierarchy_graph().superior_tasks(
+                                    [supertask]
+                                ),
+                            ),
+                        )
+                    )
+                )
+            )
+        ):
+            supertask_and_its_superior_tasks = list(
+                itertools.chain(
+                    [supertask],
+                    self._network_graph.hierarchy_graph().superior_tasks([supertask]),
+                )
+            )
+
+            dependent_tasks_of_supertask_and_its_superior_tasks = list(
+                unique(
+                    itertools.chain.from_iterable(
+                        map(
+                            self._network_graph.dependency_graph().dependent_tasks,
+                            supertask_and_its_superior_tasks,
+                        )
+                    )
+                )
+            )
+
+            dependent_tasks_of_supertask_and_its_superior_tasks_with_progresses = (
+                (task, progress)
+                for task, progress in zip(
+                    dependent_tasks_of_supertask_and_its_superior_tasks,
+                    self.get_progresses(
+                        dependent_tasks_of_supertask_and_its_superior_tasks
+                    ),
+                )
+            )
+
+            started_dependent_tasks_of_supertask_and_its_superior_tasks_to_progress_map = dict(
+                filter(
+                    lambda task_with_progress: task_with_progress[1]
+                    is not Progress.NOT_STARTED,
+                    dependent_tasks_of_supertask_and_its_superior_tasks_with_progresses,
+                )
+            )
+
+            supertask_and_its_superior_tasks_to_started_dependent_tasks_map = {
+                task: started_dependent_tasks
+                for task in supertask_and_its_superior_tasks
+                if (
+                    started_dependent_tasks := (
+                        self._network_graph.dependency_graph().dependent_tasks(task)
+                        & started_dependent_tasks_of_supertask_and_its_superior_tasks_to_progress_map.keys()
+                    )
+                )
+            }
+
+            builder = SubsystemBuilder(self)
+            builder.add_hierarchy_connecting_subgraph(
+                supertask_and_its_superior_tasks_to_started_dependent_tasks_map.keys(),
+                [supertask],
+            )
+            for (
+                supertask_or_its_superior_task,
+                started_dependent_tasks_of_supertask_or_its_superior_task,
+            ) in (
+                supertask_and_its_superior_tasks_to_started_dependent_tasks_map.items()
             ):
-                # TODO: Get proper subgraph
-                raise StartedDependentTasksOfSuperiorTasksOfSupertaskError(
-                    supertask=supertask,
-                    subtask=subtask,
-                    subtask_progress=subtask_progress,
-                )
+                for (
+                    started_dependent_task_of_supertask_or_its_superior_task
+                ) in started_dependent_tasks_of_supertask_or_its_superior_task:
+                    builder.add_dependency(
+                        supertask_or_its_superior_task,
+                        started_dependent_task_of_supertask_or_its_superior_task,
+                    )
+
+            raise DownstreamTasksOfSupertaskHaveStartedError(
+                supertask=supertask,
+                subtask=subtask,
+                subtask_progress=subtask_progress,
+                started_downstream_tasks=started_dependent_tasks_of_supertask_and_its_superior_tasks_to_progress_map.items(),
+                subsystem=builder.build(),
+            )
 
         if self._network_graph.hierarchy_graph().is_concrete(supertask):
             if (
@@ -816,6 +1006,9 @@ class System:
 
         If it is a concrete tasks, returns its progress. If it is a non-concrete
         task, returns its inferred progress.
+
+        More efficient that getting the progresses one-by-one as determining progress
+        for non-concrete tasks requires graph traversal.
         """
 
         def get_progress_recursive(
@@ -871,9 +1064,9 @@ class System:
         """
         return self._attributes_register[task].importance is None and any(
             self._attributes_register[superior_task].importance is not None
-            for superior_task in self._network_graph.hierarchy_graph()
-            .superior_tasks(task)
-            .tasks()
+            for superior_task in self._network_graph.hierarchy_graph().superior_tasks(
+                [task]
+            )
         )
 
     def get_importance(self, task: UID, /) -> Importance | None:
@@ -936,10 +1129,21 @@ class System:
                 return True
             case Progress.NOT_STARTED:
                 return all(
-                    self.get_progress(dependee_task) is Progress.COMPLETED
-                    for dependee_task in itertools.chain(
-                        self._network_graph.dependency_graph().dependee_tasks(task),
-                        self._get_dependee_tasks_of_superior_tasks(task),
+                    progress is Progress.COMPLETED
+                    for progress in self.get_progresses(
+                        unique(
+                            itertools.chain.from_iterable(
+                                map(
+                                    self._network_graph.dependency_graph().dependee_tasks,
+                                    itertools.chain(
+                                        [task],
+                                        self._network_graph.hierarchy_graph().superior_tasks(
+                                            [task]
+                                        ),
+                                    ),
+                                )
+                            )
+                        )
                     )
                 )
 
@@ -1029,7 +1233,7 @@ class System:
                 continue
             for incomplete_concrete_task in incomplete_concrete_tasks:
                 upstream_tasks = set(
-                    self._network_graph.upstream_tasks(incomplete_concrete_task)
+                    self._network_graph.upstream_tasks([incomplete_concrete_task])
                 )
                 upstream_tasks.add(incomplete_concrete_task)
                 for (

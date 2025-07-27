@@ -2,8 +2,18 @@
 
 from __future__ import annotations
 
+import copy
 import functools
-from collections.abc import Callable, Generator, Iterable, Iterator, Set
+import itertools
+from collections.abc import (
+    Callable,
+    Generator,
+    Hashable,
+    Iterable,
+    Iterator,
+    Mapping,
+    Set,
+)
 from typing import Any, ParamSpec, Protocol, TypeVar
 
 from graft import graphs
@@ -14,8 +24,13 @@ from graft.domain.tasks.helpers import (
 )
 from graft.domain.tasks.uid import (
     UID,
-    SubgraphTasksView,
     TasksView,
+)
+from graft.graphs import (
+    ConnectionsDictHasCycleError,
+    ConnectionsDictNodesHaveLoops,
+    TargetsAreNotNotAlsoSourceNodesError,
+    UnderlyingDictHasRedundantEdgesError,
 )
 
 
@@ -186,6 +201,52 @@ class HierarchyIntroducesRedundantHierarchyError(Exception):
         )
 
 
+class SubtasksAreNotAlsoSupertasksError(Exception):
+    """Raised when some subtasks are not also supertasks."""
+
+    def __init__(
+        self,
+        subtasks: Iterable[Hashable],
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
+    ) -> None:
+        self.dependent_tasks = set(subtasks)
+        super().__init__(
+            f"Subtasks [{self.dependent_tasks}] are not also supertasks",
+            *args,
+            **kwargs,
+        )
+
+
+class ConnectionsDictHierarchyGraphTasksHaveLoops(Exception):
+    """Connections used to construct the graph include loops."""
+
+    def __init__(self, tasks: Iterable[Hashable]) -> None:
+        self.tasks = set(tasks)
+        formatted_tasks = (str(task) for task in self.tasks)
+        super().__init__(
+            f"Connections used to construct the graph have loops for tasks [{', '.join(formatted_tasks)}]"
+        )
+
+
+class ConnectionsDictHierarchyGraphHasCycleError(Exception):
+    """Underlying dictionary has a cycle."""
+
+    def __init__(self, dictionary: Mapping[Any, Set[Any]]) -> None:
+        self.dictionary = dict(dictionary)
+        super().__init__(f"Underlying dictionary [{dictionary}] has a cycle")
+
+
+class UnderlyingDictHierarchyGraphHasRedundantEdgesError(Exception):
+    """Underlying dictionary has redundant edges."""
+
+    def __init__(self, dictionary: Mapping[Any, Set[Any]]) -> None:
+        self.dictionary = dict(dictionary)
+        super().__init__(
+            f"underlying dictionary [{dictionary}] has redundant dependencies"
+        )
+
+
 P = ParamSpec("P")
 R = TypeVar("R")
 
@@ -209,16 +270,17 @@ def _reraise_edge_adding_exceptions_as_corresponding_hierarchy_adding_exceptions
             assert isinstance(e.source, UID)
             assert isinstance(e.target, UID)
             raise HierarchyAlreadyExistsError(e.source, e.target) from e
-        except graphs.IntroducesCycleError as e:
+        except graphs.IntroducesCycleToReducedGraphError as e:
             assert isinstance(e.source, UID)
             assert isinstance(e.target, UID)
             assert all(isinstance(node, UID) for node in e.connecting_subgraph.nodes())
-            connecting_subgraph = graphs.ReducedDirectedAcyclicGraph[UID]()
-            connecting_subgraph.update(e.connecting_subgraph)
             raise HierarchyIntroducesCycleError(
                 supertask=e.source,
                 subtask=e.target,
-                connecting_subgraph=HierarchyGraph(connecting_subgraph),
+                connecting_subgraph=HierarchyGraph(
+                    (node, e.connecting_subgraph.successors(node))
+                    for node in e.connecting_subgraph.nodes()
+                ),
             ) from e
         except graphs.IntroducesRedundantEdgeError as e:
             assert isinstance(e.source, UID)
@@ -227,7 +289,9 @@ def _reraise_edge_adding_exceptions_as_corresponding_hierarchy_adding_exceptions
             raise HierarchyIntroducesRedundantHierarchyError(
                 supertask=e.source,
                 subtask=e.target,
-                connecting_subgraph=HierarchyGraph(e.subgraph),
+                connecting_subgraph=HierarchyGraph(
+                    (node, e.subgraph.successors(node)) for node in e.subgraph.nodes()
+                ),
             ) from e
 
     return wrapper
@@ -258,9 +322,9 @@ def _reraise_node_removing_exceptions_as_corresponding_task_removing_exceptions(
 class HierarchiesView(Set[tuple[UID, UID]]):
     """View of the hierarchies in the graph."""
 
-    def __init__(self, heirarchies: Set[tuple[UID, UID]], /) -> None:
+    def __init__(self, hierarchies: Set[tuple[UID, UID]], /) -> None:
         """Initialise HierarchiesView."""
-        self._hierarchies = heirarchies
+        self._hierarchies = hierarchies
 
     def __bool__(self) -> bool:
         """Check if view has any hierarchies."""
@@ -297,118 +361,37 @@ class HierarchiesView(Set[tuple[UID, UID]]):
         task_subtask_pairs = (f"({task!r}, {subtask!r})" for task, subtask in self)
         return f"{self.__class__.__name__}({{{', '.join(task_subtask_pairs)}}})"
 
-    def __sub__(self, other: Set[Any]) -> HierarchiesView:
+    def __sub__(self, other: Set[Any]) -> set[tuple[UID, UID]]:
         """Return difference of two views."""
-        return HierarchiesView(self._hierarchies - other)
+        return set(self._hierarchies - other)
 
-    def __and__(self, other: Set[Any]) -> HierarchiesView:
+    def __and__(self, other: Set[Any]) -> set[tuple[UID, UID]]:
         """Return intersection of two views."""
-        return HierarchiesView(self._hierarchies & other)
+        return set(self._hierarchies & other)
 
-    def __or__(self, other: Set[tuple[UID, UID]]) -> HierarchiesView:
+    def __or__[G: Hashable](self, other: Set[G]) -> set[tuple[UID, UID] | G]:
         """Return union of two views."""
-        return HierarchiesView(self._hierarchies | other)
+        return set(self._hierarchies | other)
 
-    def __xor__(self, other: Set[tuple[UID, UID]]) -> HierarchiesView:
+    def __xor__[G: Hashable](self, other: Set[G]) -> set[tuple[UID, UID] | G]:
         """Return symmetric difference of two views."""
-        return HierarchiesView(self._hierarchies ^ other)
+        return set(self._hierarchies ^ other)
 
+    def __le__(self, other: Set[Any]) -> bool:
+        """Subset test (self <= other)."""
+        return self._hierarchies <= other
 
-class HierarchySubgraphHierarchyView(Set[tuple[UID, UID]]):
-    """View of subgraph hierarchies."""
+    def __lt__(self, other: Set[Any]) -> bool:
+        """Proper subset test (self < other)."""
+        return self._hierarchies < other
 
-    def __init__(self, hierarchies: graphs.SubgraphEdgesView[UID], /) -> None:
-        """Initialise HierarchySubgraphHierarchyView."""
-        self._hierarchies = hierarchies
+    def __ge__(self, other: Set[Any]) -> bool:
+        """Superset test (self >= other)."""
+        return self._hierarchies >= other
 
-    def __bool__(self) -> bool:
-        """Check if view has any hierarchies."""
-        return bool(self._hierarchies)
-
-    def __eq__(self, other: object) -> bool:
-        """Check if subgraph hierarchies view is equal to other."""
-        return isinstance(other, HierarchySubgraphHierarchyView) and set(self) == set(
-            other
-        )
-
-    def __contains__(self, item: object) -> bool:
-        """Check if item is a hierarchy in the subgraph."""
-        return item in self._hierarchies
-
-    def __iter__(self) -> Iterator[tuple[UID, UID]]:
-        """Return iterator over hierarchies in view."""
-        return iter(self._hierarchies)
-
-    def __len__(self) -> int:
-        """Return number of hierarchies in view."""
-        return len(self._hierarchies)
-
-    def contains(
-        self, tasks_: Iterable[tuple[UID, UID]]
-    ) -> Generator[bool, None, None]:
-        """Check if hierarchies are in the subgraph.
-
-        Theoretically faster than checking if the subgraph contains multiple
-        hierarchies one at a time, as can cache the parts of the subgraph
-        already searched.
-        """
-        return self._hierarchies.contains(edges=tasks_)
-
-
-class MultipleStartingTasksHierarchySubgraphView:
-    """View of a hierarchy subgraph with multiple starting tasks."""
-
-    def __init__(
-        self,
-        subgraph: graphs.MultipleStartingNodesReducedDirectedAcyclicSubgraphView[UID],
-    ) -> None:
-        """Initialise SubgraphView."""
-        self._subgraph = subgraph
-
-    def __bool__(self) -> bool:
-        """Check if subgraph is not empty."""
-        return bool(self._subgraph)
-
-    def __eq__(self, other: object) -> bool:
-        """Check if hierarchy subgraph view is equal to other."""
-        return (
-            isinstance(other, MultipleStartingTasksHierarchySubgraphView)
-            and self.tasks() == other.tasks()
-            and self.hierarchies() == other.hierarchies()
-        )
-
-    def tasks(self) -> SubgraphTasksView:
-        """Return view of tasks in subgraph."""
-        return SubgraphTasksView(self._subgraph.nodes())
-
-    def hierarchies(self) -> HierarchySubgraphHierarchyView:
-        """Return view of dependencies in subgraph."""
-        return HierarchySubgraphHierarchyView(self._subgraph.edges())
-
-    def subgraph(self) -> HierarchyGraph:
-        """Create a concrete copy of the subgraph."""
-        return HierarchyGraph(self._subgraph.subgraph())
-
-
-class SingleStartingTaskHierarchySubgraphView(
-    MultipleStartingTasksHierarchySubgraphView
-):
-    """View of a hierarchy subgraph with a single starting task."""
-
-    def __init__(
-        self, subgraph: graphs.SingleStartingNodeDirectedAcyclicSubgraphView[UID]
-    ) -> None:
-        """Initialise SubgraphView."""
-        self._subgraph = subgraph
-
-    def traverse(
-        self, order: graphs.TraversalOrder = graphs.TraversalOrder.BREADTH_FIRST
-    ) -> Generator[UID, None, None]:
-        """Return generator over tasks in subgraph in order.
-
-        Starts from the starting node, but does not include it.
-        """
-        return iter(self._subgraph.traverse(order=order))
+    def __gt__(self, other: Set[Any]) -> bool:
+        """Proper superset test (self > other)."""
+        return self._hierarchies > other
 
 
 class IHierarchyGraphView(Protocol):
@@ -424,6 +407,10 @@ class IHierarchyGraphView(Protocol):
 
     def __repr__(self) -> str:
         """Return string representation of graph."""
+        ...
+
+    def clone(self) -> HierarchyGraph:
+        """Create a clone of the hierarchy graph."""
         ...
 
     def tasks(self) -> TasksView:
@@ -442,62 +429,43 @@ class IHierarchyGraphView(Protocol):
         """Return view of subtasks of task."""
         ...
 
-    def inferior_tasks(
+    def inferior_subgraph(
         self,
-        task: UID,
+        tasks: Iterable[UID],
         /,
         stop_condition: Callable[[UID], bool] | None = None,
-    ) -> SingleStartingTaskHierarchySubgraphView: ...
+    ) -> HierarchyGraph: ...
+
+    def inferior_tasks(
+        self,
+        tasks: Iterable[UID],
+        /,
+        stop_condition: Callable[[UID], bool] | None = None,
+    ) -> Generator[UID, None, None]: ...
+
+    def superior_subgraph(
+        self,
+        tasks: Iterable[UID],
+        /,
+        stop_condition: Callable[[UID], bool] | None = None,
+    ) -> HierarchyGraph: ...
 
     def superior_tasks(
         self,
-        task: UID,
-        /,
-        stop_condition: Callable[[UID], bool] | None = None,
-    ) -> SingleStartingTaskHierarchySubgraphView: ...
-
-    def inferior_tasks_multi(
-        self,
         tasks: Iterable[UID],
         /,
         stop_condition: Callable[[UID], bool] | None = None,
-    ) -> MultipleStartingTasksHierarchySubgraphView: ...
-
-    def superior_tasks_multi(
-        self,
-        tasks: Iterable[UID],
-        /,
-        stop_condition: Callable[[UID], bool] | None = None,
-    ) -> MultipleStartingTasksHierarchySubgraphView: ...
-
-    def has_path(
-        self,
-        source_task: UID,
-        target_task: UID,
-        /,
-        stop_condition: Callable[[UID], bool] | None = None,
-    ) -> bool:
-        """Check if there is a path from source to target tasks.
-
-        Stop searching beyond a specific task if the stop condition is met.
-        """
-        ...
+    ) -> Generator[UID, None, None]: ...
 
     def connecting_subgraph(
-        self, source_task: UID, target_task: UID, /
+        self, source_tasks: Iterable[UID], target_tasks: Iterable[UID], /
     ) -> HierarchyGraph:
         """Return subgraph of tasks between the source and target task."""
         ...
 
-    def connecting_subgraph_multi(
-        self, source_tasks: Iterable[UID], target_tasks: Iterable[UID], /
-    ) -> HierarchyGraph:
-        """Return subgraph of tasks between source and target tasks."""
-        ...
+    def component_subgraph(self, task: UID) -> HierarchyGraph: ...
 
-    def task_subtasks_pairs(self) -> Generator[tuple[UID, TasksView], None, None]:
-        """Return generator over task-subtasks pairs."""
-        ...
+    def component_subgraphs(self) -> Generator[HierarchyGraph, None, None]: ...
 
     def is_concrete(self, task: UID, /) -> bool:
         """Check if task is concrete.
@@ -530,6 +498,75 @@ class IHierarchyGraphView(Protocol):
         ...
 
 
+class HierarchySubgraphBuilder:
+    """Builder for a subgraph of a hierarchy graph."""
+
+    def __init__(self, graph: IHierarchyGraphView) -> None:
+        self._graph = graph
+        self._minimal_graph_builder = graphs.DirectedGraphBuilder[UID]()
+
+    def add_task(self, task: UID, /) -> None:
+        if task not in self._graph.tasks():
+            raise TaskDoesNotExistError(task)
+
+        self._minimal_graph_builder.add_node(task)
+
+    def add_hierarchy(self, supertask: UID, subtask: UID) -> None:
+        if (supertask, subtask) not in self._graph.hierarchies():
+            raise HierarchyDoesNotExistError(supertask=supertask, subtask=subtask)
+
+        self._minimal_graph_builder.add_edge(source=supertask, target=subtask)
+
+    def add_superior_subgraph(
+        self,
+        tasks: Iterable[UID],
+        /,
+        stop_condition: Callable[[UID], bool] | None = None,
+    ) -> set[UID]:
+        return self._minimal_graph_builder.add_ancestors_subgraph(
+            tasks,
+            get_predecessors=self._graph.supertasks,
+            stop_condition=stop_condition,
+        )
+
+    def add_inferior_subgraph(
+        self,
+        tasks: Iterable[UID],
+        /,
+        stop_condition: Callable[[UID], bool] | None = None,
+    ) -> set[UID]:
+        return self._minimal_graph_builder.add_descendants_subgraph(
+            tasks,
+            get_successors=self._graph.subtasks,
+            stop_condition=stop_condition,
+        )
+
+    def add_connecting_subgraph(
+        self, source_tasks: Iterable[UID], target_tasks: Iterable[UID]
+    ) -> set[UID]:
+        source_tasks1, source_tasks2 = itertools.tee(source_tasks)
+        target_tasks1, target_tasks2 = itertools.tee(target_tasks)
+
+        return self._minimal_graph_builder.add_connecting_subgraph(
+            source_tasks1,
+            target_tasks1,
+            get_successors=self._graph.subtasks,
+            get_no_connecting_subgraph_exception=lambda: NoConnectingHierarchySubgraphError(
+                sources=source_tasks2, targets=target_tasks2
+            ),
+        )
+
+    def add_component_subgraph(self, task: UID) -> set[UID]:
+        return self._minimal_graph_builder.add_component_subgraph(
+            task,
+            get_successors=self._graph.subtasks,
+            get_predecessors=self._graph.supertasks,
+        )
+
+    def build(self) -> HierarchyGraph:
+        return HierarchyGraph(self._minimal_graph_builder.build().items())
+
+
 class HierarchyGraph:
     """Graph of task hierarchies.
 
@@ -538,18 +575,24 @@ class HierarchyGraph:
     Acts as a Minimum DAG.
     """
 
-    @classmethod
-    def clone(cls, graph: IHierarchyGraphView, /) -> HierarchyGraph:
-        """Create a clone of a hierarchy graph from an interface."""
-        clone = cls()
-        clone.update(graph)
-        return clone
-
     def __init__(
-        self, reduced_dag: graphs.ReducedDirectedAcyclicGraph[UID] | None = None
+        self, connections: Iterable[tuple[UID, Iterable[UID]]] | None = None
     ) -> None:
         """Initialise HierarchyGraph."""
-        self._reduced_dag = reduced_dag or graphs.ReducedDirectedAcyclicGraph[UID]()
+        try:
+            self._reduced_dag = graphs.ReducedDirectedAcyclicGraph[UID](
+                connections=connections
+            )
+        except TargetsAreNotNotAlsoSourceNodesError as e:
+            raise SubtasksAreNotAlsoSupertasksError(e.targets) from e
+        except ConnectionsDictNodesHaveLoops as e:
+            raise ConnectionsDictHierarchyGraphTasksHaveLoops(e.nodes)
+        except ConnectionsDictHasCycleError as e:
+            raise ConnectionsDictHierarchyGraphHasCycleError(e.dictionary) from e
+        except UnderlyingDictHasRedundantEdgesError as e:
+            raise UnderlyingDictHierarchyGraphHasRedundantEdgesError(
+                e.dictionary
+            ) from e
 
     def __bool__(self) -> bool:
         """Check if graph is not empty."""
@@ -557,10 +600,11 @@ class HierarchyGraph:
 
     def __eq__(self, other: object) -> bool:
         """Check if two graphs are equal."""
+        if not isinstance(other, HierarchyGraph):
+            return NotImplemented
+
         return (
-            isinstance(other, HierarchyGraph)
-            and self.tasks() == other.tasks()
-            and self.hierarchies() == other.hierarchies()
+            self.tasks() == other.tasks() and self.hierarchies() == other.hierarchies()
         )
 
     def __str__(self) -> str:
@@ -570,10 +614,14 @@ class HierarchyGraph:
     def __repr__(self) -> str:
         """Return string representation of graph."""
         tasks_with_subtasks = (
-            f"{task!r}: {{{', '.join(repr(subtask) for subtask in subtasks)}}}"
-            for task, subtasks in self.task_subtasks_pairs()
+            f"{task!r}: {{{', '.join(repr(subtask) for subtask in self.subtasks(task))}}}"
+            for task in self.tasks()
         )
         return f"{self.__class__.__name__}({{{', '.join(tasks_with_subtasks)}}})"
+
+    def clone(self) -> HierarchyGraph:
+        """Create a clone of the hierarchy graph."""
+        return copy.deepcopy(self)
 
     def tasks(self) -> TasksView:
         """Return view of tasks in graph."""
@@ -595,94 +643,70 @@ class HierarchyGraph:
             subtasks = self._reduced_dag.successors(task)
         return TasksView(subtasks)
 
+    def inferior_subgraph(
+        self,
+        tasks: Iterable[UID],
+        /,
+        stop_condition: Callable[[UID], bool] | None = None,
+    ) -> HierarchyGraph:
+        builder = HierarchySubgraphBuilder(self)
+        _ = builder.add_inferior_subgraph(tasks, stop_condition=stop_condition)
+        return builder.build()
+
     def inferior_tasks(
         self,
-        task: UID,
+        tasks: Iterable[UID],
         /,
         stop_condition: Callable[[UID], bool] | None = None,
-    ) -> SingleStartingTaskHierarchySubgraphView:
+    ) -> Generator[UID, None, None]:
         with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
-            descendants = self._reduced_dag.descendants(
-                task, stop_condition=stop_condition
+            yield from self._reduced_dag.descendants(
+                tasks, stop_condition=stop_condition
             )
-        return SingleStartingTaskHierarchySubgraphView(descendants)
 
     @helpers.reraise_node_does_not_exist_as_task_does_not_exist()
+    def superior_subgraph(
+        self,
+        tasks: Iterable[UID],
+        /,
+        stop_condition: Callable[[UID], bool] | None = None,
+    ) -> HierarchyGraph:
+        builder = HierarchySubgraphBuilder(self)
+        _ = builder.add_superior_subgraph(tasks, stop_condition=stop_condition)
+        return builder.build()
+
     def superior_tasks(
         self,
-        task: UID,
-        /,
-        stop_condition: Callable[[UID], bool] | None = None,
-    ) -> SingleStartingTaskHierarchySubgraphView:
-        with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
-            ancestors = self._reduced_dag.ancestors(task, stop_condition=stop_condition)
-        return SingleStartingTaskHierarchySubgraphView(ancestors)
-
-    def inferior_tasks_multi(
-        self,
         tasks: Iterable[UID],
         /,
         stop_condition: Callable[[UID], bool] | None = None,
-    ) -> MultipleStartingTasksHierarchySubgraphView:
+    ) -> Generator[UID, None, None]:
         with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
-            inferior_tasks = self._reduced_dag.descendants_multi(
-                tasks, stop_condition=stop_condition
-            )
-        return MultipleStartingTasksHierarchySubgraphView(subgraph=inferior_tasks)
+            yield from self._reduced_dag.ancestors(tasks, stop_condition=stop_condition)
 
-    def superior_tasks_multi(
-        self,
-        tasks: Iterable[UID],
-        /,
-        stop_condition: Callable[[UID], bool] | None = None,
-    ) -> MultipleStartingTasksHierarchySubgraphView:
-        with helpers.reraise_node_does_not_exist_as_task_does_not_exist():
-            superior_tasks = self._reduced_dag.ancestors_multi(
-                tasks, stop_condition=stop_condition
-            )
-        return MultipleStartingTasksHierarchySubgraphView(subgraph=superior_tasks)
-
-    @helpers.reraise_node_does_not_exist_as_task_does_not_exist()
-    def has_path(
-        self,
-        source_task: UID,
-        target_task: UID,
-        /,
-        stop_condition: Callable[[UID], bool] | None = None,
-    ) -> bool:
-        """Check if there is a path from source to target tasks.
-
-        Stop searching beyond a specific task if the stop condition is met.
-        """
-        return self._reduced_dag.has_path(
-            source=source_task, target=target_task, stop_condition=stop_condition
-        )
-
-    def connecting_subgraph_multi(
+    def connecting_subgraph(
         self, source_tasks: Iterable[UID], target_tasks: Iterable[UID], /
     ) -> HierarchyGraph:
         """Return subgraph of tasks between source and target tasks."""
-        try:
-            connecting_subgraph = self._reduced_dag.connecting_subgraph_multi(
-                sources=source_tasks, targets=target_tasks
-            )
-        except graphs.NodeDoesNotExistError as e:
-            assert isinstance(e.node, UID)
-            raise TaskDoesNotExistError(task=e.node) from e
-        except graphs.NoConnectingSubgraphError as e:
-            assert all(isinstance(source, UID) for source in e.sources)
-            assert all(isinstance(target, UID) for target in e.targets)
-            raise NoConnectingHierarchySubgraphError(
-                sources=e.sources, targets=e.targets
-            ) from e
+        builder = HierarchySubgraphBuilder(self)
+        _ = builder.add_connecting_subgraph(source_tasks, target_tasks)
+        return builder.build()
 
-        return HierarchyGraph(reduced_dag=connecting_subgraph)
+    def component_subgraph(self, task: UID) -> HierarchyGraph:
+        builder = HierarchySubgraphBuilder(self)
+        _ = builder.add_component_subgraph(task)
+        return builder.build()
 
-    def connecting_subgraph(
-        self, source_task: UID, target_task: UID, /
-    ) -> HierarchyGraph:
-        """Return subgraph of tasks between the source and target task."""
-        return self.connecting_subgraph_multi([source_task], [target_task])
+    def component_subgraphs(self) -> Generator[HierarchyGraph, None, None]:
+        """Yield component subgraphs in the graph."""
+        checked_tasks = set[UID]()
+        for node in self.tasks():
+            if node in checked_tasks:
+                continue
+
+            component = self.component_subgraph(node)
+            checked_tasks.update(component.tasks())
+            yield component
 
     @reraise_node_already_exists_as_task_already_exists()
     def add_task(self, task: UID, /) -> None:
@@ -757,28 +781,6 @@ class HierarchyGraph:
         """Return generator over isolated tasks."""
         return self._reduced_dag.isolated_nodes()
 
-    def task_subtasks_pairs(self) -> Generator[tuple[UID, TasksView], None, None]:
-        """Return generator over task-subtasks pairs."""
-        for task, subtasks in self._reduced_dag.node_successors_pairs():
-            yield task, TasksView(subtasks)
-
-    def update(self, graph: IHierarchyGraphView, /) -> None:
-        """Update the graph with another graph.
-
-        Use this method with EXTREME CAUTION; the order in which tasks and
-        hierarchies are added cannot be controlled, so I recommend only using
-        it as a helper method when you know it won't fail.
-        """
-        for task in graph.tasks():
-            if task in self.tasks():
-                continue
-            self.add_task(task)
-
-        for supertask, subtask in graph.hierarchies():
-            if (supertask, subtask) in self.hierarchies():
-                continue
-            self.add_hierarchy(supertask, subtask)
-
 
 class HierarchyGraphView:
     """View of the HierarchyGraph."""
@@ -802,18 +804,22 @@ class HierarchyGraphView:
     def __str__(self) -> str:
         """Return string representation of graph."""
         tasks_with_subtasks = (
-            f"{task}: {{{', '.join(str(subtask) for subtask in subtasks)}}}"
-            for task, subtasks in self.task_subtasks_pairs()
+            f"{task}: {{{', '.join(str(subtask) for subtask in self.subtasks(task))}}}"
+            for task in self.tasks()
         )
         return f"{{{', '.join(tasks_with_subtasks)}}}"
 
     def __repr__(self) -> str:
         """Return string representation of graph."""
         tasks_with_subtasks = (
-            f"{task!r}: {{{', '.join(repr(subtask) for subtask in subtasks)}}}"
-            for task, subtasks in self.task_subtasks_pairs()
+            f"{task!r}: {{{', '.join(repr(subtask) for subtask in self.subtasks(task))}}}"
+            for task in self.tasks()
         )
         return f"{self.__class__.__name__}({{{', '.join(tasks_with_subtasks)}}})"
+
+    def clone(self) -> HierarchyGraph:
+        """Create a clone of the hierarchy graph."""
+        return self._graph.clone()
 
     def tasks(self) -> TasksView:
         """Return tasks in view."""
@@ -831,66 +837,49 @@ class HierarchyGraphView:
         """Return view of supertasks of task."""
         return self._graph.supertasks(task)
 
-    def inferior_tasks(
+    def inferior_subgraph(
         self,
-        task: UID,
+        tasks: Iterable[UID],
         /,
         stop_condition: Callable[[UID], bool] | None = None,
-    ) -> SingleStartingTaskHierarchySubgraphView:
-        return self._graph.inferior_tasks(task, stop_condition=stop_condition)
+    ) -> HierarchyGraph:
+        return self._graph.inferior_subgraph(tasks, stop_condition=stop_condition)
+
+    def inferior_tasks(
+        self,
+        tasks: Iterable[UID],
+        /,
+        stop_condition: Callable[[UID], bool] | None = None,
+    ) -> Generator[UID, None, None]:
+        return self._graph.inferior_tasks(tasks, stop_condition=stop_condition)
+
+    def superior_subgraph(
+        self,
+        tasks: Iterable[UID],
+        /,
+        stop_condition: Callable[[UID], bool] | None = None,
+    ) -> HierarchyGraph:
+        return self._graph.superior_subgraph(tasks, stop_condition=stop_condition)
 
     def superior_tasks(
         self,
-        task: UID,
-        /,
-        stop_condition: Callable[[UID], bool] | None = None,
-    ) -> SingleStartingTaskHierarchySubgraphView:
-        return self._graph.superior_tasks(task, stop_condition=stop_condition)
-
-    def inferior_tasks_multi(
-        self,
         tasks: Iterable[UID],
         /,
         stop_condition: Callable[[UID], bool] | None = None,
-    ) -> MultipleStartingTasksHierarchySubgraphView:
-        return self._graph.inferior_tasks_multi(tasks, stop_condition=stop_condition)
-
-    def superior_tasks_multi(
-        self,
-        tasks: Iterable[UID],
-        /,
-        stop_condition: Callable[[UID], bool] | None = None,
-    ) -> MultipleStartingTasksHierarchySubgraphView:
-        return self._graph.superior_tasks_multi(tasks, stop_condition=stop_condition)
-
-    def has_path(
-        self,
-        source_task: UID,
-        target_task: UID,
-        /,
-        stop_condition: Callable[[UID], bool] | None = None,
-    ) -> bool:
-        """Check if there is a path from source to target tasks.
-
-        Stop searching beyond a specific task if the stop condition is met.
-        """
-        return self._graph.has_path(source_task, target_task, stop_condition)
+    ) -> Generator[UID, None, None]:
+        return self._graph.superior_tasks(tasks, stop_condition=stop_condition)
 
     def connecting_subgraph(
-        self, source_task: UID, target_task: UID, /
-    ) -> HierarchyGraph:
-        """Return subgraph of tasks between the source and target task."""
-        return self._graph.connecting_subgraph(source_task, target_task)
-
-    def connecting_subgraph_multi(
         self, source_tasks: Iterable[UID], target_tasks: Iterable[UID], /
     ) -> HierarchyGraph:
         """Return subgraph of tasks between source and target tasks."""
-        return self._graph.connecting_subgraph_multi(source_tasks, target_tasks)
+        return self._graph.connecting_subgraph(source_tasks, target_tasks)
 
-    def task_subtasks_pairs(self) -> Generator[tuple[UID, TasksView], None, None]:
-        """Return generator over task-subtasks pairs."""
-        return self._graph.task_subtasks_pairs()
+    def component_subgraph(self, task: UID) -> HierarchyGraph:
+        return self._graph.component_subgraph(task)
+
+    def component_subgraphs(self) -> Generator[HierarchyGraph, None, None]:
+        return self._graph.component_subgraphs()
 
     def is_concrete(self, task: UID, /) -> bool:
         """Check if task is concrete.

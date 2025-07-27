@@ -1,7 +1,6 @@
 import json
 from collections.abc import Generator, Iterable
 
-from graft import graphs
 from graft.domain import tasks
 
 
@@ -38,7 +37,8 @@ def _convert_dict_to_task_relationships(
 
 def encode_hierarchy_graph(graph: tasks.IHierarchyGraphView) -> str:
     return json.dumps(
-        graph.task_subtasks_pairs(), default=_convert_task_relationships_to_dict
+        ((task, graph.subtasks(task)) for task in graph.tasks()),
+        default=_convert_task_relationships_to_dict,
     )
 
 
@@ -46,8 +46,4 @@ def decode_hierarchy_graph(text: str) -> tasks.HierarchyGraph:
     hierarchy_relationships = json.loads(
         text, object_hook=_convert_dict_to_task_relationships
     )
-    return tasks.HierarchyGraph(
-        reduced_dag=graphs.ReducedDirectedAcyclicGraph(
-            bidict=graphs.BiDirectionalSetDict(forward=hierarchy_relationships)
-        )
-    )
+    return tasks.HierarchyGraph(hierarchy_relationships)
