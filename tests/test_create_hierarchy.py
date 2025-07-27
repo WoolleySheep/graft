@@ -1415,8 +1415,6 @@ def test_create_hierarchy_failure_downstream_hierarchy_dependency_crossover_trim
     assert data_layer_mock.save_system.called is False
 
 
-@pytest.mark.parametrize("topside_task", [tasks.UID(0), tasks.UID(1), tasks.UID(2)])
-@pytest.mark.parametrize("bottomside_task", [tasks.UID(3), tasks.UID(4), tasks.UID(5)])
 @pytest.mark.parametrize(
     ("topside_task_importance", "bottomside_task_importance"),
     itertools.combinations(iterable=tasks.Importance, r=2),
@@ -1426,8 +1424,6 @@ def test_create_hierarchy_failure_supertask_and_subtask_both_have_importance(
     data_layer_mock: mock.MagicMock,
     topside_task_importance: tasks.Importance,
     bottomside_task_importance: tasks.Importance,
-    bottomside_task: tasks.UID,
-    topside_task: tasks.UID,
 ) -> None:
     """Test that create_hierarchy fails when the topside task and the bottomside task both have importance."""
     superior_task_of_supertask = tasks.UID(0)
@@ -1436,14 +1432,21 @@ def test_create_hierarchy_failure_supertask_and_subtask_both_have_importance(
     subtask = tasks.UID(3)
     subtask_of_subtask = tasks.UID(4)
     inferior_task_of_subtask = tasks.UID(5)
-    system = domain.System.empty()
+    topmost_task_to_trim = tasks.UID(6)
+    bottommost_task_to_trim = tasks.UID(7)
 
+    system = domain.System.empty()
     system.add_task(superior_task_of_supertask)
     system.add_task(supertask_of_supertask)
     system.add_task(supertask)
     system.add_task(subtask)
     system.add_task(subtask_of_subtask)
     system.add_task(inferior_task_of_subtask)
+    system.add_task(topmost_task_to_trim)
+    system.add_task(bottommost_task_to_trim)
+    system.add_task_hierarchy(
+        supertask=topmost_task_to_trim, subtask=superior_task_of_supertask
+    )
     system.add_task_hierarchy(
         supertask=superior_task_of_supertask, subtask=supertask_of_supertask
     )
@@ -1452,16 +1455,48 @@ def test_create_hierarchy_failure_supertask_and_subtask_both_have_importance(
     system.add_task_hierarchy(
         supertask=subtask_of_subtask, subtask=inferior_task_of_subtask
     )
-    system.set_task_importance(task=topside_task, importance=topside_task_importance)
+    system.add_task_hierarchy(
+        supertask=inferior_task_of_subtask, subtask=bottommost_task_to_trim
+    )
     system.set_task_importance(
-        task=bottomside_task, importance=bottomside_task_importance
+        task=superior_task_of_supertask, importance=topside_task_importance
+    )
+    system.set_task_importance(
+        task=inferior_task_of_subtask, importance=bottomside_task_importance
+    )
+
+    expected_subsystem = tasks.System.empty()
+    expected_subsystem.add_task(superior_task_of_supertask)
+    expected_subsystem.add_task(supertask_of_supertask)
+    expected_subsystem.add_task(supertask)
+    expected_subsystem.add_task(subtask)
+    expected_subsystem.add_task(subtask_of_subtask)
+    expected_subsystem.add_task(inferior_task_of_subtask)
+    expected_subsystem.add_hierarchy(
+        supertask=superior_task_of_supertask, subtask=supertask_of_supertask
+    )
+    expected_subsystem.add_hierarchy(
+        supertask=supertask_of_supertask, subtask=supertask
+    )
+    expected_subsystem.add_hierarchy(supertask=subtask, subtask=subtask_of_subtask)
+    expected_subsystem.add_hierarchy(
+        supertask=subtask_of_subtask, subtask=inferior_task_of_subtask
+    )
+    expected_subsystem.set_importance(
+        task=superior_task_of_supertask, importance=topside_task_importance
+    )
+    expected_subsystem.set_importance(
+        task=inferior_task_of_subtask, importance=bottomside_task_importance
     )
 
     data_layer_mock.load_system.return_value = system
     logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
-    with pytest.raises(tasks.MultipleImportancesInHierarchyError):
+    with pytest.raises(tasks.MultipleImportancesInHierarchyError) as exc_info:
         logic_layer.create_task_hierarchy(supertask=supertask, subtask=subtask)
+    assert exc_info.value.supertask == supertask
+    assert exc_info.value.subtask == subtask
+    assert exc_info.value.subsystem == expected_subsystem
 
     data_layer_mock.load_system.assert_called_once()
     assert data_layer_mock.save_system.called is False

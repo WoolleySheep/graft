@@ -62,8 +62,8 @@ class NotConcreteTaskError(Exception):
         super().__init__(f"Task [{task}] is not concrete.", *args, **kwargs)
 
 
-class StartedDependentTasksError(Exception):
-    """Raised when a task has started dependent tasks.
+class DownstreamTasksHaveStartedError(Exception):
+    """Raised when a task has downstream tasks that have started.
 
     Task cannot be uncompleted, as dependent tasks depend on it being completed.
     """
@@ -71,30 +71,14 @@ class StartedDependentTasksError(Exception):
     def __init__(
         self,
         task: UID,
-        started_dependent_tasks_with_progress: Iterable[tuple[UID, Progress]],
+        started_downstream_tasks: Iterable[tuple[UID, Progress]],
+        subsystem: System,
         *args: tuple[Any, ...],
         **kwargs: dict[str, Any],
     ) -> None:
-        """Initialise StartedDependentTasksError."""
         self.task = task
-        self.dependee_tasks_with_progress = list(started_dependent_tasks_with_progress)
-        super().__init__(f"Task [{task}] has started dependent tasks.", *args, **kwargs)
-
-
-class StartedDependentTasksOfSuperiorTasksError(Exception):
-    """Raised when a task has started dependent tasks of superior tasks.
-
-    Task cannot be uncompleted, as dependent tasks depend on it being completed.
-    """
-
-    def __init__(
-        self,
-        task: UID,
-        *args: tuple[Any, ...],
-        **kwargs: dict[str, Any],
-    ) -> None:
-        """Initialise StartedDependentTasksOfSuperiorTasksError."""
-        self.task = task
+        self.started_downstream_tasks_to_progress_map = dict(started_downstream_tasks)
+        self.subsystem = subsystem
         super().__init__(
             f"Task [{task}] has started dependent tasks of superior tasks.",
             *args,
@@ -102,8 +86,8 @@ class StartedDependentTasksOfSuperiorTasksError(Exception):
         )
 
 
-class IncompleteDependeeTasksError(Exception):
-    """Raised when a task has not incomplete dependee tasks.
+class UpstreamTasksAreIncompleteError(Exception):
+    """Raised when a task has upstream tasks that are incomplete.
 
     Task cannot be started, as dependee tasks must be completed before the task can be started.
     """
@@ -111,34 +95,14 @@ class IncompleteDependeeTasksError(Exception):
     def __init__(
         self,
         task: UID,
-        incomplete_dependee_tasks_with_progress: Iterable[tuple[UID, Progress]],
+        incomplete_upstream_tasks: Iterable[tuple[UID, Progress]],
+        subsystem: System,
         *args: tuple[Any, ...],
         **kwargs: dict[str, Any],
     ) -> None:
-        """Initialise NotCompletedDependeeTasksError."""
         self.task = task
-        self.incomplete_dependee_tasks_with_progress = list(
-            incomplete_dependee_tasks_with_progress
-        )
-        super().__init__(
-            f"Task [{task}] has incomplete dependee tasks.", *args, **kwargs
-        )
-
-
-class IncompleteDependeeTasksOfSuperiorTasksError(Exception):
-    """Raised when a task has incomplete dependee tasks of superior tasks.
-
-    Task cannot be started, as dependee tasks must be completed before the task can be started.
-    """
-
-    def __init__(
-        self,
-        task: UID,
-        *args: tuple[Any, ...],
-        **kwargs: dict[str, Any],
-    ) -> None:
-        """Initialise NotCompletedDependeeTasksOfSuperiorTasksError."""
-        self.task = task
+        self.incomplete_upstream_tasks_to_progress_map = dict(incomplete_upstream_tasks)
+        self.subsystem = subsystem
         super().__init__(
             f"Task [{task}] has incomplete dependee tasks of superior tasks.",
             *args,
@@ -476,9 +440,29 @@ class SubsystemBuilder:
         return added_tasks
 
     def build(self) -> System:
+        network_subgraph = self._network_graph_builder.build()
+        attributes_register = self._attributes_register_builder.build()
+
+        for concrete_task, progress in zip(
+            network_subgraph.hierarchy_graph().concrete_tasks(),
+            self._system.get_progresses(
+                network_subgraph.hierarchy_graph().concrete_tasks()
+            ),
+            strict=True,
+        ):
+            attributes_register.set_progress(concrete_task, progress)
+
+        for top_level_task, importance in zip(
+            network_subgraph.hierarchy_graph().top_level_tasks(),
+            self._system.get_importances(
+                network_subgraph.hierarchy_graph().top_level_tasks()
+            ),
+            strict=True,
+        ):
+            attributes_register.set_importance(top_level_task, importance)
+
         return System(
-            self._attributes_register_builder.build(),
-            self._network_graph_builder.build(),
+            attributes_register=attributes_register, network_graph=network_subgraph
         )
 
 
@@ -555,89 +539,154 @@ class System:
 
         match current_progress:
             case Progress.COMPLETED:
-                if progress is not Progress.COMPLETED:
-                    if any(
-                        dependent_progress is not Progress.NOT_STARTED
-                        for dependent_progress in self.get_progresses(
-                            self._network_graph.dependency_graph().dependent_tasks(task)
-                        )
-                    ):
-                        dependent_tasks = (
-                            self._network_graph.dependency_graph().dependent_tasks(task)
-                        )
-                        started_dependent_tasks_with_progress = (
-                            (dependent_task, dependent_progress)
-                            for dependent_task, dependent_progress in zip(
-                                dependent_tasks,
-                                self.get_progresses(dependent_tasks),
-                                strict=False,
-                            )
-                            if dependent_progress is not Progress.NOT_STARTED
-                        )
-                        raise StartedDependentTasksError(
-                            task=task,
-                            started_dependent_tasks_with_progress=started_dependent_tasks_with_progress,
-                        )
-
-                    if any(
-                        superior_dependent_progress is not Progress.NOT_STARTED
-                        for superior_dependent_progress in self.get_progresses(
-                            unique(
-                                itertools.chain.from_iterable(
-                                    map(
-                                        self._network_graph.dependency_graph().dependent_tasks,
+                if progress is not Progress.COMPLETED and any(
+                    downstream_task_progress is not Progress.NOT_STARTED
+                    for downstream_task_progress in self.get_progresses(
+                        unique(
+                            itertools.chain.from_iterable(
+                                map(
+                                    self._network_graph.dependency_graph().dependent_tasks,
+                                    itertools.chain(
+                                        [task],
                                         self._network_graph.hierarchy_graph().superior_tasks(
                                             [task]
                                         ),
-                                    )
+                                    ),
                                 )
                             )
                         )
-                    ):
-                        # TODO: Add subgraph to error
-                        raise StartedDependentTasksOfSuperiorTasksError(task=task)
+                    )
+                ):
+                    task_and_its_superior_tasks = [
+                        task,
+                        *self._network_graph.hierarchy_graph().superior_tasks([task]),
+                    ]
+                    tasks_one_step_downstream_of_task = list(
+                        unique(
+                            itertools.chain.from_iterable(
+                                map(
+                                    self._network_graph.dependency_graph().dependent_tasks,
+                                    task_and_its_superior_tasks,
+                                )
+                            )
+                        )
+                    )
+                    started_tasks_downstream_of_task_and_their_progresses = {
+                        task: progress
+                        for task, progress in zip(
+                            tasks_one_step_downstream_of_task,
+                            self.get_progresses(tasks_one_step_downstream_of_task),
+                            strict=True,
+                        )
+                        if progress is not Progress.NOT_STARTED
+                    }
+
+                    intersecting_task_and_superior_tasks_to_started_dependent_tasks_map = {
+                        task: self._network_graph.dependency_graph().dependent_tasks(
+                            task
+                        )
+                        & started_tasks_downstream_of_task_and_their_progresses.keys()
+                        for task in task_and_its_superior_tasks
+                        if not self._network_graph.dependency_graph()
+                        .dependent_tasks(task)
+                        .isdisjoint(
+                            started_tasks_downstream_of_task_and_their_progresses.keys()
+                        )
+                    }
+
+                    builder = SubsystemBuilder(self)
+                    builder.add_hierarchy_connecting_subgraph(
+                        intersecting_task_and_superior_tasks_to_started_dependent_tasks_map.keys(),
+                        [task],
+                    )
+                    for (
+                        intersecting_task,
+                        started_downstream_tasks,
+                    ) in intersecting_task_and_superior_tasks_to_started_dependent_tasks_map.items():
+                        for started_downstream_task in started_downstream_tasks:
+                            builder.add_dependency(
+                                intersecting_task, started_downstream_task
+                            )
+
+                    raise DownstreamTasksHaveStartedError(
+                        task=task,
+                        started_downstream_tasks=started_tasks_downstream_of_task_and_their_progresses.items(),
+                        subsystem=builder.build(),
+                    )
             case Progress.NOT_STARTED:
-                if progress is not Progress.NOT_STARTED:
-                    if any(
-                        dependee_progress is not Progress.COMPLETED
-                        for dependee_progress in self.get_progresses(
-                            self._network_graph.dependency_graph().dependee_tasks(task)
-                        )
-                    ):
-                        dependee_tasks = (
-                            self._network_graph.dependency_graph().dependee_tasks(task)
-                        )
-                        incomplete_dependee_tasks_with_progress = (
-                            (dependee_task, dependee_progress)
-                            for dependee_task, dependee_progress in zip(
-                                dependee_tasks,
-                                self.get_progresses(dependee_tasks),
-                                strict=False,
-                            )
-                            if dependee_progress is not Progress.COMPLETED
-                        )
-                        raise IncompleteDependeeTasksError(
-                            task=task,
-                            incomplete_dependee_tasks_with_progress=incomplete_dependee_tasks_with_progress,
-                        )
-
-                    if any(
-                        superior_dependee_progress is not Progress.COMPLETED
-                        for superior_dependee_progress in self.get_progresses(
-                            unique(
-                                itertools.chain.from_iterable(
-                                    map(
-                                        self._network_graph.dependency_graph().dependee_tasks,
+                if progress is not Progress.NOT_STARTED and any(
+                    upstream_task_progress is not Progress.COMPLETED
+                    for upstream_task_progress in self.get_progresses(
+                        unique(
+                            itertools.chain.from_iterable(
+                                map(
+                                    self._network_graph.dependency_graph().dependee_tasks,
+                                    itertools.chain(
+                                        [task],
                                         self._network_graph.hierarchy_graph().superior_tasks(
                                             [task]
                                         ),
-                                    )
+                                    ),
                                 )
                             )
                         )
-                    ):
-                        # TODO: Add subgraph to error
-                        raise IncompleteDependeeTasksOfSuperiorTasksError(task=task)
+                    )
+                ):
+                    task_and_its_superior_tasks = [
+                        task,
+                        *self._network_graph.hierarchy_graph().superior_tasks([task]),
+                    ]
+                    tasks_one_step_upstream_of_task = list(
+                        unique(
+                            itertools.chain.from_iterable(
+                                map(
+                                    self._network_graph.dependency_graph().dependee_tasks,
+                                    task_and_its_superior_tasks,
+                                )
+                            )
+                        )
+                    )
+                    incomplete_tasks_upstream_of_task_and_their_progresses = {
+                        task: progress
+                        for task, progress in zip(
+                            tasks_one_step_upstream_of_task,
+                            self.get_progresses(tasks_one_step_upstream_of_task),
+                            strict=True,
+                        )
+                        if progress is not Progress.COMPLETED
+                    }
+
+                    intersecting_task_and_superior_tasks_to_incomplete_dependee_tasks_map = {
+                        task: self._network_graph.dependency_graph().dependee_tasks(
+                            task
+                        )
+                        & incomplete_tasks_upstream_of_task_and_their_progresses.keys()
+                        for task in task_and_its_superior_tasks
+                        if not self._network_graph.dependency_graph()
+                        .dependee_tasks(task)
+                        .isdisjoint(
+                            incomplete_tasks_upstream_of_task_and_their_progresses.keys()
+                        )
+                    }
+
+                    builder = SubsystemBuilder(self)
+                    builder.add_hierarchy_connecting_subgraph(
+                        intersecting_task_and_superior_tasks_to_incomplete_dependee_tasks_map.keys(),
+                        [task],
+                    )
+                    for (
+                        intersecting_task,
+                        incomplete_upstream_tasks,
+                    ) in intersecting_task_and_superior_tasks_to_incomplete_dependee_tasks_map.items():
+                        for incomplete_upstream_task in incomplete_upstream_tasks:
+                            builder.add_dependency(
+                                incomplete_upstream_task, intersecting_task
+                            )
+                    raise UpstreamTasksAreIncompleteError(
+                        task=task,
+                        incomplete_upstream_tasks=incomplete_tasks_upstream_of_task_and_their_progresses.items(),
+                        subsystem=builder.build(),
+                    )
             case Progress.IN_PROGRESS:
                 pass
 
@@ -784,7 +833,7 @@ class System:
                     self.get_progresses(
                         dependee_tasks_of_supertask_and_its_superior_tasks
                     ),
-                    strict=False,
+                    strict=True,
                 )
             )
 
@@ -876,7 +925,7 @@ class System:
                     self.get_progresses(
                         dependent_tasks_of_supertask_and_its_superior_tasks
                     ),
-                    strict=False,
+                    strict=True,
                 )
             )
 

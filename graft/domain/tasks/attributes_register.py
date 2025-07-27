@@ -1,6 +1,6 @@
 """AttributesRegister and associated classes/exceptions."""
 
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterable, Iterator, Mapping
 from typing import Protocol
 
 from graft.domain.tasks.attributes import Attributes, AttributesView
@@ -40,12 +40,12 @@ class AttributesRegister(Mapping[UID, AttributesView]):
     """Register mapping task UIDs to attributes."""
 
     def __init__(
-        self, task_to_attributes_map: Mapping[UID, Attributes] | None = None
+        self, tasks_with_attributes: Iterable[tuple[UID, Attributes]] | None = None
     ) -> None:
         """Initialise Register."""
         self._task_to_attributes_map = (
-            dict(task_to_attributes_map)
-            if task_to_attributes_map
+            dict(tasks_with_attributes)
+            if tasks_with_attributes is not None
             else dict[UID, Attributes]()
         )
 
@@ -205,4 +205,6 @@ class AttributesSubregisterBuilder:
         )
 
     def build(self) -> AttributesRegister:
-        return AttributesRegister(task_to_attributes_map=self._task_to_attributes_map)
+        return AttributesRegister(
+            tasks_with_attributes=self._task_to_attributes_map.items()
+        )

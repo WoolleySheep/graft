@@ -50,19 +50,17 @@ from graft.domain.tasks.network_graph import (
 from graft.domain.tasks.progress import Progress
 from graft.domain.tasks.system import (
     DependeeIncompleteDependentStartedError,
+    DownstreamTasksHaveStartedError,
     DownstreamTasksOfSupertaskHaveStartedError,
-    IncompleteDependeeTasksError,
-    IncompleteDependeeTasksOfSuperiorTasksError,
     InferiorTasksHaveImportanceError,
     ISystemView,
     MismatchedProgressForNewSupertaskError,
     MultipleImportancesInHierarchyError,
     NotConcreteTaskError,
-    StartedDependentTasksError,
-    StartedDependentTasksOfSuperiorTasksError,
     SuperiorTasksHaveImportanceError,
     System,
     SystemView,
+    UpstreamTasksAreIncompleteError,
     UpstreamTasksOfSupertaskHaveNotCompletedError,
 )
 from graft.domain.tasks.uid import (

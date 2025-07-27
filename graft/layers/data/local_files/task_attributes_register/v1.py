@@ -156,10 +156,10 @@ def _convert_dict_to_attributes_register(
     # TODO: Improve this hacky function
     try:
         return tasks.AttributesRegister(
-            task_to_attributes_map={
-                _decode_uid(number): _convert_dict_to_attributes(attributes_dict)
+            tasks_with_attributes=(
+                (_decode_uid(number), _convert_dict_to_attributes(attributes_dict))
                 for number, attributes_dict in d.items()
-            }
+            )
         )
     except ValueError:
         return d
