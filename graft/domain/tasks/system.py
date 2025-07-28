@@ -330,6 +330,13 @@ class ISystemView(Protocol):
         """
         ...
 
+    def is_active_task(self, task: UID, /) -> bool:
+        """Return whether the specified task is active.
+
+        Active tasks are either in progress, or not started and can be started.
+        """
+        ...
+
 
 class SubsystemBuilder:
     """Builder for a subsystem of a system."""
@@ -1194,6 +1201,36 @@ class System:
         for task in tasks:
             yield get_importance_recursive(task, task_importance_map)
 
+    def is_active_task(self, task: UID, /) -> bool:
+        """Return whether the specified task is active.
+
+        Active tasks are either in progress, or not started and can be started.
+        """
+        match self.get_progress(task):
+            case Progress.COMPLETED:
+                return False
+            case Progress.IN_PROGRESS:
+                return True
+            case Progress.NOT_STARTED:
+                return all(
+                    progress is Progress.COMPLETED
+                    for progress in self.get_progresses(
+                        unique(
+                            itertools.chain.from_iterable(
+                                map(
+                                    self._network_graph.dependency_graph().dependee_tasks,
+                                    itertools.chain(
+                                        [task],
+                                        self._network_graph.hierarchy_graph().superior_tasks(
+                                            [task]
+                                        ),
+                                    ),
+                                )
+                            )
+                        )
+                    )
+                )
+
 
 class SystemView:
     """View of System."""
@@ -1274,3 +1311,10 @@ class SystemView:
         Inferred importance is the highest importance of its supertasks.
         """
         return self._system.has_inferred_importance(task)
+
+    def is_active_task(self, task: UID, /) -> bool:
+        """Return whether the specified task is active.
+
+        Active tasks are either in progress, or not started and can be started.
+        """
+        return self._system.is_active_task(task)

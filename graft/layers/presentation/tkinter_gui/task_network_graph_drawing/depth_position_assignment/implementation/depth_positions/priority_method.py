@@ -331,6 +331,25 @@ def get_depth_positions_priority_method(
     }
 
     for _ in range(NUMBER_OF_DEPTH_POSITION_ITERATIONS):
+        if len(hierarchy_layers) == 1:
+            layer = hierarchy_layers[0]
+            for task in layer.tasks_with_supertasks_or_dependencies_sorted_by_descending_priority:
+                # Won't be any supertasks here, only care about the dependencies
+                ideal_position = _get_weighted_average_depth_position_of_supertasks_and_dependency_linked_tasks(
+                    task=task,
+                    graph=graph,
+                    task_to_depth_position_map=task_to_depth_position_map,
+                )
+                _move_task(
+                    task=task,
+                    ideal_position=ideal_position,
+                    layer_depth_graph=layer.depth_graph,
+                    task_to_depth_position_map=task_to_depth_position_map,
+                    task_to_priority_map=layer.task_to_supertask_and_dependency_linked_tasks_priority_map,
+                    min_separation_distance=min_separation_distance,
+                )
+            continue
+
         for layer in itertools.islice(hierarchy_layers, 1, None):
             for task in layer.tasks_with_supertasks_or_dependencies_sorted_by_descending_priority:
                 ideal_position = _get_weighted_average_depth_position_of_supertasks_and_dependency_linked_tasks(

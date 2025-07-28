@@ -1,6 +1,6 @@
 """AttributesRegister and associated classes/exceptions."""
 
-from collections.abc import Iterable, Iterator, Mapping
+from collections.abc import ItemsView, Iterable, Iterator, Mapping
 from typing import Protocol
 
 from graft.domain.tasks.attributes import Attributes, AttributesView
@@ -33,6 +33,10 @@ class IAttributesRegisterView(Protocol):
 
     def __getitem__(self, key: UID) -> AttributesView:
         """Return view of attributes associated with key."""
+        ...
+
+    def items(self) -> ItemsView[UID, AttributesView]:
+        """Return the items in the attributes register."""
         ...
 
 

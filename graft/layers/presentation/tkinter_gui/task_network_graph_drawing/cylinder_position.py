@@ -30,3 +30,9 @@ class TaskCylinderPosition:
     @property
     def depth(self) -> float:
         return self._depth
+
+    def __str__(self) -> str:
+        return f"([{self.min_dependency}, {self.max_dependency}], {self.hierarchy}, {self._depth})"
+
+    def __repr__(self) -> str:
+        return f"TaskCylinderPosition(dependencies=[{self.min_dependency}, {self.max_dependency}], hierarchy={self.hierarchy}, depth={self._depth})"
