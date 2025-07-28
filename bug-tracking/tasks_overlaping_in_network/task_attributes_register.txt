@@ -1,2 +1,0 @@
-1
-{"1": {"name": "Gamora", "description": "", "progress": null, "importance": null}, "2": {"name": "Quill", "description": "", "progress": null, "importance": null}, "3": {"name": "", "description": "", "progress": "not_started", "importance": null}, "4": {"name": "", "description": "", "progress": "not_started", "importance": null}, "5": {"name": "", "description": "", "progress": null, "importance": null}, "6": {"name": "", "description": "", "progress": "not_started", "importance": null}, "7": {"name": "", "description": "", "progress": "not_started", "importance": null}}

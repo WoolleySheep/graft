@@ -1,1 +1,0 @@
-Tasks 2 and 6 both occupying the same spot in the network diagram.
