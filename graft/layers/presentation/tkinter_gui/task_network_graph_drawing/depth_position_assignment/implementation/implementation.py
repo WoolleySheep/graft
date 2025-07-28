@@ -51,7 +51,7 @@ def get_depth_positions_unnamed_method(
         graph=graph_with_dummies,
         task_to_position_map=task_to_depth_position_map,
         # TODO: Another separation value pulled out of my ass
-        component_separation_distance=5 * float(task_cylinder_radius),
+        component_separation_distance=4 * float(task_cylinder_radius),
     )
 
     # Throw away the dummy tasks

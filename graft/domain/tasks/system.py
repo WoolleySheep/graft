@@ -505,6 +505,40 @@ class System:
             and self.network_graph() == other.network_graph()
         )
 
+    def __str__(self) -> str:
+        """Return a string representation of the system."""
+        frozen_hierarchy_graph = frozenset(
+            (task, frozenset(self._network_graph.hierarchy_graph().subtasks(task)))
+            for task in self.tasks()
+        )
+        frozen_dependency_graph = frozenset(
+            (
+                task,
+                frozenset(self._network_graph.dependency_graph().dependent_tasks(task)),
+            )
+            for task in self.tasks()
+        )
+        frozen_attribute_register = frozenset(
+            (
+                task,
+                (
+                    attributes.name,
+                    attributes.description,
+                    attributes.importance,
+                    attributes.progress,
+                ),
+            )
+            for task, attributes in self._attributes_register.items()
+        )
+        system_hash = hash(
+            (frozen_hierarchy_graph, frozen_dependency_graph, frozen_attribute_register)
+        )
+        return f"System({system_hash})"
+
+    def __repr__(self) -> str:
+        """Return a string representation of the system."""
+        return str(self)
+
     def clone(self) -> System:
         """Return a clone of the system."""
         return copy.deepcopy(self)

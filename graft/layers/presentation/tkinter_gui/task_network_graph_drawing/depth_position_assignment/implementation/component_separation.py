@@ -2,8 +2,6 @@ from collections.abc import Mapping
 
 from graft.domain import tasks
 
-MIN_COMPONENT_SEPARATION_DISTANCE = 2
-
 
 class ComponentPositionLimits:
     """The extremes of the positions of nodes within a component."""
@@ -27,6 +25,12 @@ class ComponentPositionLimits:
     @property
     def width(self) -> float:
         return self._max - self._min
+
+    def __str__(self) -> str:
+        return f"({self.min}, {self.max})"
+
+    def __repr__(self) -> str:
+        return f"ComponentPositionLimits({self.min}, {self.max})"
 
 
 def get_depth_positions_with_component_adjustment(
@@ -68,7 +72,7 @@ def get_depth_positions_with_component_adjustment(
     previous_component_max_position = 0  # Starting point is irrelevant
     for component, limits in components_with_limits_sorted_by_min_position:
         adjusted_min_position = (
-            previous_component_max_position + MIN_COMPONENT_SEPARATION_DISTANCE
+            previous_component_max_position + component_separation_distance
         )
         position_offset = adjusted_min_position - limits.min
 

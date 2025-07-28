@@ -736,6 +736,23 @@ class NetworkGraph:
             and self.hierarchy_graph() == other.hierarchy_graph()
         )
 
+    def __str__(self) -> str:
+        """Return a string representation of the graph."""
+        frozen_hierarchy_graph = frozenset(
+            (task, frozenset(self._hierarchy_graph.subtasks(task)))
+            for task in self.tasks()
+        )
+        frozen_dependency_graph = frozenset(
+            (task, frozenset(self._dependency_graph.dependent_tasks(task)))
+            for task in self.tasks()
+        )
+        network_hash = hash((frozen_hierarchy_graph, frozen_dependency_graph))
+        return f"NetworkGraph({network_hash})"
+
+    def __repr__(self) -> str:
+        """Return a string representation of the graph."""
+        return str(self)
+
     def clone(self) -> NetworkGraph:
         """Return a clone of the graph."""
         return copy.deepcopy(self)
