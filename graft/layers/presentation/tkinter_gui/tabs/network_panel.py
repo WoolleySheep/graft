@@ -93,8 +93,8 @@ _IMPORTANCE_HIERARCHY_DRAWING_PROPERTIES = get_network_hierarchy_properties()
 _IMPORTANCE_SELECTED_HIERARCHY_DRAWING_PROPERTIES = get_network_hierarchy_properties(
     alpha_level=_SELECTED_ALPHA_LEVEL
 )
-_IMPORTANCE_DEPENDENCY_DRAWING_PROPERTIES = get_network_hierarchy_properties()
-_IMPORTANCE_SELECTED_DEPENDENCY_DRAWING_PROPERTIES = get_network_hierarchy_properties(
+_IMPORTANCE_DEPENDENCY_DRAWING_PROPERTIES = get_network_dependency_properties()
+_IMPORTANCE_SELECTED_DEPENDENCY_DRAWING_PROPERTIES = get_network_dependency_properties(
     alpha_level=_SELECTED_ALPHA_LEVEL
 )
 

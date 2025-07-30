@@ -101,11 +101,14 @@ class TaskTreeView[*Ts](ttk.Treeview):
         """Update the tasks displayed."""
         self.delete(*self.get_children())
 
-        for task, information in self._sort_rows(task_rows):
+        for row_num, (task, information) in enumerate(self._sort_rows(task_rows)):
             row = [str(value) for value in information]
             row.insert(self._id_column_index, str(task))
+            background_colour = "grey" if row_num % 2 == 0 else "white"
             self.insert(
                 "",
                 tk.END,
                 values=row,
+                tag=background_colour,
             )
+        self.tag_configure("grey", background="#cccccc")

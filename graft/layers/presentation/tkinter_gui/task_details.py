@@ -10,10 +10,15 @@ from graft.architecture.logic import LogicLayer
 from graft.domain import tasks
 from graft.domain.tasks.progress import Progress
 from graft.layers.presentation.tkinter_gui import event_broker, helpers
+from graft.layers.presentation.tkinter_gui.domain_visual_language import (
+    get_task_colour_by_importance,
+    get_task_colour_by_progress,
+)
 from graft.layers.presentation.tkinter_gui.helpers import (
     importance_display,
     progress_display,
 )
+from graft.layers.presentation.tkinter_gui.helpers.colour import BLUE, YELLOW
 
 _NEIGHBOURING_TASK_TABLES_ID_COLUMN_WIDTH_PIXELS = 30
 _NEIGHBOURING_TASK_TABLES_NAME_COLUMN_WIDTH_PIXELS = 150
@@ -73,10 +78,11 @@ class TaskDetails(tk.Frame):
 
         self._task: tasks.UID | None = None
 
-        self._task_id = ttk.Label(self)
-        self._task_name = tk.StringVar(self)
+        self._identifier_section = ttk.Frame(self)
+        self._task_id = ttk.Label(master=self._identifier_section)
+        self._task_name = tk.StringVar(master=self._identifier_section)
         self._task_name_entry = ttk.Entry(
-            self,
+            master=self._identifier_section,
             textvariable=self._task_name,
             validate="focusout",
             validatecommand=make_return_true(
@@ -84,71 +90,162 @@ class TaskDetails(tk.Frame):
             ),
         )
 
-        self._inferred_task_importance = ttk.Label(self)
-        self._selected_importance = tk.StringVar(self)
+        self._imporance_section = ttk.Frame(master=self)
+        self._importance_label = ttk.Label(self._imporance_section, text="Importance:")
+        self._inferred_task_importance = ttk.Label(master=self._imporance_section)
+        self._selected_importance = tk.StringVar(master=self._imporance_section)
 
-        importance_menu_options = itertools.chain(
-            (
-                importance_display.format(importance)
-                for importance in sorted(tasks.Importance, reverse=True)
+        self._importance_menu_options_to_colour_map = dict(
+            itertools.chain(
+                (
+                    (
+                        importance_display.format(importance),
+                        str(get_task_colour_by_importance(importance)),
+                    )
+                    for importance in sorted(tasks.Importance, reverse=True)
+                ),
+                [(" ", "grey")],
             ),
-            [""],
         )
         # Tkinter OptionMenu command should be passed a StringVar, but it is
         # instead passed a string. Hence the type ignore.
         self._task_importance_option_menu = ttk.OptionMenu(
-            self,
+            self._imporance_section,
             self._selected_importance,
             None,
-            *importance_menu_options,
+            *self._importance_menu_options_to_colour_map.keys(),
             command=self._on_importance_selected_from_option_button,  # type: ignore[reportArgumentType]
         )
+        menu = self._task_importance_option_menu.nametowidget(
+            self._task_importance_option_menu.cget("menu")
+        )
+        for menu_option, colour in self._importance_menu_options_to_colour_map.items():
+            index = menu.index(menu_option)
+            menu.entryconfigure(index, background=colour)
 
+        self._progress_section = ttk.Frame(master=self)
+        self._progress_label = ttk.Label(master=self._progress_section, text="Progress")
         self._decrement_progress_button = ttk.Button(
-            self, text="<", command=self._on_decrement_progress_button_clicked
+            master=self._progress_section,
+            text="<",
+            command=self._on_decrement_progress_button_clicked,
         )
-        self._task_progress_label = ttk.Label(self, text="")
+        self._task_progress_label = ttk.Label(master=self._progress_section, text="")
         self._increment_progress_button = ttk.Button(
-            self, text=">", command=self._on_increment_progress_button_clicked
+            master=self._progress_section,
+            text=">",
+            command=self._on_increment_progress_button_clicked,
         )
 
+        self._description_section = ttk.Frame(master=self)
+        self._task_description_scrolled_text = scrolledtext.ScrolledText(
+            master=self._description_section
+        )
         self._save_description_button = ttk.Button(
-            self,
+            master=self._description_section,
             text="Save Description",
             command=self._on_save_description_button_clicked,
         )
 
-        self._task_description_scrolled_text = scrolledtext.ScrolledText(self)
+        self._neighbours_section = ttk.Frame(master=self)
 
-        self.subtasks_label = ttk.Label(self, text="Subtasks")
-        self._subtasks_table = _create_nieghbouring_task_table(self)
+        self._subtasks_section = ttk.Frame(master=self._neighbours_section)
+        self._subtasks_label = ttk.Label(master=self._subtasks_section, text="Subtasks")
+        self._subtask_add_button = ttk.Button(master=self._subtasks_section, text="+")
+        self._subtask_remove_button = ttk.Button(
+            master=self._subtasks_section, text="-"
+        )
+        self._subtasks_table = _create_nieghbouring_task_table(
+            master=self._subtasks_section
+        )
 
-        self.supertasks_label = ttk.Label(self, text="Supertasks")
-        self._supertasks_table = _create_nieghbouring_task_table(self)
+        self._supertasks_section = ttk.Frame(master=self._neighbours_section)
+        self._supertasks_label = ttk.Label(
+            master=self._supertasks_section, text="Supertasks"
+        )
+        self._supertask_add_button = ttk.Button(
+            master=self._supertasks_section, text="+"
+        )
+        self._supertask_remove_button = ttk.Button(
+            master=self._supertasks_section, text="-"
+        )
+        self._supertasks_table = _create_nieghbouring_task_table(
+            master=self._supertasks_section
+        )
 
-        self.dependee_tasks_label = ttk.Label(self, text="Dependee-tasks")
-        self._dependee_tasks_table = _create_nieghbouring_task_table(self)
+        self._dependee_tasks_section = ttk.Frame(master=self._neighbours_section)
+        self._dependee_tasks_label = ttk.Label(
+            master=self._dependee_tasks_section, text="Dependee-tasks"
+        )
+        self._dependee_task_add_button = ttk.Button(
+            master=self._dependee_tasks_section, text="+"
+        )
+        self._dependee_task_remove_button = ttk.Button(
+            master=self._dependee_tasks_section, text="-"
+        )
+        self._dependee_tasks_table = _create_nieghbouring_task_table(
+            master=self._dependee_tasks_section
+        )
 
-        self.dependent_tasks_label = ttk.Label(self, text="Dependent-tasks")
-        self._dependent_tasks_table = _create_nieghbouring_task_table(self)
+        self._dependent_tasks_section = ttk.Frame(master=self._neighbours_section)
+        self._dependent_tasks_label = ttk.Label(
+            master=self._dependent_tasks_section, text="Dependent-tasks"
+        )
+        self._dependent_task_add_button = ttk.Button(
+            master=self._dependent_tasks_section, text="+"
+        )
+        self._dependent_task_remove_button = ttk.Button(
+            master=self._dependent_tasks_section, text="-"
+        )
+        self._dependent_tasks_table = _create_nieghbouring_task_table(
+            master=self._dependent_tasks_section
+        )
+
+        self._identifier_section.grid(row=0)
+        self._imporance_section.grid(row=1)
+        self._progress_section.grid(row=2)
+        self._description_section.grid(row=3)
+        self._neighbours_section.grid(row=4)
 
         self._task_id.grid(row=0, column=0)
-        self._task_name_entry.grid(row=0, column=1, columnspan=3)
-        self._inferred_task_importance.grid(row=1, column=0, columnspan=3)
-        self._task_importance_option_menu.grid(row=1, column=0, columnspan=3)
-        self._task_progress_label.grid(row=2, column=1)
-        self._decrement_progress_button.grid(row=2, column=0)
-        self._increment_progress_button.grid(row=2, column=2)
-        self._task_description_scrolled_text.grid(row=3, column=0, columnspan=4)
-        self._save_description_button.grid(row=4, column=0, columnspan=3)
-        self.subtasks_label.grid(row=5, column=0, columnspan=2)
-        self._subtasks_table.grid(row=6, column=0, columnspan=2)
-        self.supertasks_label.grid(row=5, column=2, columnspan=2)
-        self._supertasks_table.grid(row=6, column=2, columnspan=2)
-        self.dependee_tasks_label.grid(row=7, column=0, columnspan=2)
-        self._dependee_tasks_table.grid(row=8, column=0, columnspan=2)
-        self.dependent_tasks_label.grid(row=7, column=2, columnspan=2)
-        self._dependent_tasks_table.grid(row=8, column=2, columnspan=2)
+        self._task_name_entry.grid(row=0, column=1)
+
+        self._importance_label.grid(row=0, column=0)
+        self._inferred_task_importance.grid(row=0, column=1)
+        self._task_importance_option_menu.grid(row=0, column=1)
+
+        self._progress_label.grid(row=0, column=0)
+        self._decrement_progress_button.grid(row=0, column=1)
+        self._task_progress_label.grid(row=0, column=2)
+        self._increment_progress_button.grid(row=0, column=3)
+
+        self._task_description_scrolled_text.grid(row=0, column=0)
+        self._save_description_button.grid(row=1, column=0)
+
+        self._supertasks_section.grid(row=0, column=1)
+        self._subtasks_section.grid(row=2, column=1)
+        self._dependee_tasks_section.grid(row=1, column=0)
+        self._dependent_tasks_section.grid(row=1, column=2)
+
+        self._supertasks_label.grid(row=0, column=0)
+        self._supertask_add_button.grid(row=0, column=1)
+        self._supertask_remove_button.grid(row=0, column=2)
+        self._supertasks_table.grid(row=1, column=0, columnspan=3)
+
+        self._subtasks_label.grid(row=0, column=0)
+        self._subtask_add_button.grid(row=0, column=1)
+        self._subtask_remove_button.grid(row=0, column=2)
+        self._subtasks_table.grid(row=1, column=0, columnspan=3)
+
+        self._dependee_tasks_label.grid(row=0, column=0)
+        self._dependee_task_add_button.grid(row=0, column=1)
+        self._dependee_task_remove_button.grid(row=0, column=2)
+        self._dependee_tasks_table.grid(row=1, column=0, columnspan=3)
+
+        self._dependent_tasks_label.grid(row=0, column=0)
+        self._dependent_task_add_button.grid(row=0, column=1)
+        self._dependent_task_remove_button.grid(row=0, column=2)
+        self._dependent_tasks_table.grid(row=1, column=0, columnspan=3)
 
         self._update_with_no_task()
 
@@ -159,7 +256,9 @@ class TaskDetails(tk.Frame):
     def _update_with_task(self) -> None:
         assert self._task is not None
 
-        self._task_id.config(text=str(self._task))
+        self._task_id.config(
+            text=f"ID-{self._task if self._task is not None else 'xxxx'}"
+        )
 
         register = self._logic_layer.get_task_system().attributes_register()
         attributes = register[self._task]
@@ -175,18 +274,45 @@ class TaskDetails(tk.Frame):
             assert importance is not None
             self._task_importance_option_menu.grid_remove()
             formatted_importance = importance_display.format(importance)
-            self._inferred_task_importance.config(text=formatted_importance)
+            self._inferred_task_importance.config(
+                text=formatted_importance,
+                background=str(get_task_colour_by_importance(importance)),
+            )
             self._inferred_task_importance.grid()
         else:
             self._inferred_task_importance.grid_remove()
             formatted_importance = (
                 importance_display.format(importance) if importance else ""
             )
+            bg = (
+                str(get_task_colour_by_importance(importance))
+                if importance is not None
+                else "grey"
+            )
+            style = ttk.Style()
+            style.configure("Custom.TMenubutton", background=bg)
+            self._task_importance_option_menu.configure(style="Custom.TMenubutton")
             self._selected_importance.set(formatted_importance)
             self._task_importance_option_menu.grid()
 
         progress = system.get_progress(self._task)
-        self._task_progress_label.config(text=progress_display.format(progress))
+        progress_text = progress_display.format(progress)
+        if progress is Progress.NOT_STARTED:
+            if system.is_active_task(self._task):
+                active_label = "active"
+                progress_colour = "blue"
+            else:
+                active_label = "inactive"
+                progress_colour = "grey"
+            progress_text = f"{progress_text} [{active_label}]"
+        else:
+            progress_colour = str(get_task_colour_by_progress(progress))
+
+        self._task_progress_label.config(
+            text=progress_text,
+            background=progress_colour,
+        )
+        self._task_progress_label.config
 
         if system.network_graph().hierarchy_graph().is_concrete(self._task):
             self._decrement_progress_button.grid()
@@ -241,13 +367,13 @@ class TaskDetails(tk.Frame):
     def _update_with_no_task(self) -> None:
         assert self._task is None
 
-        self._task_id.config(text="")
+        self._task_id.config(text="ID-XXXX")
         self._task_name.set("")
         self._task_name_entry.config(state=tk.DISABLED)
         self._inferred_task_importance.grid()
-        self._inferred_task_importance.config(text="")
+        self._inferred_task_importance.config(text="", background="")
         self._task_importance_option_menu.grid_remove()
-        self._task_progress_label.config(text="")
+        self._task_progress_label.config(text="", background="")
         self._decrement_progress_button.grid_remove()
         self._increment_progress_button.grid_remove()
         self._task_description_scrolled_text.delete(1.0, tk.END)
@@ -308,7 +434,7 @@ class TaskDetails(tk.Frame):
     def _save_current_importance(self) -> None:
         assert self._task is not None
 
-        formatted_importance = self._selected_importance.get()
+        formatted_importance = self._selected_importance.get().replace(" ", "")
         importance = (
             importance_display.parse(formatted_importance)
             if formatted_importance
