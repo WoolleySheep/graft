@@ -15,6 +15,7 @@ if TYPE_CHECKING:
         Callable,
         Generator,
         Iterator,
+        MutableMapping,
     )
 
 
@@ -256,40 +257,53 @@ def unique[T](iterable: Iterable[T]) -> Generator[T, None, None]:
         yield item
 
 
-def lazy_intersection[T: Hashable](
-    a: Iterable[T], b: Iterable[T]
+def _yield_items_matching_value_and_store_others_in_map[T, G: Hashable](
+    iterable: Iterable[T],
+    value: G,
+    key: Callable[[T], G],
+    key_value_to_items_map: MutableMapping[G, list[T]],
 ) -> Generator[T, None, None]:
-    """Lazily yield the intersection of two iterables."""
-    a_iter = iter(a)
-    b_iter = iter(b)
-    a2 = set[T]()
-    b2 = set[T]()
-
-    for a_value in a_iter:
-        if a_value in a2:
-            continue
-        a2.add(a_value)
-        if a_value in b2:
-            yield a_value
-            continue
-        for b_value in b_iter:
-            b2.add(b_value)
-            if b_value == a_value:
-                yield a_value
-                break
-
-
-def group_by_hashable[T, G: Hashable](
-    iterable: Iterable[T], key: Callable[[T], G]
-) -> dict[G, list[T]]:
-    """Group items by a key function that returns a hashable value.
-
-    Allows grouping in O(n) time.
-    """
-    key_value_to_group_map = dict[G, list[T]]()
     for item in iterable:
         key_value = key(item)
-        if key_value not in key_value_to_group_map:
-            key_value_to_group_map[key_value] = []
-        key_value_to_group_map[key_value].append(item)
-    return key_value_to_group_map
+        if key_value == value:
+            yield item
+        else:
+            if key_value not in key_value_to_items_map:
+                key_value_to_items_map[key_value] = []
+            key_value_to_items_map[key_value].append(item)
+
+
+def lazy_group_by_hashable[T, G: Hashable](
+    iterable: Iterable[T], key: Callable[[T], G]
+) -> Generator[tuple[G, Iterator[T]], None, None]:
+    """Lazily group items by a key function that returns a hashable value.
+
+    Runs in O(n).
+
+    The order of the groups matches the order they first appear in the iterable, as does
+    the order of the items within each groups. So if two items are in the same group,
+    the item that occurs earlier in the iterable will appear earlier in the group.
+    """
+    iterable_ = iter(iterable)
+    try:
+        item = next(iterable_)
+    except StopIteration:
+        return
+
+    key_value = key(item)
+    key_value_to_items_map = dict[G, list[T]]()
+    yield (
+        key_value,
+        itertools.chain(
+            [item],
+            _yield_items_matching_value_and_store_others_in_map(
+                iterable=iterable_,
+                value=key_value,
+                key=key,
+                key_value_to_items_map=key_value_to_items_map,
+            ),
+        ),
+    )
+
+    for key_value, items in key_value_to_items_map.items():
+        yield (key_value, iter(items))

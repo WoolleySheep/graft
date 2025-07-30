@@ -2,8 +2,6 @@ from collections.abc import Hashable, Mapping
 
 from graft import graphs
 
-MIN_COMPONENT_SEPARATION_DISTANCE = 2
-
 
 class ComponentPositionLimits:
     """The extremes of the positions of nodes within a component."""
@@ -68,7 +66,7 @@ def get_node_positions_inter_component_adjustment[T: Hashable](
     previous_component_max_position = 0  # Starting point is irrelevant
     for component, limits in components_with_limits_sorted_by_min_position:
         adjusted_min_position = (
-            previous_component_max_position + MIN_COMPONENT_SEPARATION_DISTANCE
+            previous_component_max_position + component_separation_distance
         )
         position_offset = adjusted_min_position - limits.min
 

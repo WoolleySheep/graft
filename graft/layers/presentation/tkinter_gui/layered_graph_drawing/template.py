@@ -39,6 +39,8 @@ def calculate_node_positions[T: Hashable](
     get_layer_orders_fn: GetLayerOrdersFn[T | DummyNode],
     get_node_positions_fn: GetNodePositionsFn[T | DummyNode],
     orientation: GraphOrientation,
+    min_intra_layer_node_seperation: float,
+    min_inter_layer_node_seperation: float,
 ) -> dict[T, tuple[float, float]]:
     layers = get_layers_fn(graph=graph)
 
@@ -52,7 +54,10 @@ def calculate_node_positions[T: Hashable](
     )
 
     node_positions_with_dummies = get_node_positions_fn(
-        graph=graph_with_dummies, ordered_layers=layer_orders_with_dummies
+        graph=graph_with_dummies,
+        ordered_layers=layer_orders_with_dummies,
+        min_intra_layer_node_seperation=min_intra_layer_node_seperation,
+        min_inter_layer_node_seperation=min_inter_layer_node_seperation,
     )
 
     node_positions = _remove_dummy_nodes(node_positions=node_positions_with_dummies)

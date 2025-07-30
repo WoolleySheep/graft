@@ -91,19 +91,6 @@ class ImportanceGraph(tk.Frame):
             case tasks.Importance.HIGH:
                 return HIGH_IMPORTANCE_COLOUR
 
-    def _get_task_edge_colour(self, task: tasks.UID) -> str | None:
-        if task == self._selected_task:
-            return "green"
-
-        return (
-            "black"
-            if self._logic_layer.get_task_system()
-            .attributes_register()[task]
-            .importance
-            is not None
-            else None
-        )
-
     def _get_task_properties(self, task: tasks.UID) -> GraphNodeDrawingProperties:
         if task == self._selected_task:
             alpha = OPAQUE

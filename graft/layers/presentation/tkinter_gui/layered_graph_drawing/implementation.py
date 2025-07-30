@@ -19,6 +19,8 @@ from graft.layers.presentation.tkinter_gui.layered_graph_drawing.template import
 def calculate_node_positions_sugiyama_method[T: Hashable](
     graph: graphs.DirectedAcyclicGraph[T],
     orientation: GraphOrientation,
+    min_intra_layer_node_seperation: float,
+    min_inter_layer_node_seperation: float,
 ) -> dict[T, tuple[float, float]]:
     return calculate_node_positions(
         graph=graph,
@@ -26,4 +28,6 @@ def calculate_node_positions_sugiyama_method[T: Hashable](
         get_layer_orders_fn=layer_ordering.get_layer_orders_median_with_transpose_method,
         get_node_positions_fn=node_positions.get_node_positions_best_method,
         orientation=orientation,
+        min_intra_layer_node_seperation=min_intra_layer_node_seperation,
+        min_inter_layer_node_seperation=min_inter_layer_node_seperation,
     )

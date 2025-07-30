@@ -37,10 +37,12 @@ from graft.layers.presentation.tkinter_gui.helpers.graph_node_drawing_properties
 from graft.layers.presentation.tkinter_gui.layered_graph_drawing.orientation import (
     GraphOrientation,
 )
-from graft.utils import group_by_hashable
+from graft.utils import lazy_group_by_hashable
 
 _MOTION_NOTIFY_EVENT_NAME: Final = "motion_notify_event"
 _BUTTON_RELEASE_EVENT_NAME: Final = "button_release_event"
+
+_NODE_SIZE = 300
 
 
 class DefaultSentinel(enum.Enum):
@@ -221,7 +223,10 @@ class StaticGraph[T: Hashable](tk.Frame):
 
         self._node_positions = (
             layered_graph_drawing.calculate_node_positions_sugiyama_method(
-                graph=self._graph, orientation=self._graph_orientation
+                graph=self._graph,
+                orientation=self._graph_orientation,
+                min_intra_layer_node_seperation=3 * _NODE_SIZE,
+                min_inter_layer_node_seperation=3 * _NODE_SIZE,
             )
         )
 
@@ -229,17 +234,20 @@ class StaticGraph[T: Hashable](tk.Frame):
         node_edge_colours = list[str]()
         node_alphas = list[float]()
         node_label_colours = dict[T, str]()
+        node_label_alphas = dict[T, float]()
         for node in networkx_graph.nodes:
             node_properties = self._get_node_properties(node)
             node_colours.append(str(node_properties.colour))
             node_edge_colours.append(str(node_properties.edge_colour))
             node_alphas.append(float(node_properties.alpha))
             node_label_colours[node] = str(node_properties.label_colour)
+            node_label_alphas[node] = float(node_properties.label_alpha)
 
         self._nodes_path_collection: mpl_collections.PathCollection = (
             nx.draw_networkx_nodes(
                 networkx_graph,
                 pos=self._node_positions,
+                node_size=_NODE_SIZE,
                 node_color=node_colours,  # pyright: ignore [reportArgumentType] (node_colour also accepts array[str])
                 edgecolors=node_edge_colours,
                 alpha=node_alphas,
@@ -263,28 +271,29 @@ class StaticGraph[T: Hashable](tk.Frame):
             properties = get_edge_properties(source, target)  # pyright: ignore[reportUnknownArgumentType]
             edges_with_properties.append(((source, target), properties))  # pyright: ignore[reportUnknownArgumentType]
 
-        for connection_style, edges_with_properties_group in group_by_hashable(
+        for connection_style, edges_with_properties_group in lazy_group_by_hashable(
             edges_with_properties, key=lambda x: x[1].connection_style
-        ).items():
+        ):
+            edges_with_properties_group_ = list(edges_with_properties_group)
             edges = [
                 edges_with_properties[0]
-                for edges_with_properties in edges_with_properties_group
+                for edges_with_properties in edges_with_properties_group_
             ]
             alphas = [
                 float(edges_with_properties[1].alpha)
-                for edges_with_properties in edges_with_properties_group
+                for edges_with_properties in edges_with_properties_group_
             ]
             colours = [
                 str(edges_with_properties[1].colour)
-                for edges_with_properties in edges_with_properties_group
+                for edges_with_properties in edges_with_properties_group_
             ]
             arrow_styles = [
                 str(edges_with_properties[1].arrow_style)
-                for edges_with_properties in edges_with_properties_group
+                for edges_with_properties in edges_with_properties_group_
             ]
             line_styles = [
                 str(edges_with_properties[1].line_style)
-                for edges_with_properties in edges_with_properties_group
+                for edges_with_properties in edges_with_properties_group_
             ]
 
             # Have to do draw_networkx_edges for each connectionstyle individually as
@@ -306,6 +315,7 @@ class StaticGraph[T: Hashable](tk.Frame):
             networkx_graph,
             pos=self._node_positions,
             font_color=node_label_colours,  # pyright: ignore [reportArgumentType] (font_color also accepts dict[N, str])
+            alpha=node_label_alphas,
             ax=self._ax,
         )
 

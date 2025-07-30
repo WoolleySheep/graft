@@ -1,6 +1,7 @@
 import enum
 from typing import Final
 
+from graft.domain import tasks
 from graft.layers.presentation.tkinter_gui.helpers.alpha import OPAQUE, Alpha
 from graft.layers.presentation.tkinter_gui.helpers.arrow_style import (
     CURVE_FILLED_B,
@@ -107,14 +108,14 @@ class GraphAlphaLevel(enum.Enum):
     DEFAULT = enum.auto()
 
 
-def get_graph_node_alpha(level: GraphAlphaLevel) -> Alpha:
+def get_graph_node_alpha(level: GraphAlphaLevel) -> tuple[Alpha, Alpha]:
     match level:
         case GraphAlphaLevel.VERY_FADED:
-            return VERY_FADED_GRAPH_NODE_ALPHA
+            return VERY_FADED_GRAPH_NODE_ALPHA, VERY_FADED_GRAPH_NODE_LABEL_ALPHA
         case GraphAlphaLevel.FADED:
-            return FADED_GRAPH_NODE_ALPHA
+            return FADED_GRAPH_NODE_ALPHA, FADED_GRAPH_NODE_LABEL_ALPHA
         case GraphAlphaLevel.DEFAULT:
-            return DEFAULT_GRAPH_NODE_ALPHA
+            return DEFAULT_GRAPH_NODE_ALPHA, DEFAULT_GRAPH_NODE_LABEL_ALPHA
 
 
 def get_graph_edge_alpha(level: GraphAlphaLevel) -> Alpha:
@@ -133,9 +134,13 @@ def get_graph_node_properties(
     label_colour: Colour = DEFAULT_GRAPH_TEXT_COLOUR,
     edge_colour: Colour | None = None,
 ) -> GraphNodeDrawingProperties:
-    alpha = get_graph_node_alpha(alpha_level)
+    alpha, label_alpha = get_graph_node_alpha(alpha_level)
     return GraphNodeDrawingProperties(
-        colour=colour, alpha=alpha, label_colour=label_colour, edge_colour=edge_colour
+        colour=colour,
+        alpha=alpha,
+        label_colour=label_colour,
+        edge_colour=edge_colour,
+        label_alpha=label_alpha,
     )
 
 
@@ -258,3 +263,25 @@ def get_network_dependency_properties(
         connection_style=connection_style,
         arrow_style=arrow_style,
     )
+
+
+def get_task_colour_by_importance(importance: tasks.Importance | None) -> Colour:
+    match importance:
+        case tasks.Importance.HIGH:
+            return HIGH_IMPORTANCE_COLOUR
+        case tasks.Importance.MEDIUM:
+            return MEDIUM_IMPORTANCE_COLOUR
+        case tasks.Importance.LOW:
+            return LOW_IMPORTANCE_COLOUR
+        case None:
+            return DEFAULT_GRAPH_NODE_COLOUR
+
+
+def get_task_colour_by_progress(progress: tasks.Progress) -> Colour:
+    match progress:
+        case tasks.Progress.COMPLETED:
+            return COMPLETED_TASK_COLOUR
+        case tasks.Progress.IN_PROGRESS:
+            return IN_PROGRESS_TASK_COLOUR
+        case tasks.Progress.NOT_STARTED:
+            return NOT_STARTED_TASK_COLOUR
