@@ -9,7 +9,7 @@ from collections.abc import (
     Hashable,
     Set,
 )
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol, TypeGuard
 
 from graft import graphs
 from graft.domain.tasks import helpers
@@ -20,6 +20,7 @@ from graft.graphs import (
     ConnectionsDictNodesHaveLoops,
     TargetsAreNotNotAlsoSourceNodesError,
 )
+from graft.graphs.directed_acyclic_graph import DirectedAcyclicGraph
 
 if TYPE_CHECKING:
     from collections.abc import (
@@ -31,49 +32,27 @@ if TYPE_CHECKING:
     )
 
 
-class HasDependeeTasksError(Exception):
-    """Raised when a task has dependee-tasks."""
+class HasDependencyNeighboursError(Exception):
+    """Raised when a task has neighbours.
+
+    A task cannot be removed when it has any neighbours.
+    """
 
     def __init__(
         self,
         task: UID,
         dependee_tasks: Iterable[UID],
-        *args: tuple[Any, ...],
-        **kwargs: dict[str, Any],
+        dependent_tasks: Iterable[UID],
     ) -> None:
-        """Initialise HasDependeeTasksError."""
         self.task = task
         self.dependee_tasks = set(dependee_tasks)
-        formatted_dependee_tasks = (
-            str(dependee_task) for dependee_task in dependee_tasks
-        )
-        super().__init__(
-            f"Task [{task}] has dependee-tasks [{', '.join(formatted_dependee_tasks)}]",
-            *args,
-            **kwargs,
-        )
-
-
-class HasDependentTasksError(Exception):
-    """Raised when a task has dependent-tasks."""
-
-    def __init__(
-        self,
-        task: UID,
-        dependent_tasks: Iterable[UID],
-        *args: tuple[Any, ...],
-        **kwargs: dict[str, Any],
-    ) -> None:
-        """Initialise HasDependentTasksError."""
-        self.task = task
         self.dependent_tasks = set(dependent_tasks)
-        formatted_dependent_tasks = (
-            str(dependent_task) for dependent_task in dependent_tasks
+        formatted_neighbours = (
+            str(neighbour)
+            for neighbour in itertools.chain(self.dependee_tasks, self.dependent_tasks)
         )
         super().__init__(
-            f"Task [{task}] has sub-tasks [{', '.join(formatted_dependent_tasks)}]",
-            *args,
-            **kwargs,
+            f"Task [{task}] has neighbours [{', '.join(formatted_neighbours)}]"
         )
 
 
@@ -216,6 +195,13 @@ class ConnectionsDictDependencyGraphHasCycleError(Exception):
         super().__init__(f"Underlying dictionary [{dictionary}] has a cycle")
 
 
+def _is_uid_graph(obj: object) -> TypeGuard[DirectedAcyclicGraph[UID]]:
+    return isinstance(obj, DirectedAcyclicGraph) and all(
+        isinstance(item, UID)
+        for item in obj.nodes()  # type: ignore
+    )
+
+
 def _reraise_edge_adding_exceptions_as_corresponding_dependency_adding_exceptions[
     **P,
     R,
@@ -229,19 +215,24 @@ def _reraise_edge_adding_exceptions_as_corresponding_dependency_adding_exception
         try:
             return fn(*args, **kwargs)
         except graphs.NodeDoesNotExistError as e:
-            assert isinstance(e.node, UID)
+            if not isinstance(e.node, UID):
+                raise TypeError from e
             raise TaskDoesNotExistError(e.node) from e
         except graphs.LoopError as e:
-            assert isinstance(e.node, UID)
+            if not isinstance(e.node, UID):
+                raise TypeError from e
             raise DependencyLoopError(e.node) from e
         except graphs.EdgeAlreadyExistsError as e:
-            assert isinstance(e.source, UID)
-            assert isinstance(e.target, UID)
+            if not isinstance(e.source, UID) or not isinstance(e.target, UID):
+                raise TypeError from e
             raise DependencyAlreadyExistsError(e.source, e.target) from e
         except graphs.IntroducesCycleError as e:
-            assert isinstance(e.source, UID)
-            assert isinstance(e.target, UID)
-            assert all(isinstance(node, UID) for node in e.connecting_subgraph.nodes())
+            if (
+                not isinstance(e.source, UID)
+                or not isinstance(e.target, UID)
+                or not _is_uid_graph(e.connecting_subgraph)
+            ):
+                raise TypeError from e
             raise DependencyIntroducesCycleError(
                 dependee_task=e.source,
                 dependent_task=e.target,
@@ -254,6 +245,10 @@ def _reraise_edge_adding_exceptions_as_corresponding_dependency_adding_exception
     return wrapper
 
 
+def _is_uid_set(obj: object) -> TypeGuard[set[UID]]:
+    return isinstance(obj, set) and all(isinstance(item, UID) for item in obj)  # type: ignore
+
+
 def _reraise_node_removing_exceptions_as_corresponding_task_removing_exceptions[**P, R](
     fn: Callable[P, R],
 ) -> Callable[P, R]:
@@ -264,19 +259,18 @@ def _reraise_node_removing_exceptions_as_corresponding_task_removing_exceptions[
         try:
             return fn(*args, **kwargs)
         except graphs.NodeDoesNotExistError as e:
-            assert isinstance(e.node, UID)
+            if not isinstance(e.node, UID):
+                raise TypeError from e
             raise TaskDoesNotExistError(e.node) from e
-        except graphs.HasPredecessorsError as e:
-            assert isinstance(e.node, UID)
-            assert all(isinstance(predecessor, UID) for predecessor in e.predecessors)
-            raise HasDependeeTasksError(
-                task=e.node, dependee_tasks=e.predecessors
-            ) from e
-        except graphs.HasSuccessorsError as e:
-            assert isinstance(e.node, UID)
-            assert all(isinstance(successor, UID) for successor in e.successors)
-            raise HasDependentTasksError(
-                task=e.node, dependent_tasks=e.successors
+        except graphs.HasNeighboursError as e:
+            if (
+                not isinstance(e.node, UID)
+                or not _is_uid_set(e.predecessors)
+                or not _is_uid_set(e.successors)
+            ):
+                raise TypeError from e
+            raise HasDependencyNeighboursError(
+                task=e.node, dependee_tasks=e.predecessors, dependent_tasks=e.successors
             ) from e
 
     return wrapper
@@ -307,7 +301,8 @@ class DependenciesView(Set[tuple[UID, UID]]):
         try:
             return item in self._dependencies
         except graphs.NodeDoesNotExistError as e:
-            assert isinstance(e.node, UID)
+            if not isinstance(e.node, UID):
+                raise TypeError from e
             raise TaskDoesNotExistError(e.node) from e
 
     def __iter__(self) -> Iterator[tuple[UID, UID]]:
@@ -617,14 +612,16 @@ class DependencyGraph:
         try:
             self._dag.remove_edge(source=dependee_task, target=dependent_task)
         except graphs.NodeDoesNotExistError as e:
-            assert isinstance(e.node, UID)
+            if not isinstance(e.node, UID):
+                raise TypeError from e
             raise TaskDoesNotExistError(e.node) from e
         except graphs.LoopError as e:
-            assert isinstance(e.node, UID)
+            if not isinstance(e.node, UID):
+                raise TypeError from e
             raise DependencyLoopError(e.node) from e
         except graphs.EdgeDoesNotExistError as e:
-            assert isinstance(e.source, UID)
-            assert isinstance(e.target, UID)
+            if not isinstance(e.source, UID) or not isinstance(e.target, UID):
+                raise TypeError from e
             raise DependencyDoesNotExistError(dependee_task, dependent_task) from e
 
     def tasks(self) -> TasksView:

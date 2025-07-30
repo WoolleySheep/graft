@@ -5,9 +5,16 @@ from tkinter import ttk
 
 from graft import architecture
 from graft.domain import tasks
-from graft.layers.presentation.tkinter_gui import event_broker, helpers
+from graft.layers.presentation.tkinter_gui import (
+    domain_visual_language,
+    event_broker,
+)
 from graft.layers.presentation.tkinter_gui.helpers import (
     format_task_name_for_annotation,
+)
+from graft.layers.presentation.tkinter_gui.helpers.colour import ORANGE, RED, YELLOW
+from graft.layers.presentation.tkinter_gui.helpers.dependency_graph_failed_operation_window import (
+    DependencyGraphOperationFailedWindow,
 )
 
 logger = logging.getLogger(__name__)
@@ -112,45 +119,92 @@ class DependencyCreationWindow(tk.Toplevel):
         dependent_task = self._get_selected_dependent_task()
         try:
             self._logic_layer.create_task_dependency(dependee_task, dependent_task)
+        except tasks.TaskDoesNotExistError as e:
+            DependencyGraphOperationFailedWindow(
+                master=self,
+                description_text=f"Cannot create a dependency as task [{e.task}] does not exist",
+                dependency_graph=tasks.DependencyGraph(),
+                get_task_properties=lambda _: domain_visual_language.get_graph_node_properties(),
+                get_dependency_properties=lambda _,
+                __: domain_visual_language.get_graph_edge_properties(),
+            )
         except tasks.DependencyLoopError as e:
-            dependency_graph = tasks.DependencyGraph()
-            dependency_graph.add_task(e.task)
-            helpers.DependencyGraphOperationFailedWindow(
+            dependency_graph = tasks.DependencyGraph([(e.task, set())])
+            DependencyGraphOperationFailedWindow(
                 master=self,
                 description_text="Cannot create a dependency between a task and itself",
                 dependency_graph=dependency_graph,
+                get_task_properties=lambda _: domain_visual_language.get_graph_node_properties(),
+                get_dependency_properties=lambda _,
+                __: domain_visual_language.get_graph_edge_properties(),
                 get_task_annotation_text=lambda task: format_task_name_for_annotation(
                     self._logic_layer.get_task_system().attributes_register()[task].name
                 ),
-                highlighted_tasks={e.task},
-                additional_dependencies={(e.task, e.task)},
+                additional_dependency_groups=[
+                    (
+                        None,
+                        domain_visual_language.get_graph_edge_properties(colour=RED),
+                        {(e.task, e.task)},
+                    )
+                ],
             )
             return
         except tasks.DependencyAlreadyExistsError as e:
-            dependency_graph = tasks.DependencyGraph()
-            for task in [e.dependent_task, e.dependee_task]:
-                dependency_graph.add_task(task)
-            dependency_graph.add_dependency(e.dependee_task, e.dependent_task)
-            helpers.DependencyGraphOperationFailedWindow(
+            dependency_graph = tasks.DependencyGraph(
+                [(e.dependee_task, [e.dependent_task]), (e.dependent_task, [])]
+            )
+            DependencyGraphOperationFailedWindow(
                 master=self,
-                description_text="Dependency already exists",
+                description_text="Cannot create a dependency that already exists",
                 dependency_graph=dependency_graph,
+                get_task_properties=lambda _: domain_visual_language.get_graph_node_properties(),
+                get_dependency_properties=lambda _,
+                __: domain_visual_language.get_graph_edge_properties(),
                 get_task_annotation_text=lambda task: format_task_name_for_annotation(
                     self._logic_layer.get_task_system().attributes_register()[task].name
                 ),
-                additional_dependencies={(e.dependent_task, e.dependee_task)},
+                highlighted_dependency_groups=[
+                    (
+                        None,
+                        domain_visual_language.get_graph_edge_properties(colour=RED),
+                        {(e.dependee_task, e.dependent_task)},
+                    )
+                ],
             )
             return
         except tasks.DependencyIntroducesCycleError as e:
-            helpers.DependencyGraphOperationFailedWindow(
+            DependencyGraphOperationFailedWindow(
                 master=self,
-                description_text="Introduces dependency cycle",
+                description_text="Cannot create a dependency that introduces a dependency cycle",
                 dependency_graph=e.connecting_subgraph,
+                get_task_properties=lambda _: domain_visual_language.get_graph_node_properties(),
+                get_dependency_properties=lambda _,
+                __: domain_visual_language.get_graph_edge_properties(),
                 get_task_annotation_text=lambda task: format_task_name_for_annotation(
                     self._logic_layer.get_task_system().attributes_register()[task].name
                 ),
-                highlighted_tasks={e.dependee_task, e.dependent_task},
-                additional_dependencies={(e.dependee_task, e.dependent_task)},
+                highlighted_task_groups=[
+                    (
+                        "dependee-task",
+                        domain_visual_language.get_graph_node_properties(colour=RED),
+                        {e.dependee_task},
+                    ),
+                    (
+                        "dependent-task",
+                        domain_visual_language.get_graph_node_properties(colour=YELLOW),
+                        {e.dependent_task},
+                    ),
+                ],
+                additional_dependency_groups=[
+                    (
+                        "proposed dependency",
+                        domain_visual_language.get_graph_edge_properties(
+                            colour=ORANGE,
+                            connection_style=domain_visual_language.CURVED_ARROW_CONNECTION_STYLE,
+                        ),
+                        {(e.dependee_task, e.dependent_task)},
+                    )
+                ],
             )
             return
         except Exception:

@@ -1,13 +1,13 @@
 import tkinter as tk
-from collections.abc import Callable, Set
+from collections.abc import Callable, Sequence, Set
 
 from graft.domain import tasks
 from graft.layers.presentation.tkinter_gui.helpers import graph_conversion
-from graft.layers.presentation.tkinter_gui.helpers.edge_drawing_properties import (
-    EdgeDrawingProperties,
+from graft.layers.presentation.tkinter_gui.helpers.graph_edge_drawing_properties import (
+    GraphEdgeDrawingProperties,
 )
-from graft.layers.presentation.tkinter_gui.helpers.node_drawing_properties import (
-    NodeDrawingProperties,
+from graft.layers.presentation.tkinter_gui.helpers.graph_node_drawing_properties import (
+    GraphNodeDrawingProperties,
 )
 from graft.layers.presentation.tkinter_gui.helpers.static_graph import (
     DefaultSentinel,
@@ -23,17 +23,19 @@ class StaticDependencyGraph(tk.Frame):
         self,
         master: tk.Misc,
         dependency_graph: tasks.IDependencyGraphView,
-        get_task_annotation_text: Callable[[tasks.UID], str | None] | None = None,
-        get_task_properties: Callable[[tasks.UID], NodeDrawingProperties | None]
-        | None = None,
+        get_task_properties: Callable[[tasks.UID], GraphNodeDrawingProperties],
         get_dependency_properties: Callable[
-            [tasks.UID, tasks.UID], EdgeDrawingProperties | None
+            [tasks.UID, tasks.UID], GraphEdgeDrawingProperties
+        ],
+        get_task_annotation_text: Callable[[tasks.UID], str | None] | None = None,
+        on_task_left_click: Callable[[tasks.UID], None] | None = None,
+        legend_elements: Sequence[
+            tuple[str, GraphNodeDrawingProperties | GraphEdgeDrawingProperties]
         ]
         | None = None,
-        on_task_left_click: Callable[[tasks.UID], None] | None = None,
         additional_dependencies: Set[tuple[tasks.UID, tasks.UID]] | None = None,
         get_additional_dependency_properties: Callable[
-            [tasks.UID, tasks.UID], EdgeDrawingProperties | None
+            [tasks.UID, tasks.UID], GraphEdgeDrawingProperties
         ]
         | None = None,
     ) -> None:
@@ -46,6 +48,7 @@ class StaticDependencyGraph(tk.Frame):
             get_node_properties=get_task_properties,
             get_edge_properties=get_dependency_properties,
             on_node_left_click=on_task_left_click,
+            legend_elements=legend_elements,
             additional_edges=additional_dependencies,
             get_additional_edge_properties=get_additional_dependency_properties,
         )
@@ -55,25 +58,28 @@ class StaticDependencyGraph(tk.Frame):
     def update_graph(
         self,
         dependency_graph: tasks.IDependencyGraphView | None,
+        get_task_properties: Callable[[tasks.UID], GraphNodeDrawingProperties]
+        | None = None,
+        get_dependency_properties: Callable[
+            [tasks.UID, tasks.UID], GraphEdgeDrawingProperties
+        ]
+        | None = None,
         get_task_annotation_text: Callable[[tasks.UID], str | None]
         | None
         | DefaultSentinel = DefaultSentinel.DEFAULT,
-        get_task_properties: Callable[[tasks.UID], NodeDrawingProperties | None]
-        | None
-        | DefaultSentinel = DefaultSentinel.DEFAULT,
-        get_dependency_properties: Callable[
-            [tasks.UID, tasks.UID], EdgeDrawingProperties | None
-        ]
-        | None
-        | DefaultSentinel = DefaultSentinel.DEFAULT,
         on_task_left_click: Callable[[tasks.UID], None]
+        | None
+        | DefaultSentinel = DefaultSentinel.DEFAULT,
+        legend_elements: Sequence[
+            tuple[str, GraphNodeDrawingProperties | GraphEdgeDrawingProperties]
+        ]
         | None
         | DefaultSentinel = DefaultSentinel.DEFAULT,
         additional_dependencies: Set[tuple[tasks.UID, tasks.UID]]
         | None
         | DefaultSentinel = DefaultSentinel.DEFAULT,
         get_additional_dependency_properties: Callable[
-            [tasks.UID, tasks.UID], EdgeDrawingProperties | None
+            [tasks.UID, tasks.UID], GraphEdgeDrawingProperties
         ]
         | None
         | DefaultSentinel = DefaultSentinel.DEFAULT,
@@ -86,6 +92,7 @@ class StaticDependencyGraph(tk.Frame):
             get_node_properties=get_task_properties,
             get_edge_properties=get_dependency_properties,
             on_node_left_click=on_task_left_click,
+            legend_elements=legend_elements,
             additional_edges=additional_dependencies,
             get_additional_edge_properties=get_additional_dependency_properties,
         )

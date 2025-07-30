@@ -22,8 +22,8 @@ from graft.domain.tasks.uid import UID
 from graft.utils import (
     CheckableIterable,
     LazyContainer,
+    LazyFrozenSet,
     LazyTuple,
-    lazy_intersection,
     unique,
 )
 
@@ -31,6 +31,39 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Generator, Iterable
 
     from graft.domain.tasks.uid import TasksView
+
+
+class HasNeighboursError(Exception):
+    """Raised when a task has neighbours.
+
+    A task cannot be removed when it has any neighbours.
+    """
+
+    def __init__(
+        self,
+        task: UID,
+        dependee_tasks: Iterable[UID],
+        dependent_tasks: Iterable[UID],
+        supertasks: Iterable[UID],
+        subtasks: Iterable[UID],
+    ) -> None:
+        self.task = task
+        self.dependee_tasks = set(dependee_tasks)
+        self.dependent_tasks = set(dependent_tasks)
+        self.supertasks = set(supertasks)
+        self.subtasks = set(subtasks)
+        formatted_neighbours = (
+            str(neighbour)
+            for neighbour in itertools.chain(
+                self.dependee_tasks,
+                self.dependent_tasks,
+                self.supertasks,
+                self.subtasks,
+            )
+        )
+        super().__init__(
+            f"Task [{task}] has neighbours [{', '.join(formatted_neighbours)}]"
+        )
 
 
 class DependencyIntroducesNetworkCycleError(Exception):
@@ -776,6 +809,17 @@ class NetworkGraph:
 
     def validate_task_can_be_removed(self, task: UID, /) -> None:
         """Validate that task can be removed from the graph."""
+        if not self._dependency_graph.is_isolated(
+            task
+        ) or not self._hierarchy_graph.is_isolated(task):
+            raise HasNeighboursError(
+                task=task,
+                dependee_tasks=self._dependency_graph.dependee_tasks(task),
+                dependent_tasks=self._dependency_graph.dependent_tasks(task),
+                supertasks=self._hierarchy_graph.supertasks(task),
+                subtasks=self._hierarchy_graph.subtasks(task),
+            )
+
         self._dependency_graph.validate_task_can_be_removed(task)
         self._hierarchy_graph.validate_task_can_be_removed(task)
 
@@ -788,6 +832,46 @@ class NetworkGraph:
 
     def validate_hierarchy_can_be_added(self, supertask: UID, subtask: UID, /) -> None:
         """Validate that hierarchy can be added to the graph."""
+
+        def has_network_cycle_with_supertask_upstream_of_subtask_or_its_inferior_tasks(
+            supertask: UID, subtask: UID
+        ) -> bool:
+            """Check if there is a network cycle.
+
+            Aka: Check if there is a stream path from the supertask to the subtask or
+            any of the subtask's inferiors
+            """
+            subtask_and_its_inferior_tasks = LazyContainer(
+                itertools.chain(
+                    [subtask], self._hierarchy_graph.inferior_tasks([subtask])
+                )
+            )
+            return any(
+                task in subtask_and_its_inferior_tasks
+                for task in itertools.chain(
+                    [supertask], self.downstream_tasks([supertask])
+                )
+            )
+
+        def has_network_cycle_with_subtask_or_its_inferior_tasks_upstream_of_supertask(
+            supertask: UID, subtask: UID
+        ) -> bool:
+            """Check if there is a network cycle.
+
+            Aka: Check if there is a stream path from the subtask or any subtasks's
+            inferiors to the supertask
+            """
+            subtask_and_its_inferior_tasks = LazyContainer(
+                itertools.chain(
+                    [subtask], self._hierarchy_graph.inferior_tasks([subtask])
+                )
+            )
+            return any(
+                task in subtask_and_its_inferior_tasks
+                for task in itertools.chain(
+                    [supertask], self.upstream_tasks([supertask])
+                )
+            )
 
         def has_dependency_duplication_with_upstream_hierarchy(
             self: Self, supertask: UID, subtask: UID
@@ -1030,23 +1114,32 @@ class NetworkGraph:
 
         self._hierarchy_graph.validate_hierarchy_can_be_added(supertask, subtask)
 
-        # Check if there is a stream path from the supertask to the subtask or any of the subtask's inferiors
-        subtask_and_its_inferior_tasks = LazyContainer(
-            itertools.chain([subtask], self.hierarchy_graph().inferior_tasks([subtask]))
-        )
-
-        if any(
-            task in subtask_and_its_inferior_tasks
-            for task in self.downstream_tasks([supertask])
+        if has_network_cycle_with_supertask_upstream_of_subtask_or_its_inferior_tasks(
+            supertask=supertask, subtask=subtask
         ):
-            subtask_and_its_inferior_tasks = itertools.chain(
-                [subtask], self.hierarchy_graph().inferior_tasks([subtask])
-            )
-            intersecting_tasks = list(
-                lazy_intersection(
-                    subtask_and_its_inferior_tasks, self.downstream_tasks([supertask])
+            subtask_and_its_inferior_tasks = LazyFrozenSet(
+                itertools.chain(
+                    [subtask], self.hierarchy_graph().inferior_tasks([subtask])
                 )
             )
+            supertask_downstream_subgraph = self.downstream_subgraph([supertask])
+            supertask_and_its_downstream_tasks = itertools.chain(
+                [supertask], supertask_downstream_subgraph.downstream_tasks([supertask])
+            )
+            intersecting_tasks = [
+                task
+                for task in supertask_and_its_downstream_tasks
+                if task in subtask_and_its_inferior_tasks
+                and (
+                    supertask_downstream_subgraph.dependency_graph().dependee_tasks(
+                        task
+                    )
+                    or not (
+                        supertask_downstream_subgraph.hierarchy_graph().supertasks(task)
+                        <= subtask_and_its_inferior_tasks
+                    )
+                )
+            ]
 
             builder = NetworkSubgraphBuilder(self)
             builder.add_connecting_subgraph([supertask], intersecting_tasks)
@@ -1058,22 +1151,34 @@ class NetworkGraph:
                 connecting_subgraph=builder.build(),
             )
 
-        # Check if there is a stream path from the subtask or any subtasks's inferiors to the supertask
-        subtask_and_its_inferior_tasks = LazyContainer(
-            itertools.chain([subtask], self.hierarchy_graph().inferior_tasks([subtask]))
-        )
-        if any(
-            task in subtask_and_its_inferior_tasks
-            for task in self.upstream_tasks([supertask])
+        if has_network_cycle_with_subtask_or_its_inferior_tasks_upstream_of_supertask(
+            supertask=supertask, subtask=subtask
         ):
-            subtask_and_its_inferior_tasks = itertools.chain(
-                [subtask], self.hierarchy_graph().inferior_tasks([subtask])
-            )
-            intersecting_tasks = list(
-                lazy_intersection(
-                    self.upstream_tasks([supertask]), subtask_and_its_inferior_tasks
+            subtask_and_its_inferior_tasks = LazyFrozenSet(
+                itertools.chain(
+                    [subtask], self.hierarchy_graph().inferior_tasks([subtask])
                 )
             )
+            upstream_subgraph_of_supertask = self.upstream_subgraph([supertask])
+            supertask_and_its_upstream_tasks = itertools.chain(
+                [supertask], upstream_subgraph_of_supertask.upstream_tasks([supertask])
+            )
+            intersecting_tasks = [
+                task
+                for task in supertask_and_its_upstream_tasks
+                if task in subtask_and_its_inferior_tasks
+                and (
+                    upstream_subgraph_of_supertask.dependency_graph().dependent_tasks(
+                        task
+                    )
+                    or not (
+                        upstream_subgraph_of_supertask.hierarchy_graph().supertasks(
+                            task
+                        )
+                        <= subtask_and_its_inferior_tasks
+                    )
+                )
+            ]
 
             builder = NetworkSubgraphBuilder(self)
             builder.add_connecting_subgraph(intersecting_tasks, [supertask])
@@ -1702,8 +1807,14 @@ class NetworkGraph:
             dependent_task_and_its_inferior_tasks_downstream_subgraph = (
                 self.downstream_subgraph(dependent_task_and_its_inferior_tasks)
             )
+            dependent_task_and_its_inferior_tasks_and_their_downstream_tasks = itertools.chain(
+                dependent_task_and_its_inferior_tasks,
+                dependent_task_and_its_inferior_tasks_downstream_subgraph.downstream_tasks(
+                    dependent_task_and_its_inferior_tasks
+                ),
+            )
 
-            dependee_task_and_its_inferior_tasks = LazyContainer(
+            dependee_task_and_its_inferior_tasks = LazyFrozenSet(
                 itertools.chain(
                     [dependee_task],
                     self._hierarchy_graph.inferior_tasks([dependee_task]),
@@ -1712,21 +1823,46 @@ class NetworkGraph:
 
             intersecting_dependee_task_and_its_inferior_tasks = [
                 task
-                for task in dependent_task_and_its_inferior_tasks_downstream_subgraph.tasks()
+                for task in dependent_task_and_its_inferior_tasks_and_their_downstream_tasks
                 if task in dependee_task_and_its_inferior_tasks
+                and (
+                    dependent_task_and_its_inferior_tasks_downstream_subgraph.dependency_graph().dependee_tasks(
+                        task
+                    )
+                    or not (
+                        dependent_task_and_its_inferior_tasks_downstream_subgraph.hierarchy_graph().supertasks(
+                            task
+                        )
+                        <= dependee_task_and_its_inferior_tasks
+                    )
+                )
             ]
 
-            intersecting_dependee_tasks_or_its_inferiors_and_their_upstream_tasks = itertools.chain(
+            intersecting_dependee_tasks_and_its_inferiors_upstream_subgraph = dependent_task_and_its_inferior_tasks_downstream_subgraph.upstream_subgraph(
+                intersecting_dependee_task_and_its_inferior_tasks
+            )
+            intersecting_dependee_tasks_and_its_inferiors_and_their_upstream_tasks = itertools.chain(
                 intersecting_dependee_task_and_its_inferior_tasks,
-                dependent_task_and_its_inferior_tasks_downstream_subgraph.upstream_tasks(
+                intersecting_dependee_tasks_and_its_inferiors_upstream_subgraph.upstream_tasks(
                     intersecting_dependee_task_and_its_inferior_tasks
                 ),
             )
 
             intersecting_dependent_task_and_its_inferior_tasks = [
                 task
-                for task in intersecting_dependee_tasks_or_its_inferiors_and_their_upstream_tasks
+                for task in intersecting_dependee_tasks_and_its_inferiors_and_their_upstream_tasks
                 if task in dependent_task_and_its_inferior_tasks
+                and (
+                    intersecting_dependee_tasks_and_its_inferiors_upstream_subgraph.dependency_graph().dependent_tasks(
+                        task
+                    )
+                    or not (
+                        intersecting_dependee_tasks_and_its_inferiors_upstream_subgraph.hierarchy_graph().supertasks(
+                            task
+                        )
+                        <= dependent_task_and_its_inferior_tasks
+                    )
+                )
             ]
 
             builder = NetworkSubgraphBuilder(self)

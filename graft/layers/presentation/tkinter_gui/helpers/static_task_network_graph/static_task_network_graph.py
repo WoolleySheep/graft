@@ -1,25 +1,26 @@
 import enum
 import tkinter as tk
-from collections.abc import Callable, Set
+from collections.abc import Callable, Sequence, Set
 from typing import TYPE_CHECKING, Final
 
 import matplotlib as mpl
 from matplotlib import backend_bases, text
 from matplotlib import pyplot as plt
+from matplotlib.artist import Artist
 from matplotlib.backends import backend_tkagg
+from matplotlib.legend import Legend
+from matplotlib.legend_handler import HandlerBase
+from matplotlib.patches import ArrowStyle, FancyArrowPatch, Patch
+from matplotlib.transforms import Transform
 from mpl_toolkits.mplot3d import art3d, axis3d, proj3d
 
 from graft.domain import tasks
 from graft.layers.presentation.tkinter_gui import (
     task_network_graph_drawing,
 )
-from graft.layers.presentation.tkinter_gui.helpers.alpha import Alpha
 from graft.layers.presentation.tkinter_gui.helpers.colour import (
     BLACK,
-    BLUE,
-    GREEN,
 )
-from graft.layers.presentation.tkinter_gui.helpers.line_style import SOLID
 from graft.layers.presentation.tkinter_gui.helpers.static_task_network_graph.arrow_3d import (
     Arrow3D,
 )
@@ -30,11 +31,11 @@ from graft.layers.presentation.tkinter_gui.helpers.static_task_network_graph.cyl
     XAxisCylinderPosition,
     plot_x_axis_cylinder,
 )
-from graft.layers.presentation.tkinter_gui.helpers.static_task_network_graph.relationship_drawing_properties import (
-    RelationshipDrawingProperties,
+from graft.layers.presentation.tkinter_gui.helpers.static_task_network_graph.network_task_drawing_properties import (
+    NetworkTaskDrawingProperties,
 )
-from graft.layers.presentation.tkinter_gui.helpers.static_task_network_graph.task_drawing_properties import (
-    TaskDrawingProperties,
+from graft.layers.presentation.tkinter_gui.helpers.static_task_network_graph.relationship_drawing_properties import (
+    NetworkRelationshipDrawingProperties,
 )
 from graft.layers.presentation.tkinter_gui.task_network_graph_drawing.radius import (
     Radius,
@@ -42,17 +43,6 @@ from graft.layers.presentation.tkinter_gui.task_network_graph_drawing.radius imp
 
 if TYPE_CHECKING:
     from mpl_toolkits import mplot3d
-
-DEFAULT_TASK_ALPHA: Final = Alpha(0.8)
-DEFAULT_TASK_LABEL_COLOUR: Final = BLACK
-DEFAULT_TASK_EDGE_COLOUR: Final = None
-DEFAULT_TASK_LABEL_ALPHA: Final = Alpha(0.9)
-
-DEFAULT_STANDARD_TASK_COLOUR: Final = BLUE
-DEFAULT_STANDARD_RELATIONSHIP_ALPHA: Final = Alpha(0.9)
-DEFAULT_STANDARD_RELATIONSHIP_LINE_STYLE: Final = SOLID
-DEFAULT_STANDARD_HIERARCHY_COLOUR: Final = GREEN
-DEFAULT_STANDARD_DEPENDENCY_COLOUR: Final = BLACK
 
 _AXIS_ARROW_COLOUR: Final = BLACK
 
@@ -84,7 +74,7 @@ class AdditionalRelationships:
         self,
         relationships: Set[tuple[tasks.UID, tasks.UID]],
         get_relationship_properties: Callable[
-            [tasks.UID, tasks.UID], RelationshipDrawingProperties
+            [tasks.UID, tasks.UID], NetworkRelationshipDrawingProperties
         ],
     ) -> None:
         self._relationships = relationships
@@ -97,7 +87,7 @@ class AdditionalRelationships:
     @property
     def get_relationship_properties(
         self,
-    ) -> Callable[[tasks.UID, tasks.UID], RelationshipDrawingProperties]:
+    ) -> Callable[[tasks.UID, tasks.UID], NetworkRelationshipDrawingProperties]:
         return self._get_relationship_properties
 
 
@@ -116,16 +106,22 @@ class StaticTaskNetworkGraph(tk.Frame):
         master: tk.Misc,
         graph: tasks.INetworkGraphView,
         get_task_annotation_text: Callable[[tasks.UID], str | None],
-        get_task_properties: Callable[[tasks.UID], TaskDrawingProperties],
+        get_task_properties: Callable[[tasks.UID], NetworkTaskDrawingProperties],
         get_hierarchy_properties: Callable[
-            [tasks.UID, tasks.UID], RelationshipDrawingProperties
+            [tasks.UID, tasks.UID], NetworkRelationshipDrawingProperties
         ],
         get_dependency_properties: Callable[
-            [tasks.UID, tasks.UID], RelationshipDrawingProperties
+            [tasks.UID, tasks.UID], NetworkRelationshipDrawingProperties
         ],
         additional_hierarchies: AdditionalRelationships | None = None,
         additional_dependencies: AdditionalRelationships | None = None,
         on_node_left_click: Callable[[tasks.UID], None] | None = None,
+        legend_elements: Sequence[
+            tuple[
+                str, NetworkTaskDrawingProperties | NetworkRelationshipDrawingProperties
+            ]
+        ]
+        | None = None,
     ) -> None:
         super().__init__(master)
 
@@ -136,6 +132,7 @@ class StaticTaskNetworkGraph(tk.Frame):
         self._get_hierarchy_properties = get_hierarchy_properties
         self._get_dependency_properties = get_dependency_properties
         self._additional_hierarchies = additional_hierarchies
+        self._legend_elements = legend_elements
 
         if (
             self._additional_hierarchies is not None
@@ -162,9 +159,13 @@ class StaticTaskNetworkGraph(tk.Frame):
         mpl.use("Agg")
         self._fig = plt.figure()
 
+        # Stops the network flipping upside down when you're spinning it
+        mpl.rcParams["axes3d.mouserotationstyle"] = "azel"
+
         # An Axes3D is the returned type when the projection argument is
         # specified as "3d", hence the type ignore
         self._ax: mplot3d.Axes3D = self._fig.add_subplot(projection="3d")  # type: ignore[reportAttributeAccessIssue]
+        self._fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
 
         self._canvas = backend_tkagg.FigureCanvasTkAgg(self._fig, self)
         self._canvas.get_tk_widget().grid()
@@ -180,13 +181,14 @@ class StaticTaskNetworkGraph(tk.Frame):
         self,
         graph: tasks.INetworkGraphView | None = None,
         get_task_annotation_text: Callable[[tasks.UID], str | None] | None = None,
-        get_task_properties: Callable[[tasks.UID], TaskDrawingProperties] | None = None,
+        get_task_properties: Callable[[tasks.UID], NetworkTaskDrawingProperties]
+        | None = None,
         get_hierarchy_properties: Callable[
-            [tasks.UID, tasks.UID], RelationshipDrawingProperties
+            [tasks.UID, tasks.UID], NetworkRelationshipDrawingProperties
         ]
         | None = None,
         get_dependency_properties: Callable[
-            [tasks.UID, tasks.UID], RelationshipDrawingProperties
+            [tasks.UID, tasks.UID], NetworkRelationshipDrawingProperties
         ]
         | None = None,
         additional_hierarchies: AdditionalRelationships
@@ -196,6 +198,13 @@ class StaticTaskNetworkGraph(tk.Frame):
         | None
         | DefaultSentinel = DefaultSentinel.DEFAULT,
         on_node_left_click: Callable[[tasks.UID], None]
+        | None
+        | DefaultSentinel = DefaultSentinel.DEFAULT,
+        legend_elements: Sequence[
+            tuple[
+                str, NetworkTaskDrawingProperties | NetworkRelationshipDrawingProperties
+            ]
+        ]
         | None
         | DefaultSentinel = DefaultSentinel.DEFAULT,
     ) -> None:
@@ -240,6 +249,9 @@ class StaticTaskNetworkGraph(tk.Frame):
 
         if on_node_left_click is not DefaultSentinel.DEFAULT:
             self._on_node_left_click = on_node_left_click
+
+        if legend_elements is not DefaultSentinel.DEFAULT:
+            self._legend_elements = legend_elements
 
         self._update_figure()
 
@@ -562,8 +574,58 @@ class StaticTaskNetworkGraph(tk.Frame):
             self._ax.add_artist(arrow)
 
     def _update_legend(self) -> None:
-        # TODO
-        pass
+        # https://stackoverflow.com/questions/76277152/how-can-i-create-a-custom-arrow-shaped-legend-key
+        # No, I don't understand why I need this arrow handler rubbish to make this
+        # work. But I do, and I don't want to spend the time to work out how to not.
+        class ArrowHandler(HandlerBase):
+            def create_artists(
+                self,
+                legend: Legend,
+                orig_handle: Artist,
+                xdescent: float,
+                ydescent: float,
+                width: float,
+                height: float,
+                fontsize: float,
+                trans: Transform,
+            ):
+                return [orig_handle]
+
+        if self._legend_elements is None:
+            return
+
+        legend_elements = list[Patch | FancyArrowPatch]()
+
+        for label, element in self._legend_elements:
+            if isinstance(element, NetworkTaskDrawingProperties):
+                patch = Patch(
+                    facecolor=str(element.colour),
+                    edgecolor=str(element.edge_colour),
+                    alpha=float(element.alpha),
+                    label=label,
+                )
+            else:
+                patch = FancyArrowPatch(
+                    (0, 3),
+                    (22, 3),
+                    linestyle=str(element.line_style),
+                    arrowstyle=ArrowStyle.Simple(
+                        head_length=0.3,
+                        head_width=0.3,
+                        tail_width=0.05,
+                    ),  # pyright: ignore[reportCallIssue]
+                    color=str(element.colour),
+                    alpha=float(element.alpha),
+                    label=label,
+                    mutation_scale=20,
+                )
+            legend_elements.append(patch)
+
+        self._ax.legend(
+            handles=legend_elements,
+            handler_map={FancyArrowPatch: ArrowHandler()},
+            loc="upper right",
+        )
 
     def update_axis_arrows(self) -> None:
         assert self._task_positions is not None

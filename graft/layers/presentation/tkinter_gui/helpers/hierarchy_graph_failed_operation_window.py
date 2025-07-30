@@ -1,17 +1,16 @@
 import tkinter as tk
-from collections.abc import Callable, Set
+from collections.abc import Callable, Collection, Mapping, Sequence
 from tkinter import ttk
 
 from graft.domain import tasks
-from graft.layers.presentation.tkinter_gui import graph_colours
-from graft.layers.presentation.tkinter_gui.helpers.edge_drawing_properties import (
-    EdgeDrawingProperties,
-)
 from graft.layers.presentation.tkinter_gui.helpers.failed_operation_window import (
     OperationFailedWindow,
 )
-from graft.layers.presentation.tkinter_gui.helpers.node_drawing_properties import (
-    NodeDrawingProperties,
+from graft.layers.presentation.tkinter_gui.helpers.graph_edge_drawing_properties import (
+    GraphEdgeDrawingProperties,
+)
+from graft.layers.presentation.tkinter_gui.helpers.graph_node_drawing_properties import (
+    GraphNodeDrawingProperties,
 )
 from graft.layers.presentation.tkinter_gui.helpers.static_hierarchy_graph import (
     StaticHierarchyGraph,
@@ -24,38 +23,143 @@ class HierarchyGraphOperationFailedWindow(OperationFailedWindow):
         master: tk.Misc,
         description_text: str,
         hierarchy_graph: tasks.IHierarchyGraphView,
+        get_task_properties: Callable[[tasks.UID], GraphNodeDrawingProperties],
+        get_hierarchy_properties: Callable[
+            [tasks.UID, tasks.UID], GraphEdgeDrawingProperties
+        ],
         get_task_annotation_text: Callable[[tasks.UID], str | None] | None = None,
-        highlighted_tasks: Set[tasks.UID] | None = None,
-        highlighted_hierarchies: Set[tuple[tasks.UID, tasks.UID]] | None = None,
-        additional_hierarchies: Set[tuple[tasks.UID, tasks.UID]] | None = None,
+        highlighted_task_groups: Sequence[
+            tuple[str | None, GraphNodeDrawingProperties, Collection[tasks.UID]]
+        ]
+        | None = None,
+        highlighted_hierarchy_groups: Sequence[
+            tuple[
+                str | None,
+                GraphEdgeDrawingProperties,
+                Collection[tuple[tasks.UID, tasks.UID]],
+            ]
+        ]
+        | None = None,
+        additional_hierarchy_groups: Sequence[
+            tuple[
+                str | None,
+                GraphEdgeDrawingProperties,
+                Collection[tuple[tasks.UID, tasks.UID]],
+            ]
+        ]
+        | None = None,
+        legend_elements: Sequence[
+            tuple[str, GraphNodeDrawingProperties | GraphEdgeDrawingProperties]
+        ]
+        | None = None,
     ) -> None:
+        def wrap_with_task_interceptor(
+            get_task_properties: Callable[[tasks.UID], GraphNodeDrawingProperties],
+            intercepted_task_to_properties_map: Mapping[
+                tasks.UID, GraphNodeDrawingProperties
+            ],
+        ) -> Callable[[tasks.UID], GraphNodeDrawingProperties]:
+            def inner(task: tasks.UID) -> GraphNodeDrawingProperties:
+                if task in intercepted_task_to_properties_map:
+                    return intercepted_task_to_properties_map[task]
+                return get_task_properties(task)
+
+            return inner
+
+        def wrap_with_hierarchy_interceptor(
+            get_hierarchy_properties: Callable[
+                [tasks.UID, tasks.UID], GraphEdgeDrawingProperties
+            ],
+            intercepted_hierarchy_to_properties_map: Mapping[
+                tuple[tasks.UID, tasks.UID], GraphEdgeDrawingProperties
+            ],
+        ) -> Callable[[tasks.UID, tasks.UID], GraphEdgeDrawingProperties]:
+            def inner(
+                supertask: tasks.UID, subtask: tasks.UID
+            ) -> GraphEdgeDrawingProperties:
+                if (supertask, subtask) in intercepted_hierarchy_to_properties_map:
+                    return intercepted_hierarchy_to_properties_map[(supertask, subtask)]
+                return get_hierarchy_properties(supertask, subtask)
+
+            return inner
+
+        def wrap_hierarchy_map_as_function(
+            hierarchy_map: Mapping[
+                tuple[tasks.UID, tasks.UID], GraphEdgeDrawingProperties
+            ],
+        ) -> Callable[[tasks.UID, tasks.UID], GraphEdgeDrawingProperties]:
+            def inner(
+                supertask: tasks.UID, subtask: tasks.UID
+            ) -> GraphEdgeDrawingProperties:
+                return hierarchy_map[(supertask, subtask)]
+
+            return inner
+
         super().__init__(master=master)
 
-        if highlighted_tasks is not None and not (
-            highlighted_tasks <= hierarchy_graph.tasks()
-        ):
-            msg = "Some highlighted tasks not found graph"
-            raise ValueError(msg)
+        legend_elements_ = list(legend_elements) if legend_elements is not None else []
 
-        if highlighted_hierarchies is not None and not (
-            highlighted_hierarchies <= hierarchy_graph.hierarchies()
-        ):
-            msg = "Some highlighted hierarchies not found graph"
-            raise ValueError(msg)
+        if highlighted_task_groups is not None:
+            highlighted_task_to_drawing_map = dict[
+                tasks.UID, GraphNodeDrawingProperties
+            ]()
+            for label, drawing_properties, task_group in highlighted_task_groups:
+                if label is not None:
+                    legend_elements_.append((label, drawing_properties))
+                for task in task_group:
+                    highlighted_task_to_drawing_map[task] = drawing_properties
+            get_task_properties_ = wrap_with_task_interceptor(
+                get_task_properties=get_task_properties,
+                intercepted_task_to_properties_map=highlighted_task_to_drawing_map,
+            )
+        else:
+            get_task_properties_ = get_task_properties
 
-        self._highlighted_tasks = (
-            highlighted_tasks if highlighted_tasks is not None else set[tasks.UID]()
-        )
-        self._highlighted_hierarchies = (
-            highlighted_hierarchies
-            if highlighted_hierarchies is not None
-            else set[tuple[tasks.UID, tasks.UID]]()
-        )
-        self._additional_hierarchies = (
-            additional_hierarchies
-            if additional_hierarchies is not None
-            else set[tuple[tasks.UID, tasks.UID]]()
-        )
+        if highlighted_hierarchy_groups is not None:
+            highlighted_hierarchies_to_properties_map = dict[
+                tuple[tasks.UID, tasks.UID], GraphEdgeDrawingProperties
+            ]()
+            for (
+                label,
+                drawing_properties,
+                hierarchy_group,
+            ) in highlighted_hierarchy_groups:
+                if label is not None:
+                    legend_elements_.append((label, drawing_properties))
+                for supertask, subtask in hierarchy_group:
+                    highlighted_hierarchies_to_properties_map[(supertask, subtask)] = (
+                        drawing_properties
+                    )
+            get_hierarchy_properties_ = wrap_with_hierarchy_interceptor(
+                get_hierarchy_properties=get_hierarchy_properties,
+                intercepted_hierarchy_to_properties_map=highlighted_hierarchies_to_properties_map,
+            )
+        else:
+            get_hierarchy_properties_ = get_hierarchy_properties
+
+        if additional_hierarchy_groups is not None:
+            additional_hierarchies = set[tuple[tasks.UID, tasks.UID]]()
+            additional_hierarchies_to_properties_map = dict[
+                tuple[tasks.UID, tasks.UID], GraphEdgeDrawingProperties
+            ]()
+            for (
+                label,
+                drawing_properties,
+                hierarchy_group,
+            ) in additional_hierarchy_groups:
+                if label is not None:
+                    legend_elements_.append((label, drawing_properties))
+                for supertask_and_subtask in hierarchy_group:
+                    additional_hierarchies.add(supertask_and_subtask)
+                    additional_hierarchies_to_properties_map[supertask_and_subtask] = (
+                        drawing_properties
+                    )
+            get_additional_hierarchy_properties = wrap_hierarchy_map_as_function(
+                additional_hierarchies_to_properties_map
+            )
+        else:
+            additional_hierarchies = None
+            get_additional_hierarchy_properties = None
 
         self._label = ttk.Label(self, text=description_text)
 
@@ -63,53 +167,12 @@ class HierarchyGraphOperationFailedWindow(OperationFailedWindow):
             master=self,
             hierarchy_graph=hierarchy_graph,
             get_task_annotation_text=get_task_annotation_text,
-            get_task_properties=self._get_task_properties,
-            get_hierarchy_properties=self._get_hierarchy_properties,
+            get_task_properties=get_task_properties_,
+            get_hierarchy_properties=get_hierarchy_properties_,
             additional_hierarchies=additional_hierarchies,
-            get_additional_hierarchy_properties=self._get_additional_hierarchy_properties,
+            get_additional_hierarchy_properties=get_additional_hierarchy_properties,
+            legend_elements=legend_elements_ or None,
         )
 
         self._label.grid(row=0, column=0)
         self._graph.grid(row=1, column=0)
-
-    def _get_task_colour(self, task: tasks.UID) -> str:
-        return (
-            graph_colours.HIGHLIGHTED_NODE_COLOUR
-            if task in self._highlighted_tasks
-            else graph_colours.DEFAULT_NODE_COLOUR
-        )
-
-    def _get_task_properties(self, task: tasks.UID) -> NodeDrawingProperties:
-        colour = self._get_task_colour(task)
-        edge_colour = None
-        return NodeDrawingProperties(colour=colour, edge_colour=edge_colour)
-
-    def _get_hierarchy_colour(self, supertask: tasks.UID, subtask: tasks.UID) -> str:
-        return (
-            graph_colours.HIGHLIGHTED_EDGE_COLOUR
-            if (supertask, subtask) in self._highlighted_hierarchies
-            else graph_colours.DEFAULT_EDGE_COLOUR
-        )
-
-    def _get_hierarchy_properties(
-        self, supertask: tasks.UID, subtask: tasks.UID
-    ) -> EdgeDrawingProperties:
-        colour = self._get_hierarchy_colour(supertask, subtask)
-        connection_style = None
-        return EdgeDrawingProperties(colour=colour, connection_style=connection_style)
-
-    def _get_additional_hierarchy_colour(
-        self, supertask: tasks.UID, subtask: tasks.UID
-    ) -> str:
-        return (
-            graph_colours.INTRODUCED_EDGE_COLOUR
-            if (supertask, subtask) in self._additional_hierarchies
-            else graph_colours.DEFAULT_EDGE_COLOUR
-        )
-
-    def _get_additional_hierarchy_properties(
-        self, supertask: tasks.UID, subtask: tasks.UID
-    ) -> EdgeDrawingProperties:
-        colour = self._get_additional_hierarchy_colour(supertask, subtask)
-        connection_style = None
-        return EdgeDrawingProperties(colour=colour, connection_style=connection_style)

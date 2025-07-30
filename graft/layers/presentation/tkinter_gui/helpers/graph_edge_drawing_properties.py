@@ -1,6 +1,4 @@
-from typing import Final
-
-from graft.layers.presentation.tkinter_gui.helpers.alpha import Alpha
+from graft.layers.presentation.tkinter_gui.helpers.alpha import OPAQUE, Alpha
 from graft.layers.presentation.tkinter_gui.helpers.arrow_style import (
     CURVE_FILLED_B,
     ArrowStyle,
@@ -12,16 +10,14 @@ from graft.layers.presentation.tkinter_gui.helpers.connection_style import (
 )
 from graft.layers.presentation.tkinter_gui.helpers.line_style import SOLID, LineStyle
 
-_DEFAULT_NETWORK_RELATIONSHIP_ALPHA: Final = Alpha(0.9)
 
-
-class NetworkRelationshipDrawingProperties:
-    """Properties for drawing a network relationship."""
+class GraphEdgeDrawingProperties:
+    """Properties for drawing a networkx edge."""
 
     def __init__(
         self,
         colour: Colour,
-        alpha: Alpha = _DEFAULT_NETWORK_RELATIONSHIP_ALPHA,
+        alpha: Alpha = OPAQUE,
         line_style: LineStyle = SOLID,
         connection_style: ConnectionStyle = ARC3,
         arrow_style: ArrowStyle = CURVE_FILLED_B,

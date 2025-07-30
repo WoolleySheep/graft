@@ -8,6 +8,15 @@ class LineStyle:
     def __str__(self) -> str:
         return self._value
 
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, LineStyle):
+            return NotImplemented
+
+        return str(self) == str(other)
+
+    def __hash__(self) -> int:
+        return hash(self._value)
+
 
 SOLID: Final = LineStyle("solid")
 DASHED: Final = LineStyle("dashed")

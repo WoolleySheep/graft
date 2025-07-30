@@ -61,7 +61,7 @@ def test_delete_task_failure_has_supertask(data_layer_mock: mock.MagicMock) -> N
 
     logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
-    with pytest.raises(tasks.HasSuperTasksError) as exc_info:
+    with pytest.raises(tasks.HasNeighboursError) as exc_info:
         logic_layer.delete_task(subtask)
     assert exc_info.value.task == subtask
     assert exc_info.value.supertasks == {supertask}
@@ -85,7 +85,7 @@ def test_delete_task_failure_has_subtask(data_layer_mock: mock.MagicMock) -> Non
 
     logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
-    with pytest.raises(tasks.HasSubTasksError) as exc_info:
+    with pytest.raises(tasks.HasNeighboursError) as exc_info:
         logic_layer.delete_task(supertask)
     assert exc_info.value.task == supertask
     assert exc_info.value.subtasks == {subtask}
@@ -111,7 +111,7 @@ def test_delete_task_failure_has_dependee_task(data_layer_mock: mock.MagicMock) 
 
     logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
-    with pytest.raises(tasks.HasDependeeTasksError) as exc_info:
+    with pytest.raises(tasks.HasNeighboursError) as exc_info:
         logic_layer.delete_task(dependent_task)
     assert exc_info.value.task == dependent_task
     assert exc_info.value.dependee_tasks == {dependee_task}
@@ -139,7 +139,7 @@ def test_delete_task_failure_has_dependent_task(
 
     logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
-    with pytest.raises(tasks.HasDependentTasksError) as exc_info:
+    with pytest.raises(tasks.HasNeighboursError) as exc_info:
         logic_layer.delete_task(dependee_task)
     assert exc_info.value.task == dependee_task
     assert exc_info.value.dependent_tasks == {dependent_task}

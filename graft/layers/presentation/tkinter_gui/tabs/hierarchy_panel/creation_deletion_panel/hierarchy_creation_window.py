@@ -1,3 +1,4 @@
+import functools
 import logging
 import tkinter as tk
 from collections.abc import Generator, Sequence
@@ -5,10 +6,11 @@ from tkinter import ttk
 
 from graft import architecture
 from graft.domain import tasks
-from graft.domain.tasks.hierarchy_graph import HierarchyGraph
-from graft.layers.presentation.tkinter_gui import event_broker, helpers
-from graft.layers.presentation.tkinter_gui.helpers import (
-    format_task_name_for_annotation,
+from graft.layers.presentation.tkinter_gui import (
+    event_broker,
+)
+from graft.layers.presentation.tkinter_gui.helpers.create_hierarchy_error_windows import (
+    convert_create_hierarchy_exceptions_to_error_windows,
 )
 
 logger = logging.getLogger(__name__)
@@ -105,145 +107,16 @@ class HierarchyCreationWindow(tk.Toplevel):
     def _create_hierarchy_between_selected_tasks_then_destroy_window(self) -> None:
         supertask = self._get_selected_supertask()
         subtask = self._get_selected_subtask()
-        try:
-            self._logic_layer.create_task_hierarchy(supertask, subtask)
-        except tasks.HierarchyLoopError as e:
-            hierarchy_graph = tasks.HierarchyGraph()
-            hierarchy_graph.add_task(e.task)
-            helpers.HierarchyGraphOperationFailedWindow(
-                master=self,
-                description_text="Cannot create a hierarchy between a task and itself",
-                hierarchy_graph=hierarchy_graph,
-                get_task_annotation_text=lambda task: format_task_name_for_annotation(
-                    self._logic_layer.get_task_system().attributes_register()[task].name
-                ),
-                highlighted_tasks={e.task},
-                additional_hierarchies={(e.task, e.task)},
-            )
-            return
-        except tasks.HierarchyAlreadyExistsError as e:
-            hierarchy_graph = tasks.HierarchyGraph()
-            for task in [e.subtask, e.supertask]:
-                hierarchy_graph.add_task(task)
-            hierarchy_graph.add_hierarchy(e.supertask, e.subtask)
-            helpers.HierarchyGraphOperationFailedWindow(
-                master=self,
-                description_text="Hierarchy already exists",
-                hierarchy_graph=hierarchy_graph,
-                get_task_annotation_text=lambda task: format_task_name_for_annotation(
-                    self._logic_layer.get_task_system().attributes_register()[task].name
-                ),
-                additional_hierarchies={(e.subtask, e.supertask)},
-            )
-            return
-        except tasks.HierarchyIntroducesCycleError as e:
-            helpers.HierarchyGraphOperationFailedWindow(
-                master=self,
-                description_text="Introduces hierarchy cycle",
-                hierarchy_graph=e.connecting_subgraph,
-                get_task_annotation_text=lambda task: format_task_name_for_annotation(
-                    self._logic_layer.get_task_system().attributes_register()[task].name
-                ),
-                highlighted_tasks={e.supertask, e.subtask},
-                additional_hierarchies={(e.supertask, e.subtask)},
-            )
-            return
-        except tasks.HierarchyIntroducesRedundantHierarchyError as e:
-            helpers.HierarchyGraphOperationFailedWindow(
-                master=self,
-                description_text="Introduces redundant hierarchy",
-                hierarchy_graph=e.connecting_subgraph,
-                get_task_annotation_text=lambda task: format_task_name_for_annotation(
-                    self._logic_layer.get_task_system().attributes_register()[task].name
-                ),
-                additional_hierarchies={(e.supertask, e.subtask)},
-            )
-            return
-        except tasks.HierarchyIntroducesNetworkCycleError as e:
-            helpers.NetworkGraphOperationFailedWindow(
-                master=self,
-                description_text="Introduces network cycle",
-                task_network=e.connecting_subgraph,
-                get_task_annotation_text=lambda task: format_task_name_for_annotation(
-                    self._logic_layer.get_task_system().attributes_register()[task].name
-                ),
-                highlighted_tasks={e.supertask, e.subtask},
-                additional_hierarchies={(e.supertask, e.subtask)},
-            )
-            return
-        except tasks.HierarchyIntroducesDependencyDuplicationError as e:
-            helpers.NetworkGraphOperationFailedWindow(
-                master=self,
-                description_text="Introduces dependency duplication",
-                task_network=e.connecting_subgraph,
-                get_task_annotation_text=lambda task: format_task_name_for_annotation(
-                    self._logic_layer.get_task_system().attributes_register()[task].name
-                ),
-                additional_hierarchies={(e.supertask, e.subtask)},
-            )
-            return
-        except tasks.HierarchyIntroducesDependencyCrossoverError as e:
-            helpers.NetworkGraphOperationFailedWindow(
-                master=self,
-                description_text="Introduces dependency crossover",
-                task_network=e.connecting_subgraph,
-                get_task_annotation_text=lambda task: format_task_name_for_annotation(
-                    self._logic_layer.get_task_system().attributes_register()[task].name
-                ),
-                additional_hierarchies={(e.supertask, e.subtask)},
-            )
-            return
-        except tasks.MultipleImportancesInHierarchyError as e:
-            helpers.NetworkGraphOperationFailedWindow(
-                master=self,
-                description_text="Multiple importances in hierarchy",
-                task_network=e.subsystem.network_graph(),
-                get_task_annotation_text=lambda task: format_task_name_for_annotation(
-                    self._logic_layer.get_task_system().attributes_register()[task].name
-                ),
-                highlighted_tasks={
-                    *e.subsystem.network_graph().hierarchy_graph().top_level_tasks(),
-                    *e.subsystem.network_graph().hierarchy_graph().concrete_tasks(),
-                },
-                additional_hierarchies={(e.supertask, e.subtask)},
-            )
-            return
-        except tasks.UpstreamTasksOfSupertaskAreIncompleteError as e:
-            helpers.NetworkGraphOperationFailedWindow(
-                master=self,
-                description_text="Subtask is started, but upstream tasks are incomplete",
-                task_network=e.subsystem.network_graph(),
-                get_task_annotation_text=lambda task: format_task_name_for_annotation(
-                    self._logic_layer.get_task_system().attributes_register()[task].name
-                ),
-                highlighted_tasks=e.upstream_task_incomplete_map.keys(),
-                additional_hierarchies={(e.supertask, e.subtask)},
-            )
-            return
-        except tasks.DownstreamTasksOfSupertaskHaveStartedError as e:
-            helpers.NetworkGraphOperationFailedWindow(
-                master=self,
-                description_text="Subtask is incomplete, but downstream tasks have started",
-                task_network=e.subsystem.network_graph(),
-                get_task_annotation_text=lambda task: format_task_name_for_annotation(
-                    self._logic_layer.get_task_system().attributes_register()[task].name
-                ),
-                highlighted_tasks=e.downstream_task_started_map.keys(),
-                additional_hierarchies={(e.supertask, e.subtask)},
-            )
-            return
-        except tasks.MismatchedProgressForNewSupertaskError as e:
-            helpers.HierarchyGraphOperationFailedWindow(
-                master=self,
-                description_text=f"The progress [{e.supertask_progress}] of supertask [{e.supertask}] does not match the progress [{e.subtask_progress}] of subtask [{e.subtask}]",
-                hierarchy_graph=HierarchyGraph(
-                    [(e.supertask, [e.subtask]), (e.subtask, [])]
-                ),
-                get_task_annotation_text=lambda task: format_task_name_for_annotation(
-                    self._logic_layer.get_task_system().attributes_register()[task].name
-                ),
-                highlighted_hierarchies={(e.supertask, e.subtask)},
-            )
+
+        if not convert_create_hierarchy_exceptions_to_error_windows(
+            functools.partial(
+                self._logic_layer.create_task_hierarchy,
+                supertask=supertask,
+                subtask=subtask,
+            ),
+            self._logic_layer.get_task_system(),
+            master=self,
+        ):
             return
 
         broker = event_broker.get_singleton()

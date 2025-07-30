@@ -51,29 +51,27 @@ class NodeDoesNotExistError(Exception):
         super().__init__(f"node [{node}] does not exist", *args, **kwargs)
 
 
-class HasPredecessorsError(Exception):
-    """Raised when a task has predecessors."""
+class HasNeighboursError(Exception):
+    """Raised when a task has neighbours.
 
-    def __init__(self, node: Hashable, predecessors: Iterable[Any]) -> None:
-        """Initialise HasPredecessorsError."""
+    A node cannot be removed when it has any neighbours.
+    """
+
+    def __init__(
+        self,
+        node: Hashable,
+        predecessors: Iterable[Hashable],
+        successors: Iterable[Hashable],
+    ) -> None:
         self.node = node
         self.predecessors = set(predecessors)
-        formatted_predecessors = (str(predecessor) for predecessor in predecessors)
-        super().__init__(
-            f"Node [{node}] has predecessors [{', '.join(formatted_predecessors)}]"
-        )
-
-
-class HasSuccessorsError(Exception):
-    """Raised when a task has successors."""
-
-    def __init__(self, node: Hashable, successors: Iterable[Any]) -> None:
-        """Initialise HasSuccessorsError."""
-        self.node = node
         self.successors = set(successors)
-        formatted_successors = (str(successor) for successor in successors)
+        formatted_neighbours = (
+            str(neighbour)
+            for neighbour in itertools.chain(self.predecessors, self.successors)
+        )
         super().__init__(
-            f"Node [{node}] has successors [{', '.join(formatted_successors)}]"
+            f"Node [{node}] has neighbours [{', '.join(formatted_neighbours)}]"
         )
 
 
@@ -452,11 +450,12 @@ class DirectedGraph[T: Hashable]:
 
     def validate_node_can_be_removed(self, node: T, /) -> None:
         """Validate that node can be removed from digraph."""
-        if predecessors := self.predecessors(node):
-            raise HasPredecessorsError(node=node, predecessors=predecessors)
-
-        if successors := self.successors(node):
-            raise HasSuccessorsError(node=node, successors=successors)
+        if not self.is_isolated(node):
+            raise HasNeighboursError(
+                node=node,
+                predecessors=self.predecessors(node),
+                successors=self.successors(node),
+            )
 
     def remove_node(self, node: T, /) -> None:
         """Remove node from digraph."""

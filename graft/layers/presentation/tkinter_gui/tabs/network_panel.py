@@ -11,30 +11,32 @@ from graft.domain.tasks.graph_processing import (
     get_inferior_subsystem,
 )
 from graft.domain.tasks.network_graph import NetworkGraphView
-from graft.layers.presentation.tkinter_gui import event_broker, helpers
-from graft.layers.presentation.tkinter_gui.helpers.alpha import OPAQUE, Alpha
-from graft.layers.presentation.tkinter_gui.helpers.colour import (
-    BLUE,
-    GREEN,
-    GREY,
-    LIGHT_BLUE,
-    LIGHT_YELLOW,
-    ORANGE,
-    RED,
-    YELLOW,
+from graft.layers.presentation.tkinter_gui import (
+    domain_visual_language,
+    event_broker,
+    helpers,
+)
+from graft.layers.presentation.tkinter_gui.domain_visual_language import (
+    ACTIVE_COMPOSITE_TASK_COLOUR,
+    ACTIVE_CONCRETE_TASK_COLOUR,
+    COMPLETED_TASK_COLOUR,
+    DOWNSTREAM_TASK_COLOUR,
+    HIGH_IMPORTANCE_COLOUR,
+    IN_PROGRESS_TASK_COLOUR,
+    INACTIVE_TASK_COLOUR,
+    LOW_IMPORTANCE_COLOUR,
+    MEDIUM_IMPORTANCE_COLOUR,
+    NOT_STARTED_TASK_COLOUR,
+    get_network_dependency_properties,
+    get_network_hierarchy_properties,
+    get_network_task_properties,
+)
+from graft.layers.presentation.tkinter_gui.helpers.colour import RED
+from graft.layers.presentation.tkinter_gui.helpers.static_task_network_graph.network_task_drawing_properties import (
+    NetworkTaskDrawingProperties,
 )
 from graft.layers.presentation.tkinter_gui.helpers.static_task_network_graph.relationship_drawing_properties import (
-    RelationshipDrawingProperties,
-)
-from graft.layers.presentation.tkinter_gui.helpers.static_task_network_graph.static_task_network_graph import (
-    DEFAULT_STANDARD_DEPENDENCY_COLOUR,
-    DEFAULT_STANDARD_HIERARCHY_COLOUR,
-    DEFAULT_STANDARD_RELATIONSHIP_ALPHA,
-    DEFAULT_TASK_ALPHA,
-    DEFAULT_TASK_LABEL_COLOUR,
-)
-from graft.layers.presentation.tkinter_gui.helpers.static_task_network_graph.task_drawing_properties import (
-    TaskDrawingProperties,
+    NetworkRelationshipDrawingProperties,
 )
 
 _FILTER_OPTION_COMPONENT: Final = "component"
@@ -46,93 +48,132 @@ _COLOURING_OPTION_IMPORTANCE: Final = "importance"
 _COLOURING_OPTION_PROGRESS: Final = "progress"
 _COLOURING_OPTION_ACTIVE: Final = "active"
 
+_SELECTED_ALPHA_LEVEL: Final = domain_visual_language.NetworkAlphaLevel.VERY_HIGHLIGHTED
+
 # Standard colouring
-_STANDARD_TASK_COLOUR: Final = BLUE
-_STANDARD_TASK_ALPHA: Final = DEFAULT_TASK_ALPHA
-_STANDARD_SELECTED_TASK_COLOUR: Final = RED
-_STANDARD_SELECTED_TASK_ALPHA: Final = OPAQUE
-_STANDARD_HIERARCHY_COLOUR: Final = DEFAULT_STANDARD_HIERARCHY_COLOUR
-_STANDARD_HIERARCHY_ALPHA: Final = DEFAULT_STANDARD_RELATIONSHIP_ALPHA
-_STANDARD_DEPENDENCY_COLOUR: Final = DEFAULT_STANDARD_DEPENDENCY_COLOUR
-_STANDARD_DEPENDENCY_ALPHA: Final = DEFAULT_STANDARD_RELATIONSHIP_ALPHA
-_STANDARD_SELECTED_HIERARCHY_COLOUR: Final = DEFAULT_STANDARD_HIERARCHY_COLOUR
-_STANDARD_SELECTED_HIERARCHY_ALPHA: Final = OPAQUE
-_STANDARD_SELECTED_DEPENDENCY_COLOUR: Final = DEFAULT_STANDARD_DEPENDENCY_COLOUR
-_STANDARD_SELECTED_DEPENDENCY_ALPHA: Final = OPAQUE
+_STANDARD_TASK_DRAWING_PROPERTIES: Final = get_network_task_properties()
+_STANDARD_SELECTED_TASK_DRAWING_PROPERTIES: Final = get_network_task_properties(
+    colour=RED, alpha_level=_SELECTED_ALPHA_LEVEL
+)
+_STANDARD_HIERARCHY_DRAWING_PROPERTIES: Final = get_network_hierarchy_properties()
+_STANDARD_SELECTED_HIERARCHY_PROPERTIES: Final = get_network_hierarchy_properties(
+    alpha_level=_SELECTED_ALPHA_LEVEL
+)
+_STANDARD_DEPENDENCY_DRAWING_PROPERTIES: Final = get_network_dependency_properties()
+_STANDARD_SELECTED_DEPENDENCY_PROPERTIES: Final = get_network_dependency_properties(
+    alpha_level=_SELECTED_ALPHA_LEVEL
+)
 
 # Importance colouring
-_IMPORTANCE_HIGH_TASK_COLOUR: Final = RED
-_IMPORTANCE_HIGH_TASK_ALPHA: Final = DEFAULT_TASK_ALPHA
-_IMPORTANCE_MEDIUM_TASK_COLOUR: Final = ORANGE
-_IMPORTANCE_MEDIUM_TASK_ALPHA: Final = DEFAULT_TASK_ALPHA
-_IMPORTANCE_LOW_TASK_COLOUR: Final = YELLOW
-_IMPORTANCE_LOW_TASK_ALPHA: Final = DEFAULT_TASK_ALPHA
-_IMPORTANCE_NONE_TASK_COLOUR: Final = BLUE
-_IMPORTANCE_NONE_TASK_ALPA: Final = DEFAULT_TASK_ALPHA
-_IMPORTANCE_HIGH_SELECTED_TASK_COLOUR: Final = RED
-_IMPORTANCE_HIGH_SELECTED_TASK_ALPHA: Final = OPAQUE
-_IMPORTANCE_MEDIUM_SELECTED_TASK_COLOUR: Final = ORANGE
-_IMPORTANCE_MEDIUM_SELECTED_TASK_ALPHA: Final = OPAQUE
-_IMPORTANCE_LOW_SELECTED_TASK_COLOUR: Final = YELLOW
-_IMPORTANCE_LOW_SELECTED_TASK_ALPHA: Final = OPAQUE
-_IMPORTANCE_NONE_SELECTED_TASK_COLOUR: Final = BLUE
-_IMPORTANCE_NONE_SELECTED_TASK_ALPHA: Final = OPAQUE
-_IMPORTANCE_HIERARCHY_COLOUR: Final = DEFAULT_STANDARD_HIERARCHY_COLOUR
-_IMPORTANCE_HIERARCHY_ALPHA: Final = DEFAULT_STANDARD_RELATIONSHIP_ALPHA
-_IMPORTANCE_DEPENDENCY_COLOUR: Final = DEFAULT_STANDARD_DEPENDENCY_COLOUR
-_IMPORTANCE_DEPENDENCY_ALPHA: Final = DEFAULT_STANDARD_RELATIONSHIP_ALPHA
-_IMPORTANCE_SELECTED_HIERARCHY_COLOUR: Final = DEFAULT_STANDARD_HIERARCHY_COLOUR
-_IMPORTANCE_SELECTED_HIERARCHY_ALPHA: Final = OPAQUE
-_IMPORTANCE_SELECTED_DEPENDENCY_COLOUR: Final = DEFAULT_STANDARD_DEPENDENCY_COLOUR
-_IMPORTANCE_SELECTED_DEPENDENCY_ALPHA: Final = OPAQUE
+_IMPORTANCE_HIGH_TASK_DRAWING_PROPERTIES: Final = get_network_task_properties(
+    colour=HIGH_IMPORTANCE_COLOUR
+)
+_IMPORTANCE_HIGH_SELECTED_TASK_DRAWING_PROPERTIES: Final = get_network_task_properties(
+    colour=HIGH_IMPORTANCE_COLOUR, alpha_level=_SELECTED_ALPHA_LEVEL
+)
+_IMPORTANCE_MEDIUM_TASK_DRAWING_PROPERTIES: Final = get_network_task_properties(
+    colour=MEDIUM_IMPORTANCE_COLOUR
+)
+_IMPORTANCE_MEDIUM_SELECTED_TASK_DRAWING_PROPERTIES: Final = (
+    get_network_task_properties(
+        colour=MEDIUM_IMPORTANCE_COLOUR, alpha_level=_SELECTED_ALPHA_LEVEL
+    )
+)
+_IMPORTANCE_LOW_TASK_DRAWING_PROPERTIES: Final = get_network_task_properties(
+    colour=LOW_IMPORTANCE_COLOUR
+)
+_IMPORTANCE_LOW_SELECTED_TASK_DRAWING_PROPERTIES: Final = get_network_task_properties(
+    colour=LOW_IMPORTANCE_COLOUR, alpha_level=_SELECTED_ALPHA_LEVEL
+)
+_IMPORTANCE_NONE_TASK_DRAWING_PROPERTIES: Final = get_network_task_properties()
+_IMPORTANCE_NONE_SELECTED_TASK_DRAWING_PROPERTIES: Final = get_network_task_properties(
+    alpha_level=_SELECTED_ALPHA_LEVEL
+)
+_IMPORTANCE_HIERARCHY_DRAWING_PROPERTIES = get_network_hierarchy_properties()
+_IMPORTANCE_SELECTED_HIERARCHY_DRAWING_PROPERTIES = get_network_hierarchy_properties(
+    alpha_level=_SELECTED_ALPHA_LEVEL
+)
+_IMPORTANCE_DEPENDENCY_DRAWING_PROPERTIES = get_network_hierarchy_properties()
+_IMPORTANCE_SELECTED_DEPENDENCY_DRAWING_PROPERTIES = get_network_hierarchy_properties(
+    alpha_level=_SELECTED_ALPHA_LEVEL
+)
 
 # Progress colouring
-_PROGRESS_COMPLETED_TASK_COLOUR: Final = GREEN
-_PROGRESS_COMPLETED_TASK_ALPHA: Final = DEFAULT_TASK_ALPHA
-_PROGRESS_IN_PROGRESS_TASK_COLOUR: Final = YELLOW
-_PROGRESS_IN_PROGRESS_TASK_ALPHA: Final = DEFAULT_TASK_ALPHA
-_PROGRESS_NOT_STARTED_TASK_COLOUR: Final = BLUE
-_PROGRESS_NOT_STARTED_TASK_ALPHA: Final = DEFAULT_TASK_ALPHA
-_PROGRESS_COMPLETED_SELECTED_TASK_COLOUR: Final = GREEN
-_PROGRESS_COMPLETED_SELECTED_TASK_ALPHA: Final = OPAQUE
-_PROGRESS_IN_PROGRESS_SELECTED_TASK_COLOUR: Final = YELLOW
-_PROGRESS_IN_PROGRESS_SELECTED_TASK_ALPHA: Final = OPAQUE
-_PROGRESS_NOT_STARTED_SELECTED_TASK_COLOUR: Final = BLUE
-_PROGRESS_NOT_STARTED_SELECTED_TASK_ALPHA: Final = OPAQUE
-_PROGRESS_HIERARCHY_COLOUR: Final = DEFAULT_STANDARD_HIERARCHY_COLOUR
-_PROGRESS_HIERARCHY_ALPHA: Final = DEFAULT_STANDARD_RELATIONSHIP_ALPHA
-_PROGRESS_DEPENDENCY_COLOUR: Final = DEFAULT_STANDARD_DEPENDENCY_COLOUR
-_PROGRESS_DEPENDENCY_ALPHA: Final = DEFAULT_STANDARD_RELATIONSHIP_ALPHA
-_PROGRESS_SELECTED_HIERARCHY_COLOUR: Final = DEFAULT_STANDARD_HIERARCHY_COLOUR
-_PROGRESS_SELECTED_HIERARCHY_ALPHA: Final = OPAQUE
-_PROGRESS_SELECTED_DEPENDENCY_COLOUR: Final = DEFAULT_STANDARD_DEPENDENCY_COLOUR
-_PROGRESS_SELECTED_DEPENDENCY_ALPHA: Final = OPAQUE
+_PROGRESS_COMPLETED_TASK_DRAWING_PROPERTIES: Final = get_network_task_properties(
+    colour=COMPLETED_TASK_COLOUR
+)
+_PROGRESS_COMPLETED_SELECTED_TASK_DRAWING_PROPERTIES: Final = (
+    get_network_task_properties(
+        colour=COMPLETED_TASK_COLOUR, alpha_level=_SELECTED_ALPHA_LEVEL
+    )
+)
+_PROGRESS_IN_PROGRESS_TASK_DRAWING_PROPERTIES: Final = get_network_task_properties(
+    colour=IN_PROGRESS_TASK_COLOUR
+)
+_PROGRESS_IN_PROGRESS_SELECTED_TASK_DRAWING_PROPERTIES: Final = (
+    get_network_task_properties(
+        colour=IN_PROGRESS_TASK_COLOUR, alpha_level=_SELECTED_ALPHA_LEVEL
+    )
+)
+_PROGRESS_NOT_STARTED_TASK_DRAWING_PROPERTIES: Final = get_network_task_properties(
+    colour=NOT_STARTED_TASK_COLOUR
+)
+_PROGRESS_NOT_STARTED_SELECTED_TASK_DRAWING_PROPERTIES: Final = (
+    get_network_task_properties(
+        colour=NOT_STARTED_TASK_COLOUR, alpha_level=_SELECTED_ALPHA_LEVEL
+    )
+)
+_PROGRESS_HIERARCHY_DRAWING_PROPERTIES: Final = get_network_hierarchy_properties()
+_PROGRESS_SELECTED_HIERARCHY_DRAWING_PROPERTIES: Final = (
+    get_network_hierarchy_properties(alpha_level=_SELECTED_ALPHA_LEVEL)
+)
+_PROGRESS_DEPENDENCY_DRAWING_PROPERTIES: Final = get_network_dependency_properties()
+_PROGRESS_SELECTED_DEPENDENCY_DRAWING_PROPERTIES: Final = (
+    get_network_dependency_properties(alpha_level=_SELECTED_ALPHA_LEVEL)
+)
+
 
 # Active colouring
-_ACTIVE_ACTIVE_CONCRETE_TASK_COLOUR: Final = YELLOW
-_ACTIVE_ACTIVE_CONCRETE_TASK_ALPHA: Final = Alpha(0.9)
-_ACTIVE_ACTIVE_NON_CONCRETE_TASK_COLOUR: Final = LIGHT_YELLOW
-_ACTIVE_ACTIVE_NON_CONCRETE_TASK_ALPHA: Final = Alpha(0.8)
-_ACTIVE_INACTIVE_DOWNSTREAM_TASK_COLOUR: Final = LIGHT_BLUE
-_ACTIVE_INACTIVE_DOWNSTREAM_TASK_ALPHA: Final = Alpha(0.7)
-_ACTIVE_COMPLETED_TASK_COLOUR: Final = GREY
-_ACTIVE_COMPLETED_TASK_ALPHA: Final = Alpha(0.7)
-_ACTIVE_ACTIVE_CONCRETE_SELECTED_TASK_COLOUR: Final = YELLOW
-_ACTIVE_ACTIVE_CONCRETE_SELECTED_TASK_ALPHA: Final = OPAQUE
-_ACTIVE_ACTIVE_NON_CONCRETE_SELECTED_TASK_COLOUR: Final = LIGHT_YELLOW
-_ACTIVE_ACTIVE_NON_CONCRETE_SELECTED_TASK_ALPHA: Final = OPAQUE
-_ACTIVE_INACTIVE_DOWNSTREAM_SELECTED_TASK_COLOUR: Final = LIGHT_BLUE
-_ACTIVE_INACTIVE_DOWNSTREAM_SELECTED_TASK_ALPHA: Final = OPAQUE
-_ACTIVE_COMPLETED_SELECTED_TASK_COLOUR: Final = GREY
-_ACTIVE_COMPLETED_SELECTED_TASK_ALPHA: Final = OPAQUE
-_ACTIVE_HIERARCHY_COLOUR: Final = DEFAULT_STANDARD_HIERARCHY_COLOUR
-_ACTIVE_HIERARCHY_ALPHA: Final = DEFAULT_STANDARD_RELATIONSHIP_ALPHA
-_ACTIVE_DEPENDENCY_COLOUR: Final = DEFAULT_STANDARD_DEPENDENCY_COLOUR
-_ACTIVE_DEPENDENCY_ALPHA: Final = DEFAULT_STANDARD_RELATIONSHIP_ALPHA
-_ACTIVE_SELECTED_HIERARCHY_COLOUR: Final = DEFAULT_STANDARD_HIERARCHY_COLOUR
-_ACTIVE_SELECTED_HIERARCHY_ALPHA: Final = OPAQUE
-_ACTIVE_SELECTED_DEPENDENCY_COLOUR: Final = DEFAULT_STANDARD_DEPENDENCY_COLOUR
-_ACTIVE_SELECTED_DEPENDENCY_ALPHA: Final = OPAQUE
+_ACTIVE_ACTIVE_CONCRETE_TASK_DRAWING_PROPERTIES: Final = get_network_task_properties(
+    colour=ACTIVE_CONCRETE_TASK_COLOUR
+)
+_ACTIVE_ACTIVE_CONCRETE_SELECTED_TASK_DRAWING_PROPERTIES = get_network_task_properties(
+    colour=ACTIVE_CONCRETE_TASK_COLOUR, alpha_level=_SELECTED_ALPHA_LEVEL
+)
+_ACTIVE_ACTIVE_COMPOSITE_TASK_DRAWING_PROPERTIES: Final = get_network_task_properties(
+    colour=ACTIVE_COMPOSITE_TASK_COLOUR,
+    alpha_level=domain_visual_language.NetworkAlphaLevel.FADED,
+)
+_ACTIVE_ACTIVE_COMPOSITE_SELECTED_TASK_DRAWING_PROPERTIES = get_network_task_properties(
+    colour=ACTIVE_COMPOSITE_TASK_COLOUR, alpha_level=_SELECTED_ALPHA_LEVEL
+)
+_ACTIVE_INACTIVE_DOWNSTREAM_TASK_DRAWING_PROPERTIES = get_network_task_properties(
+    colour=DOWNSTREAM_TASK_COLOUR,
+    alpha_level=domain_visual_language.NetworkAlphaLevel.FADED,
+)
+_ACTIVE_INACTIVE_DOWNSTREAM_SELECTED_TASK_DRAWING_PROPERTIES = (
+    get_network_task_properties(
+        colour=DOWNSTREAM_TASK_COLOUR,
+        alpha_level=_SELECTED_ALPHA_LEVEL,
+    )
+)
+_ACTIVE_COMPLETED_TASK_DRAWING_PROPERTIES: Final = get_network_task_properties(
+    colour=INACTIVE_TASK_COLOUR,
+    alpha_level=domain_visual_language.NetworkAlphaLevel.VERY_FADED,
+)
+_ACTIVE_COMPLETED_SELECTED_TASK_DRAWING_PROPERTIES: Final = get_network_task_properties(
+    colour=INACTIVE_TASK_COLOUR,
+    alpha_level=_SELECTED_ALPHA_LEVEL,
+)
+_ACTIVE_HIERARCHY_DRAWING_PROPERTIES: Final = get_network_hierarchy_properties()
+_ACTIVE_SELECTED_HIERARCHY_DRAWING_PROPERTIES: Final = get_network_hierarchy_properties(
+    alpha_level=_SELECTED_ALPHA_LEVEL
+)
+
+_ACTIVE_DEPENDENCY_DRAWING_PROPERTIES: Final = get_network_dependency_properties()
+_ACTIVE_SELECTED_DEPENDENCY_DRAWING_PROPERTIES: Final = (
+    get_network_dependency_properties(alpha_level=_SELECTED_ALPHA_LEVEL)
+)
 
 
 class ColouringOption(enum.Enum):
@@ -229,7 +270,7 @@ class NetworkPanel(ttk.Frame):
 
         self._colouring_panel = ttk.Frame(master=self._control_panel)
         self._colouring_label = ttk.Label(
-            master=self._colouring_panel, text="Colouring"
+            master=self._colouring_panel, text="Visualisation"
         )
         self._colouring_selection = tk.StringVar(value=_COLOURING_OPTION_STANDARD)
         self._colouring_dropdown = ttk.Combobox(
@@ -295,14 +336,8 @@ class NetworkPanel(ttk.Frame):
             graph=tasks.NetworkGraph.empty(),
             get_task_annotation_text=self._get_formatted_task_name,
             get_task_properties=self._get_task_properties,
-            get_hierarchy_properties=lambda _, __: RelationshipDrawingProperties(
-                colour=DEFAULT_STANDARD_HIERARCHY_COLOUR,
-                alpha=DEFAULT_STANDARD_RELATIONSHIP_ALPHA,
-            ),
-            get_dependency_properties=lambda _, __: RelationshipDrawingProperties(
-                colour=DEFAULT_STANDARD_DEPENDENCY_COLOUR,
-                alpha=DEFAULT_STANDARD_RELATIONSHIP_ALPHA,
-            ),
+            get_hierarchy_properties=self._get_hierarchy_properties,
+            get_dependency_properties=self._get_dependency_properties,
             additional_hierarchies=None,
             additional_dependencies=None,
             on_node_left_click=_publish_task_as_selected,
@@ -328,7 +363,7 @@ class NetworkPanel(ttk.Frame):
         broker.subscribe(event_broker.TaskSelected, self._on_task_selected)
 
     def _on_filter_option_selected(self) -> None:
-        match _parse_filter_option(self._filter_selection.get()):
+        match self._get_selected_filter():
             case FilterOption.COMPONENT:
                 self._filter_task_selection_dropdown["state"] = "readonly"
             case FilterOption.SINGLE_TASK:
@@ -395,8 +430,8 @@ class NetworkPanel(ttk.Frame):
 
     def _get_hierarchy_properties(
         self, supertask: tasks.UID, subtask: tasks.UID
-    ) -> RelationshipDrawingProperties:
-        match _parse_colouring_option(self._colouring_selection.get()):
+    ) -> NetworkRelationshipDrawingProperties:
+        match self._get_selected_colouring():
             case ColouringOption.STANDARD:
                 return self._get_standard_hierarchy_properties(supertask, subtask)
             case ColouringOption.IMPORTANCE:
@@ -410,8 +445,8 @@ class NetworkPanel(ttk.Frame):
 
     def _get_dependency_properties(
         self, dependee_task: tasks.UID, dependent_task: tasks.UID
-    ) -> RelationshipDrawingProperties:
-        match _parse_colouring_option(self._colouring_selection.get()):
+    ) -> NetworkRelationshipDrawingProperties:
+        match self._get_selected_colouring():
             case ColouringOption.STANDARD:
                 return self._get_standard_dependency_properties(
                     dependee_task, dependent_task
@@ -431,8 +466,8 @@ class NetworkPanel(ttk.Frame):
             case _:
                 raise ValueError
 
-    def _get_task_properties(self, task: tasks.UID) -> TaskDrawingProperties:
-        match _parse_colouring_option(self._colouring_selection.get()):
+    def _get_task_properties(self, task: tasks.UID) -> NetworkTaskDrawingProperties:
+        match self._get_selected_colouring():
             case ColouringOption.STANDARD:
                 return self._get_standard_task_properties(task)
             case ColouringOption.IMPORTANCE:
@@ -444,223 +479,184 @@ class NetworkPanel(ttk.Frame):
             case _:
                 raise ValueError
 
-    def _get_standard_task_properties(self, task: tasks.UID) -> TaskDrawingProperties:
-        if task == self._selected_task:
-            colour = _STANDARD_SELECTED_TASK_COLOUR
-            alpha = _STANDARD_SELECTED_TASK_ALPHA
-        else:
-            colour = _STANDARD_TASK_COLOUR
-            alpha = _STANDARD_TASK_ALPHA
+    def _get_selected_colouring(self) -> ColouringOption:
+        return _parse_colouring_option(self._colouring_selection.get())
 
-        return TaskDrawingProperties(
-            colour=colour,
-            alpha=alpha,
-            label_colour=DEFAULT_TASK_LABEL_COLOUR,
+    def _get_standard_task_properties(
+        self, task: tasks.UID
+    ) -> NetworkTaskDrawingProperties:
+        return (
+            _STANDARD_SELECTED_TASK_DRAWING_PROPERTIES
+            if task == self._selected_task
+            else _STANDARD_TASK_DRAWING_PROPERTIES
         )
 
     def _get_standard_hierarchy_properties(
         self, supertask: tasks.UID, subtask: tasks.UID
-    ) -> RelationshipDrawingProperties:
-        if self._selected_task in {supertask, subtask}:
-            colour = _STANDARD_SELECTED_HIERARCHY_COLOUR
-            alpha = _STANDARD_SELECTED_HIERARCHY_ALPHA
-        else:
-            colour = _STANDARD_HIERARCHY_COLOUR
-            alpha = _STANDARD_HIERARCHY_ALPHA
-        return RelationshipDrawingProperties(colour=colour, alpha=alpha)
+    ) -> NetworkRelationshipDrawingProperties:
+        return (
+            _STANDARD_SELECTED_HIERARCHY_PROPERTIES
+            if self._selected_task in {supertask, subtask}
+            else _STANDARD_HIERARCHY_DRAWING_PROPERTIES
+        )
 
     def _get_standard_dependency_properties(
         self, dependee_task: tasks.UID, dependent_task: tasks.UID
-    ) -> RelationshipDrawingProperties:
-        if self._selected_task in {dependee_task, dependent_task}:
-            colour = _STANDARD_SELECTED_DEPENDENCY_COLOUR
-            alpha = _STANDARD_SELECTED_DEPENDENCY_ALPHA
-        else:
-            colour = _STANDARD_DEPENDENCY_COLOUR
-            alpha = _STANDARD_DEPENDENCY_ALPHA
-        return RelationshipDrawingProperties(colour=colour, alpha=alpha)
+    ) -> NetworkRelationshipDrawingProperties:
+        return (
+            _STANDARD_SELECTED_DEPENDENCY_PROPERTIES
+            if self._selected_task in {dependee_task, dependent_task}
+            else _STANDARD_DEPENDENCY_DRAWING_PROPERTIES
+        )
 
-    def _get_importance_task_properties(self, task: tasks.UID) -> TaskDrawingProperties:
+    def _get_importance_task_properties(
+        self, task: tasks.UID
+    ) -> NetworkTaskDrawingProperties:
         match self._logic_layer.get_task_system().get_importance(task):
             case tasks.Importance.LOW:
-                if task == self._selected_task:
-                    colour = _IMPORTANCE_LOW_SELECTED_TASK_COLOUR
-                    alpha = _IMPORTANCE_LOW_SELECTED_TASK_ALPHA
-                else:
-                    colour = _IMPORTANCE_LOW_TASK_COLOUR
-                    alpha = _IMPORTANCE_LOW_TASK_ALPHA
+                return (
+                    _IMPORTANCE_LOW_SELECTED_TASK_DRAWING_PROPERTIES
+                    if task == self._selected_task
+                    else _IMPORTANCE_LOW_TASK_DRAWING_PROPERTIES
+                )
             case tasks.Importance.MEDIUM:
-                if task == self._selected_task:
-                    colour = _IMPORTANCE_MEDIUM_SELECTED_TASK_COLOUR
-                    alpha = _IMPORTANCE_MEDIUM_SELECTED_TASK_ALPHA
-                else:
-                    colour = _IMPORTANCE_MEDIUM_TASK_COLOUR
-                    alpha = _IMPORTANCE_MEDIUM_TASK_ALPHA
+                return (
+                    _IMPORTANCE_MEDIUM_SELECTED_TASK_DRAWING_PROPERTIES
+                    if task == self._selected_task
+                    else _IMPORTANCE_MEDIUM_TASK_DRAWING_PROPERTIES
+                )
             case tasks.Importance.HIGH:
-                if task == self._selected_task:
-                    colour = _IMPORTANCE_HIGH_SELECTED_TASK_COLOUR
-                    alpha = _IMPORTANCE_HIGH_SELECTED_TASK_ALPHA
-                else:
-                    colour = _IMPORTANCE_HIGH_TASK_COLOUR
-                    alpha = _IMPORTANCE_HIGH_TASK_ALPHA
+                return (
+                    _IMPORTANCE_HIGH_SELECTED_TASK_DRAWING_PROPERTIES
+                    if task == self._selected_task
+                    else _IMPORTANCE_HIGH_TASK_DRAWING_PROPERTIES
+                )
             case None:
-                if task == self._selected_task:
-                    colour = _IMPORTANCE_NONE_SELECTED_TASK_COLOUR
-                    alpha = _IMPORTANCE_NONE_SELECTED_TASK_ALPHA
-                else:
-                    colour = _IMPORTANCE_NONE_TASK_COLOUR
-                    alpha = _IMPORTANCE_NONE_TASK_ALPA
-
-        return TaskDrawingProperties(
-            colour=colour,
-            alpha=alpha,
-            label_colour=DEFAULT_TASK_LABEL_COLOUR,
-        )
+                return (
+                    _IMPORTANCE_NONE_SELECTED_TASK_DRAWING_PROPERTIES
+                    if task == self._selected_task
+                    else _IMPORTANCE_NONE_TASK_DRAWING_PROPERTIES
+                )
 
     def _get_importance_hierarchy_properties(
         self, supertask: tasks.UID, subtask: tasks.UID
-    ) -> RelationshipDrawingProperties:
-        if self._selected_task in {supertask, subtask}:
-            colour = _IMPORTANCE_SELECTED_HIERARCHY_COLOUR
-            alpha = _IMPORTANCE_SELECTED_HIERARCHY_ALPHA
-        else:
-            colour = _IMPORTANCE_HIERARCHY_COLOUR
-            alpha = _IMPORTANCE_HIERARCHY_ALPHA
-        return RelationshipDrawingProperties(colour=colour, alpha=alpha)
+    ) -> NetworkRelationshipDrawingProperties:
+        return (
+            _IMPORTANCE_SELECTED_HIERARCHY_DRAWING_PROPERTIES
+            if self._selected_task in {supertask, subtask}
+            else _IMPORTANCE_HIERARCHY_DRAWING_PROPERTIES
+        )
 
     def _get_importance_dependency_properties(
         self, dependee_task: tasks.UID, dependent_task: tasks.UID
-    ) -> RelationshipDrawingProperties:
-        if self._selected_task in {dependee_task, dependent_task}:
-            colour = _IMPORTANCE_SELECTED_DEPENDENCY_COLOUR
-            alpha = _IMPORTANCE_SELECTED_DEPENDENCY_ALPHA
-        else:
-            colour = _IMPORTANCE_DEPENDENCY_COLOUR
-            alpha = _IMPORTANCE_DEPENDENCY_ALPHA
-        return RelationshipDrawingProperties(colour=colour, alpha=alpha)
+    ) -> NetworkRelationshipDrawingProperties:
+        return (
+            _IMPORTANCE_SELECTED_DEPENDENCY_DRAWING_PROPERTIES
+            if self._selected_task in {dependee_task, dependent_task}
+            else _IMPORTANCE_DEPENDENCY_DRAWING_PROPERTIES
+        )
 
-    def _get_progress_task_properties(self, task: tasks.UID) -> TaskDrawingProperties:
+    def _get_progress_task_properties(
+        self, task: tasks.UID
+    ) -> NetworkTaskDrawingProperties:
         match self._logic_layer.get_task_system().get_progress(task):
             case tasks.Progress.NOT_STARTED:
-                if task == self._selected_task:
-                    colour = _PROGRESS_NOT_STARTED_SELECTED_TASK_COLOUR
-                    alpha = _PROGRESS_NOT_STARTED_SELECTED_TASK_ALPHA
-                else:
-                    colour = _PROGRESS_NOT_STARTED_TASK_COLOUR
-                    alpha = _PROGRESS_NOT_STARTED_TASK_ALPHA
+                return (
+                    _PROGRESS_NOT_STARTED_SELECTED_TASK_DRAWING_PROPERTIES
+                    if task == self._selected_task
+                    else _PROGRESS_NOT_STARTED_TASK_DRAWING_PROPERTIES
+                )
             case tasks.Progress.IN_PROGRESS:
-                if task == self._selected_task:
-                    colour = _PROGRESS_IN_PROGRESS_SELECTED_TASK_COLOUR
-                    alpha = _PROGRESS_IN_PROGRESS_SELECTED_TASK_ALPHA
-                else:
-                    colour = _PROGRESS_IN_PROGRESS_TASK_COLOUR
-                    alpha = _PROGRESS_IN_PROGRESS_TASK_ALPHA
+                return (
+                    _PROGRESS_IN_PROGRESS_SELECTED_TASK_DRAWING_PROPERTIES
+                    if task == self._selected_task
+                    else _PROGRESS_IN_PROGRESS_TASK_DRAWING_PROPERTIES
+                )
             case tasks.Progress.COMPLETED:
-                if task == self._selected_task:
-                    colour = _PROGRESS_COMPLETED_SELECTED_TASK_COLOUR
-                    alpha = _PROGRESS_COMPLETED_SELECTED_TASK_ALPHA
-                else:
-                    colour = _PROGRESS_COMPLETED_TASK_COLOUR
-                    alpha = _PROGRESS_COMPLETED_TASK_ALPHA
-        return TaskDrawingProperties(
-            colour=colour, alpha=alpha, label_colour=DEFAULT_TASK_LABEL_COLOUR
-        )
+                return (
+                    _PROGRESS_COMPLETED_SELECTED_TASK_DRAWING_PROPERTIES
+                    if task == self._selected_task
+                    else _PROGRESS_COMPLETED_TASK_DRAWING_PROPERTIES
+                )
 
     def _get_progress_hierarchy_properties(
         self, supertask: tasks.UID, subtask: tasks.UID
-    ) -> RelationshipDrawingProperties:
-        if self._selected_task in {supertask, subtask}:
-            colour = _PROGRESS_SELECTED_HIERARCHY_COLOUR
-            alpha = _PROGRESS_SELECTED_HIERARCHY_ALPHA
-        else:
-            colour = _PROGRESS_HIERARCHY_COLOUR
-            alpha = _PROGRESS_HIERARCHY_ALPHA
-        return RelationshipDrawingProperties(colour=colour, alpha=alpha)
+    ) -> NetworkRelationshipDrawingProperties:
+        return (
+            _PROGRESS_SELECTED_HIERARCHY_DRAWING_PROPERTIES
+            if self._selected_task in {supertask, subtask}
+            else _PROGRESS_HIERARCHY_DRAWING_PROPERTIES
+        )
 
     def _get_progress_dependency_properties(
         self, dependee_task: tasks.UID, dependent_task: tasks.UID
-    ) -> RelationshipDrawingProperties:
-        if self._selected_task in {dependee_task, dependent_task}:
-            colour = _PROGRESS_SELECTED_DEPENDENCY_COLOUR
-            alpha = _PROGRESS_SELECTED_DEPENDENCY_ALPHA
-        else:
-            colour = _PROGRESS_DEPENDENCY_COLOUR
-            alpha = _PROGRESS_DEPENDENCY_ALPHA
-        return RelationshipDrawingProperties(colour=colour, alpha=alpha)
+    ) -> NetworkRelationshipDrawingProperties:
+        return (
+            _PROGRESS_SELECTED_DEPENDENCY_DRAWING_PROPERTIES
+            if self._selected_task in {dependee_task, dependent_task}
+            else _PROGRESS_DEPENDENCY_DRAWING_PROPERTIES
+        )
 
-    def _get_active_task_properties(self, task: tasks.UID) -> TaskDrawingProperties:
+    def _get_active_task_properties(
+        self, task: tasks.UID
+    ) -> NetworkTaskDrawingProperties:
         if task == self._selected_task:
             if self._logic_layer.get_task_system().is_active_task(task):
+                return (
+                    _ACTIVE_ACTIVE_CONCRETE_SELECTED_TASK_DRAWING_PROPERTIES
+                    if (
+                        self._logic_layer.get_task_system()
+                        .network_graph()
+                        .hierarchy_graph()
+                        .is_concrete(task)
+                    )
+                    else _ACTIVE_ACTIVE_COMPOSITE_SELECTED_TASK_DRAWING_PROPERTIES
+                )
+            if (
+                self._logic_layer.get_task_system().get_progress(task)
+                is tasks.Progress.NOT_STARTED
+            ):
+                return _ACTIVE_INACTIVE_DOWNSTREAM_SELECTED_TASK_DRAWING_PROPERTIES
+            return _ACTIVE_COMPLETED_SELECTED_TASK_DRAWING_PROPERTIES
+        if self._logic_layer.get_task_system().is_active_task(task):
+            return (
+                _ACTIVE_ACTIVE_CONCRETE_TASK_DRAWING_PROPERTIES
                 if (
                     self._logic_layer.get_task_system()
                     .network_graph()
                     .hierarchy_graph()
                     .is_concrete(task)
-                ):
-                    colour = _ACTIVE_ACTIVE_CONCRETE_SELECTED_TASK_COLOUR
-                    alpha = _ACTIVE_ACTIVE_CONCRETE_SELECTED_TASK_ALPHA
-                else:
-                    colour = _ACTIVE_ACTIVE_NON_CONCRETE_SELECTED_TASK_COLOUR
-                    alpha = _ACTIVE_ACTIVE_NON_CONCRETE_SELECTED_TASK_ALPHA
-            elif (
-                self._logic_layer.get_task_system().get_progress(task)
-                is tasks.Progress.NOT_STARTED
-            ):
-                colour = _ACTIVE_INACTIVE_DOWNSTREAM_SELECTED_TASK_COLOUR
-                alpha = _ACTIVE_INACTIVE_DOWNSTREAM_SELECTED_TASK_ALPHA
-            else:
-                colour = _ACTIVE_COMPLETED_SELECTED_TASK_COLOUR
-                alpha = _ACTIVE_COMPLETED_SELECTED_TASK_ALPHA
-        elif self._logic_layer.get_task_system().is_active_task(task):
-            if (
-                self._logic_layer.get_task_system()
-                .network_graph()
-                .hierarchy_graph()
-                .is_concrete(task)
-            ):
-                colour = _ACTIVE_ACTIVE_CONCRETE_TASK_COLOUR
-                alpha = _ACTIVE_ACTIVE_CONCRETE_TASK_ALPHA
-            else:
-                colour = _ACTIVE_ACTIVE_NON_CONCRETE_TASK_COLOUR
-                alpha = _ACTIVE_ACTIVE_NON_CONCRETE_TASK_ALPHA
-        elif (
+                )
+                else _ACTIVE_ACTIVE_COMPOSITE_TASK_DRAWING_PROPERTIES
+            )
+        if (
             self._logic_layer.get_task_system().get_progress(task)
             is tasks.Progress.NOT_STARTED
         ):
-            colour = _ACTIVE_INACTIVE_DOWNSTREAM_TASK_COLOUR
-            alpha = _ACTIVE_INACTIVE_DOWNSTREAM_TASK_ALPHA
-        else:
-            colour = _ACTIVE_COMPLETED_TASK_COLOUR
-            alpha = _ACTIVE_COMPLETED_TASK_ALPHA
-        return TaskDrawingProperties(
-            colour=colour, alpha=alpha, label_colour=DEFAULT_TASK_LABEL_COLOUR
-        )
+            return _ACTIVE_INACTIVE_DOWNSTREAM_TASK_DRAWING_PROPERTIES
+        return _ACTIVE_COMPLETED_TASK_DRAWING_PROPERTIES
 
     def _get_active_hierarchy_properties(
         self, supertask: tasks.UID, subtask: tasks.UID
-    ) -> RelationshipDrawingProperties:
-        if self._selected_task in {supertask, subtask}:
-            colour = _ACTIVE_SELECTED_HIERARCHY_COLOUR
-            alpha = _ACTIVE_SELECTED_HIERARCHY_ALPHA
-        else:
-            colour = _ACTIVE_HIERARCHY_COLOUR
-            alpha = _ACTIVE_HIERARCHY_ALPHA
-        return RelationshipDrawingProperties(colour=colour, alpha=alpha)
+    ) -> NetworkRelationshipDrawingProperties:
+        return (
+            _ACTIVE_SELECTED_HIERARCHY_DRAWING_PROPERTIES
+            if self._selected_task in {supertask, subtask}
+            else _ACTIVE_HIERARCHY_DRAWING_PROPERTIES
+        )
 
     def _get_active_dependency_properties(
         self, dependee_task: tasks.UID, dependent_task: tasks.UID
-    ) -> RelationshipDrawingProperties:
-        if self._selected_task in {dependee_task, dependent_task}:
-            colour = _ACTIVE_SELECTED_DEPENDENCY_COLOUR
-            alpha = _ACTIVE_SELECTED_DEPENDENCY_ALPHA
-        else:
-            colour = _ACTIVE_DEPENDENCY_COLOUR
-            alpha = _ACTIVE_DEPENDENCY_ALPHA
-        return RelationshipDrawingProperties(colour=colour, alpha=alpha)
+    ) -> NetworkRelationshipDrawingProperties:
+        return (
+            _ACTIVE_SELECTED_DEPENDENCY_DRAWING_PROPERTIES
+            if self._selected_task in {dependee_task, dependent_task}
+            else _ACTIVE_DEPENDENCY_DRAWING_PROPERTIES
+        )
 
     def _get_filtered_graph(self) -> NetworkGraphView:
         if (filter_task := self._get_task_to_filter_on()) is not None:
-            match _parse_filter_option(self._filter_selection.get()):
+            match self._get_selected_filter():
                 case FilterOption.COMPONENT:
                     system = get_component_system(
                         filter_task, self._logic_layer.get_task_system()
@@ -680,5 +676,77 @@ class NetworkPanel(ttk.Frame):
 
         return system.network_graph()
 
+    def _get_selected_filter(self) -> FilterOption:
+        return _parse_filter_option(self._filter_selection.get())
+
+    def _get_legend_elements(
+        self,
+    ) -> list[
+        tuple[str, NetworkTaskDrawingProperties | NetworkRelationshipDrawingProperties]
+    ]:
+        match self._get_selected_colouring():
+            case ColouringOption.STANDARD:
+                return [
+                    ("task", _STANDARD_TASK_DRAWING_PROPERTIES),
+                    ("selected task", _STANDARD_SELECTED_TASK_DRAWING_PROPERTIES),
+                    ("hierarchy", _STANDARD_SELECTED_HIERARCHY_PROPERTIES),
+                    ("dependency", _STANDARD_SELECTED_DEPENDENCY_PROPERTIES),
+                ]
+            case ColouringOption.IMPORTANCE:
+                return [
+                    (
+                        "high importance",
+                        _IMPORTANCE_HIGH_SELECTED_TASK_DRAWING_PROPERTIES,
+                    ),
+                    (
+                        "medium importance",
+                        _IMPORTANCE_MEDIUM_SELECTED_TASK_DRAWING_PROPERTIES,
+                    ),
+                    (
+                        "low importance",
+                        _IMPORTANCE_LOW_SELECTED_TASK_DRAWING_PROPERTIES,
+                    ),
+                    (
+                        "no importance",
+                        _IMPORTANCE_NONE_SELECTED_TASK_DRAWING_PROPERTIES,
+                    ),
+                    ("hierarchy", _IMPORTANCE_SELECTED_HIERARCHY_DRAWING_PROPERTIES),
+                    ("dependency", _IMPORTANCE_SELECTED_DEPENDENCY_DRAWING_PROPERTIES),
+                ]
+            case ColouringOption.PROGRESS:
+                return [
+                    (
+                        "not started",
+                        _PROGRESS_NOT_STARTED_SELECTED_TASK_DRAWING_PROPERTIES,
+                    ),
+                    (
+                        "in progress",
+                        _PROGRESS_IN_PROGRESS_SELECTED_TASK_DRAWING_PROPERTIES,
+                    ),
+                    ("completed", _PROGRESS_COMPLETED_SELECTED_TASK_DRAWING_PROPERTIES),
+                    ("hierarchy", _PROGRESS_SELECTED_HIERARCHY_DRAWING_PROPERTIES),
+                    ("dependency", _PROGRESS_SELECTED_DEPENDENCY_DRAWING_PROPERTIES),
+                ]
+            case ColouringOption.ACTIVE:
+                return [
+                    (
+                        "active (concrete)",
+                        _ACTIVE_ACTIVE_CONCRETE_SELECTED_TASK_DRAWING_PROPERTIES,
+                    ),
+                    (
+                        "active (composite)",
+                        _ACTIVE_ACTIVE_COMPOSITE_SELECTED_TASK_DRAWING_PROPERTIES,
+                    ),
+                    (
+                        "downstream",
+                        _ACTIVE_INACTIVE_DOWNSTREAM_TASK_DRAWING_PROPERTIES,
+                    ),
+                    ("completed", _ACTIVE_COMPLETED_TASK_DRAWING_PROPERTIES),
+                    ("hierarchy", _ACTIVE_SELECTED_HIERARCHY_DRAWING_PROPERTIES),
+                    ("dependency", _ACTIVE_SELECTED_DEPENDENCY_DRAWING_PROPERTIES),
+                ]
+
     def _update_figure(self) -> None:
-        self._static_graph.update_graph(self._get_filtered_graph())
+        self._static_graph.update_graph(
+            self._get_filtered_graph(), legend_elements=self._get_legend_elements()
+        )

@@ -5,17 +5,17 @@ from graft.layers.presentation.tkinter_gui.helpers import (
 from graft.layers.presentation.tkinter_gui.helpers.dependency_graph_failed_operation_window import (
     DependencyGraphOperationFailedWindow,
 )
-from graft.layers.presentation.tkinter_gui.helpers.edge_drawing_properties import (
-    EdgeDrawingProperties,
+from graft.layers.presentation.tkinter_gui.helpers.graph_edge_drawing_properties import (
+    GraphEdgeDrawingProperties,
+)
+from graft.layers.presentation.tkinter_gui.helpers.graph_node_drawing_properties import (
+    GraphNodeDrawingProperties,
 )
 from graft.layers.presentation.tkinter_gui.helpers.hierarchy_graph_failed_operation_window import (
     HierarchyGraphOperationFailedWindow,
 )
 from graft.layers.presentation.tkinter_gui.helpers.network_graph_failed_operation_window import (
     NetworkGraphOperationFailedWindow,
-)
-from graft.layers.presentation.tkinter_gui.helpers.node_drawing_properties import (
-    NodeDrawingProperties,
 )
 from graft.layers.presentation.tkinter_gui.helpers.static_dependency_graph import (
     StaticDependencyGraph,

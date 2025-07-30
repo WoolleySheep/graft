@@ -23,6 +23,11 @@ from graft.layers.presentation.tkinter_gui.task_network_graph_drawing.depth_posi
 
 NUMBER_OF_DEPTH_POSITION_ITERATIONS: Final = 20
 
+# TODO: Change implementation to, instead of using dependency-linked tasks as weights,
+# to add a step explicitly sweeping along the dependency axis in both directions.
+# This may have its own shortcomings. The current approach is good enough for now, so no
+# rush.
+
 
 class Priority:
     """Priority of a task for movement purposes.

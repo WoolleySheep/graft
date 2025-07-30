@@ -2,11 +2,15 @@ import tkinter as tk
 
 from graft import architecture
 from graft.domain import tasks
-from graft.layers.presentation.tkinter_gui import event_broker, graph_colours
+from graft.layers.presentation.tkinter_gui import domain_visual_language, event_broker
 from graft.layers.presentation.tkinter_gui.helpers import (
-    NodeDrawingProperties,
+    GraphNodeDrawingProperties,
     StaticDependencyGraph,
     format_task_name_for_annotation,
+)
+from graft.layers.presentation.tkinter_gui.helpers.colour import RED, Colour
+from graft.layers.presentation.tkinter_gui.helpers.graph_edge_drawing_properties import (
+    GraphEdgeDrawingProperties,
 )
 
 
@@ -20,9 +24,25 @@ class DependencyGraph(tk.Frame):
         self._static_graph = StaticDependencyGraph(
             master=self,
             dependency_graph=tasks.DependencyGraph(),
-            get_task_annotation_text=self._get_formatted_task_name,
             get_task_properties=self._get_task_properties,
+            get_dependency_properties=self._get_dependency_properties,
+            get_task_annotation_text=self._get_formatted_task_name,
             on_task_left_click=self._publish_task_as_selected,
+            legend_elements=[
+                (
+                    "task",
+                    GraphNodeDrawingProperties(
+                        colour=domain_visual_language.DEFAULT_GRAPH_NODE_COLOUR
+                    ),
+                ),
+                ("selected task", GraphNodeDrawingProperties(colour=RED)),
+                (
+                    "dependency",
+                    GraphEdgeDrawingProperties(
+                        colour=domain_visual_language.DEFAULT_GRAPH_EDGE_COLOUR
+                    ),
+                ),
+            ],
         )
 
         self._static_graph.grid(row=0, column=0)
@@ -59,17 +79,24 @@ class DependencyGraph(tk.Frame):
         name = self._logic_layer.get_task_system().attributes_register()[task].name
         return format_task_name_for_annotation(name)
 
-    def _get_task_colour(self, task: tasks.UID) -> str | None:
+    def _get_task_colour(self, task: tasks.UID) -> Colour:
         return (
-            graph_colours.HIGHLIGHTED_NODE_COLOUR
+            RED
             if task == self._selected_task
-            else None
+            else domain_visual_language.DEFAULT_GRAPH_NODE_COLOUR
         )
 
-    def _get_task_properties(self, task: tasks.UID) -> NodeDrawingProperties:
-        colour = self._get_task_colour(task)
-        edge_colour = None
-        return NodeDrawingProperties(colour=colour, edge_colour=edge_colour)
+    def _get_task_properties(self, task: tasks.UID) -> GraphNodeDrawingProperties:
+        return GraphNodeDrawingProperties(
+            colour=self._get_task_colour(task),
+        )
+
+    def _get_dependency_properties(
+        self, dependee_task: tasks.UID, dependent_task: tasks.UID
+    ) -> GraphEdgeDrawingProperties:
+        return GraphEdgeDrawingProperties(
+            colour=domain_visual_language.DEFAULT_GRAPH_EDGE_COLOUR
+        )
 
     def _publish_task_as_selected(self, task: tasks.UID) -> None:
         broker = event_broker.get_singleton()

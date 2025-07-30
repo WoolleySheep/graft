@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any, overload
 
 if TYPE_CHECKING:
     from collections.abc import (
+        Callable,
         Generator,
         Iterator,
     )
@@ -278,17 +279,17 @@ def lazy_intersection[T: Hashable](
                 break
 
 
-def does_iterable_contain_values[T](
-    iterable: Iterable[T],
-) -> tuple[bool, Iterable[T]]:
-    """Check if an iterable contains values.
+def group_by_hashable[T, G: Hashable](
+    iterable: Iterable[T], key: Callable[[T], G]
+) -> dict[G, list[T]]:
+    """Group items by a key function that returns a hashable value.
 
-    Returns an un-iterated copy of the iterable so the iterable can be used as if this
-    function was never called.
+    Allows grouping in O(n) time.
     """
-    iterable1, iterable2 = itertools.tee(iterable)
-    try:
-        next(iterable1)
-    except StopIteration:
-        return False, iterable2
-    return True, iterable2
+    key_value_to_group_map = dict[G, list[T]]()
+    for item in iterable:
+        key_value = key(item)
+        if key_value not in key_value_to_group_map:
+            key_value_to_group_map[key_value] = []
+        key_value_to_group_map[key_value].append(item)
+    return key_value_to_group_map

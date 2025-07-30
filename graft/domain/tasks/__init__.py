@@ -14,8 +14,6 @@ from graft.domain.tasks.dependency_graph import (
     DependencyGraphView,
     DependencyIntroducesCycleError,
     DependencyLoopError,
-    HasDependeeTasksError,
-    HasDependentTasksError,
     IDependencyGraphView,
 )
 from graft.domain.tasks.description import Description
@@ -29,8 +27,6 @@ from graft.domain.tasks.helpers import (
     TaskDoesNotExistError,
 )
 from graft.domain.tasks.hierarchy_graph import (
-    HasSubTasksError,
-    HasSuperTasksError,
     HierarchiesView,
     HierarchyAlreadyExistsError,
     HierarchyDoesNotExistError,
@@ -48,6 +44,7 @@ from graft.domain.tasks.network_graph import (
     DependencyIntroducesDependencyCrossoverError,
     DependencyIntroducesDependencyDuplicationError,
     DependencyIntroducesNetworkCycleError,
+    HasNeighboursError,
     HierarchyIntroducesDependencyCrossoverError,
     HierarchyIntroducesDependencyDuplicationError,
     HierarchyIntroducesNetworkCycleError,
