@@ -1,5 +1,4 @@
 import collections
-import dataclasses
 import itertools
 import statistics
 from collections.abc import (
@@ -11,12 +10,10 @@ from collections.abc import (
     MutableMapping,
     Set,
 )
-from dataclasses import dataclass
 from typing import Final
 
 from graft import graphs
 from graft.domain import tasks
-from graft.domain.tasks.uid import TasksView
 from graft.graphs.directed_acyclic_graph import DirectedAcyclicGraph
 from graft.graphs.directed_graph_builder import DirectedGraphBuilder
 from graft.layers.presentation.tkinter_gui.task_network_graph_drawing.depth_position_assignment.dependency_axis_grouping import (
@@ -24,9 +21,6 @@ from graft.layers.presentation.tkinter_gui.task_network_graph_drawing.depth_posi
 )
 from graft.layers.presentation.tkinter_gui.task_network_graph_drawing.depth_position_assignment.implementation.depth_indexes.hierarchy_layer import (
     HierarchyLayer,
-)
-from graft.layers.presentation.tkinter_gui.task_network_graph_drawing.depth_position_assignment.implementation.depth_indexes.transpose import (
-    transpose,
 )
 from graft.layers.presentation.tkinter_gui.task_network_graph_drawing.depth_position_assignment.task_layers import (
     TaskRelationLayers,

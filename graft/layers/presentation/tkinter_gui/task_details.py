@@ -18,7 +18,6 @@ from graft.layers.presentation.tkinter_gui.helpers import (
     importance_display,
     progress_display,
 )
-from graft.layers.presentation.tkinter_gui.helpers.colour import BLUE, YELLOW
 
 _NEIGHBOURING_TASK_TABLES_ID_COLUMN_WIDTH_PIXELS = 30
 _NEIGHBOURING_TASK_TABLES_NAME_COLUMN_WIDTH_PIXELS = 150
