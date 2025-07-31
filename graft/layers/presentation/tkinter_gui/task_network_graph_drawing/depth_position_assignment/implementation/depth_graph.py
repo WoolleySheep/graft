@@ -3,6 +3,7 @@ from collections.abc import Iterable, Mapping
 
 from graft import graphs
 from graft.domain import tasks
+from graft.graphs.directed_graph_builder import DirectedGraphBuilder
 
 
 def get_constrained_depth_graph(
@@ -14,22 +15,16 @@ def get_constrained_depth_graph(
     Requires that the task groups and depth indexes are known such that tasks
     can be laid out without any overlap.
     """
-    depth_graph = graphs.DirectedAcyclicGraph[tasks.UID]()
+    graph_builder = DirectedGraphBuilder[tasks.UID]()
     for task_group in task_groups_along_dependency_axis:
         # Assumption: All tasks in the group have a different depth index
         tasks_sorted_by_depth = sorted(
-            task_group, key=lambda task: task_to_depth_index_map[task]
+            task_group, key=lambda task: (task_to_depth_index_map[task], task)
         )
         for task in tasks_sorted_by_depth:
-            if task in depth_graph.nodes():
-                continue
-            depth_graph.add_node(task)
+            graph_builder.add_node(task)
 
         for shallower_task, deeper_task in itertools.pairwise(tasks_sorted_by_depth):
-            # No point adding an edge if it's already there
-            if (shallower_task, deeper_task) in depth_graph.edges():
-                continue
+            graph_builder.add_edge(shallower_task, deeper_task)
 
-            depth_graph.add_edge(shallower_task, deeper_task)
-
-    return depth_graph
+    return graphs.DirectedAcyclicGraph(graph_builder.build().items())

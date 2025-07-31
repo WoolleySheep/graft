@@ -21,7 +21,7 @@ from graft.layers.presentation.tkinter_gui.task_network_graph_drawing.depth_posi
     get_hierarchy_layers_in_descending_order,
 )
 
-NUMBER_OF_DEPTH_POSITION_ITERATIONS: Final = 20
+NUMBER_OF_DEPTH_POSITION_ITERATIONS: Final = 15
 
 # TODO: Change implementation to, instead of using dependency-linked tasks as weights,
 # to add a step explicitly sweeping along the dependency axis in both directions.
@@ -221,7 +221,8 @@ class HierarchyLayer:
         )
         self._tasks_with_supertasks_or_dependency_linked_tasks_sorted_by_descending_priority = sorted(
             filter(
-                lambda task: bool(
+                lambda task: isinstance(task, DummyUID)
+                or bool(
                     task_to_supertask_and_dependency_linked_task_priority_map[task]
                 ),
                 task_to_supertask_and_dependency_linked_task_priority_map.keys(),
@@ -233,9 +234,8 @@ class HierarchyLayer:
         )
         self._tasks_with_subtasks_or_dependency_linked_tasks_sorted_by_descending_priority = sorted(
             filter(
-                lambda task: bool(
-                    task_to_subtask_and_dependency_linked_task_priority_map[task]
-                ),
+                lambda task: isinstance(task, DummyUID)
+                or bool(task_to_subtask_and_dependency_linked_task_priority_map[task]),
                 task_to_subtask_and_dependency_linked_task_priority_map.keys(),
             ),
             key=lambda task: task_to_subtask_and_dependency_linked_task_priority_map[
@@ -271,6 +271,14 @@ class HierarchyLayer:
         self,
     ) -> list[tasks.UID]:
         return self._tasks_with_subtasks_or_dependency_linked_tasks_sorted_by_descending_priority
+
+    def __str__(self) -> str:
+        return str(
+            str(self._task_to_supertask_and_dependency_linked_tasks_priority_map.keys())
+        )
+
+    def __repr__(self) -> str:
+        return f"HierarchyLayer{self}"
 
 
 def get_depth_positions_priority_method(
@@ -355,22 +363,6 @@ def get_depth_positions_priority_method(
                 )
             continue
 
-        for layer in itertools.islice(hierarchy_layers, 1, None):
-            for task in layer.tasks_with_supertasks_or_dependencies_sorted_by_descending_priority:
-                ideal_position = _get_weighted_average_depth_position_of_supertasks_and_dependency_linked_tasks(
-                    task=task,
-                    graph=graph,
-                    task_to_depth_position_map=task_to_depth_position_map,
-                )
-                _move_task(
-                    task=task,
-                    ideal_position=ideal_position,
-                    layer_depth_graph=layer.depth_graph,
-                    task_to_depth_position_map=task_to_depth_position_map,
-                    task_to_priority_map=layer.task_to_supertask_and_dependency_linked_tasks_priority_map,
-                    min_separation_distance=min_separation_distance,
-                )
-
         for layer in itertools.islice(reversed(hierarchy_layers), 1, None):
             for task in layer.tasks_with_subtasks_or_dependency_linked_tasks_sorted_by_descending_priority:
                 ideal_position = _get_weighted_average_depth_position_of_subtasks_and_dependency_linked_tasks(
@@ -384,6 +376,22 @@ def get_depth_positions_priority_method(
                     layer_depth_graph=layer.depth_graph,
                     task_to_depth_position_map=task_to_depth_position_map,
                     task_to_priority_map=layer.task_to_subtask_and_dependency_linked_tasks_priority_map,
+                    min_separation_distance=min_separation_distance,
+                )
+
+        for layer in itertools.islice(hierarchy_layers, 1, None):
+            for task in layer.tasks_with_supertasks_or_dependencies_sorted_by_descending_priority:
+                ideal_position = _get_weighted_average_depth_position_of_supertasks_and_dependency_linked_tasks(
+                    task=task,
+                    graph=graph,
+                    task_to_depth_position_map=task_to_depth_position_map,
+                )
+                _move_task(
+                    task=task,
+                    ideal_position=ideal_position,
+                    layer_depth_graph=layer.depth_graph,
+                    task_to_depth_position_map=task_to_depth_position_map,
+                    task_to_priority_map=layer.task_to_supertask_and_dependency_linked_tasks_priority_map,
                     min_separation_distance=min_separation_distance,
                 )
 

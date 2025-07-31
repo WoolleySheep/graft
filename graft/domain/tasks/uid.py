@@ -35,7 +35,9 @@ class UID:
 
     def __eq__(self, other: object) -> bool:
         """Check if UID is equal to other."""
-        return isinstance(other, UID) and int(self) == int(other)
+        if not isinstance(other, UID):
+            return NotImplemented
+        return int(self) == int(other)
 
     def __lt__(self, other: UID) -> bool:
         """Check if UID is less than other."""

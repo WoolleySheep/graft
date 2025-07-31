@@ -109,6 +109,6 @@ class TaskTreeView[*Ts](ttk.Treeview):
                 "",
                 tk.END,
                 values=row,
-                tag=background_colour,
+                tag=background_colour,  # pyright: ignore[reportCallIssue]
             )
         self.tag_configure("grey", background="#cccccc")

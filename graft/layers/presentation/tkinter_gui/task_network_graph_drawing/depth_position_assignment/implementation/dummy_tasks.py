@@ -23,6 +23,8 @@ class DummyUID(tasks.UID):
 
     def __eq__(self, other: object) -> bool:
         """Check if dummy UID is equal to other."""
+        # Needs to be like this so UIDs and DummyUIDs with the same number don't
+        # evaluate as equal
         return isinstance(other, DummyUID) and int(self) == int(other)
 
     def __hash__(self) -> int:
@@ -35,7 +37,10 @@ class DummyUID(tasks.UID):
 
     def __lt__(self, other: object) -> bool:
         """Check if dummy UID is less than other."""
-        return isinstance(other, DummyUID) and int(self) < int(other)
+        if not isinstance(other, DummyUID):
+            return NotImplemented
+
+        return int(self) < int(other)
 
     def __repr__(self) -> str:
         """Return string representation of dummy UID."""
