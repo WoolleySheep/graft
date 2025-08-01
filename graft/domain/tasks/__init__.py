@@ -20,7 +20,8 @@ from graft.domain.tasks.description import Description
 from graft.domain.tasks.graph_processing import (
     get_component_system,
     get_incomplete_system,
-    get_inferior_subsystem,
+    get_inferior_subgraph,
+    get_superior_subgraph,
 )
 from graft.domain.tasks.helpers import (
     TaskAlreadyExistsError,

@@ -1,58 +1,34 @@
 import logging
 import tkinter as tk
-from collections.abc import Generator
+from collections.abc import Callable, Sequence
 from tkinter import ttk
+from typing import Final
 
-from graft import architecture
 from graft.domain import tasks
 from graft.layers.presentation.tkinter_gui import event_broker
+from graft.layers.presentation.tkinter_gui.helpers.delete_dependency_error_windows import (
+    convert_delete_dependency_exceptions_to_error_windows,
+)
 
-logger = logging.getLogger(__name__)
-
-
-def _get_dependencies_with_names(
-    logic_layer: architecture.LogicLayer,
-) -> Generator[
-    tuple[tuple[tasks.UID, tasks.Name], tuple[tasks.UID, tasks.Name]],
-    None,
-    None,
-]:
-    attributes_register = logic_layer.get_task_system().attributes_register()
-    for (
-        dependee_task,
-        dependent_task,
-    ) in (
-        logic_layer.get_task_system().network_graph().dependency_graph().dependencies()
-    ):
-        yield (
-            (dependee_task, attributes_register[dependee_task].name),
-            (dependent_task, attributes_register[dependent_task].name),
-        )
+logger: Final = logging.getLogger(__name__)
 
 
 def _format_task_uid_name(task_uid: tasks.UID, task_name: tasks.Name) -> str:
     return f"[{task_uid}] {task_name}" if task_name else f"[{task_uid}]"
 
 
-def _get_menu_options(
-    logic_layer: architecture.LogicLayer,
-) -> Generator[str, None, None]:
-    dependencies_with_names = sorted(
-        _get_dependencies_with_names(logic_layer=logic_layer),
-        key=lambda x: (x[0][0], x[1][0]),
+def _format_dependency_menu_option(
+    dependee_task: tasks.UID,
+    dependent_task: tasks.UID,
+    get_task_name: Callable[[tasks.UID], tasks.Name],
+) -> str:
+    dependee_task_name = get_task_name(dependee_task)
+    dependent_task_name = get_task_name(dependent_task)
+    formatted_dependee_task = _format_task_uid_name(dependee_task, dependee_task_name)
+    formatted_dependent_task = _format_task_uid_name(
+        dependent_task, dependent_task_name
     )
-
-    for (dependee_task, dependee_task_name), (
-        dependent_task,
-        dependent_task_name,
-    ) in dependencies_with_names:
-        formatted_dependee_task = _format_task_uid_name(
-            dependee_task, dependee_task_name
-        )
-        formatted_dependent_task = _format_task_uid_name(
-            dependent_task, dependent_task_name
-        )
-        yield f"{formatted_dependee_task} -> {formatted_dependent_task}"
+    return f"{formatted_dependee_task} -> {formatted_dependent_task}"
 
 
 def _parse_task_uid_from_formatted_task_uid_name(
@@ -63,7 +39,7 @@ def _parse_task_uid_from_formatted_task_uid_name(
     return tasks.UID(uid_number)
 
 
-def _parse_task_uids_from_menu_option(menu_option: str) -> tuple[tasks.UID, tasks.UID]:
+def _parse_dependency_from_menu_option(menu_option: str) -> tuple[tasks.UID, tasks.UID]:
     formatted_tasks = menu_option.split(" -> ")
     if len(formatted_tasks) != 2:
         raise ValueError
@@ -79,13 +55,27 @@ def _parse_task_uids_from_menu_option(menu_option: str) -> tuple[tasks.UID, task
 
 
 class DependencyDeletionWindow(tk.Toplevel):
-    def __init__(self, master: tk.Misc, logic_layer: architecture.LogicLayer) -> None:
-        self._logic_layer = logic_layer
+    def __init__(
+        self,
+        master: tk.Misc,
+        dependency_options: Sequence[tuple[tasks.UID, tasks.UID]],
+        delete_dependency: Callable[[tasks.UID, tasks.UID], None],
+        get_task_name: Callable[[tasks.UID], tasks.Name],
+    ) -> None:
         super().__init__(master=master)
+        self._delete_dependency = delete_dependency
+        self._get_task_name = get_task_name
 
         self.title("Delete dependency")
 
-        menu_options = list(_get_menu_options(logic_layer=logic_layer))
+        menu_options = [
+            _format_dependency_menu_option(
+                dependee_task,
+                dependent_task,
+                get_task_name,
+            )
+            for dependee_task, dependent_task in dependency_options
+        ]
 
         self._selected_dependency = tk.StringVar(self)
         self._dependency_option_menu = ttk.OptionMenu(
@@ -109,14 +99,16 @@ class DependencyDeletionWindow(tk.Toplevel):
         self._delete_dependency_between_selected_tasks_then_destroy_window()
 
     def _delete_dependency_between_selected_tasks_then_destroy_window(self) -> None:
-        dependee_task, dependent_task = _parse_task_uids_from_menu_option(
+        dependee_task, dependent_task = _parse_dependency_from_menu_option(
             self._selected_dependency.get()
         )
-        try:
-            self._logic_layer.delete_task_dependency(dependee_task, dependent_task)
-        except Exception:
-            # TODO: Add error popup. For now, letting it propegate
-            raise
+
+        if not convert_delete_dependency_exceptions_to_error_windows(
+            func=lambda: self._delete_dependency(dependee_task, dependent_task),
+            get_task_name=self._get_task_name,
+            master=self,
+        ):
+            return
 
         broker = event_broker.get_singleton()
         broker.publish(event_broker.SystemModified())

@@ -78,8 +78,9 @@ class TaskCreationWindow(tk.Toplevel):
     def _create_task_using_entry_fields_then_destroy_window(self) -> None:
         name = self._name_entry.get()
         description = self._description_entry.get()
-        self._logic_layer.create_task(name=name, description=description)
+        created_task = self._logic_layer.create_task(name=name, description=description)
 
         broker = event_broker.get_singleton()
         broker.publish(event_broker.SystemModified())
+        broker.publish(event_broker.TaskSelected(created_task))
         self.destroy()

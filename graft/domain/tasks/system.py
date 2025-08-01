@@ -55,11 +55,20 @@ class NotConcreteTaskError(Exception):
     """Raised when a task is not concrete, and therefore has no explicit progress."""
 
     def __init__(
-        self, task: UID, *args: tuple[Any, ...], **kwargs: dict[str, Any]
+        self,
+        task: UID,
+        subtasks: Iterable[UID],
+        *args: tuple[Any, ...],
+        **kwargs: dict[str, Any],
     ) -> None:
         """Initialise NotConcreteTaskError."""
         self.task = task
-        super().__init__(f"Task [{task}] is not concrete.", *args, **kwargs)
+        self.subtasks = set(subtasks)
+        super().__init__(
+            f"Task [{task}] is not concrete as it has subtasks [{', '.join(str(task) for task in self.subtasks)}].",
+            *args,
+            **kwargs,
+        )
 
 
 class DownstreamTasksHaveStartedError(Exception):
@@ -71,12 +80,14 @@ class DownstreamTasksHaveStartedError(Exception):
     def __init__(
         self,
         task: UID,
+        progress: Progress,
         started_downstream_tasks: Iterable[tuple[UID, Progress]],
         subsystem: System,
         *args: tuple[Any, ...],
         **kwargs: dict[str, Any],
     ) -> None:
         self.task = task
+        self.progress = progress
         self.started_downstream_tasks_to_progress_map = dict(started_downstream_tasks)
         self.subsystem = subsystem
         super().__init__(
@@ -95,16 +106,18 @@ class UpstreamTasksAreIncompleteError(Exception):
     def __init__(
         self,
         task: UID,
+        progress: Progress,
         incomplete_upstream_tasks: Iterable[tuple[UID, Progress]],
         subsystem: System,
         *args: tuple[Any, ...],
         **kwargs: dict[str, Any],
     ) -> None:
         self.task = task
+        self.progress = progress
         self.incomplete_upstream_tasks_to_progress_map = dict(incomplete_upstream_tasks)
         self.subsystem = subsystem
         super().__init__(
-            f"Task [{task}] has incomplete dependee tasks of superior tasks.",
+            f"Task [{task}] has incomplete dependee tasks and cannot be started.",
             *args,
             **kwargs,
         )
@@ -232,12 +245,14 @@ class SuperiorTasksHaveImportanceError(Exception):
     def __init__(
         self,
         task: UID,
+        importance: Importance | None,
         subsystem: System,
         *args: tuple[Any, ...],
         **kwargs: dict[str, Any],
     ) -> None:
         """Initialise SuperiorTaskHasImportanceError."""
         self.task = task
+        self.importance = importance
         self.subsystem = subsystem
         super().__init__(
             f"Task [{task}] has superior tasks with importance", *args, **kwargs
@@ -250,12 +265,14 @@ class InferiorTasksHaveImportanceError(Exception):
     def __init__(
         self,
         task: UID,
+        importance: Importance | None,
         subsystem: System,
         *args: tuple[Any, ...],
         **kwargs: dict[str, Any],
     ) -> None:
         """Initialise InferiorTaskHasImportanceError."""
         self.task = task
+        self.importance = importance
         self.subsystem = subsystem
         super().__init__(
             f"Task [{task}] has inferior tasks with importance", *args, **kwargs
@@ -659,6 +676,7 @@ class System:
 
                     raise DownstreamTasksHaveStartedError(
                         task=task,
+                        progress=progress,
                         started_downstream_tasks=started_tasks_downstream_of_task_and_their_progresses.items(),
                         subsystem=builder.build(),
                     )
@@ -733,6 +751,7 @@ class System:
                             )
                     raise UpstreamTasksAreIncompleteError(
                         task=task,
+                        progress=progress,
                         incomplete_upstream_tasks=incomplete_tasks_upstream_of_task_and_their_progresses.items(),
                         subsystem=builder.build(),
                     )
@@ -767,7 +786,9 @@ class System:
                 superior_tasks_with_importance, [task]
             )
 
-            raise SuperiorTasksHaveImportanceError(task=task, subsystem=builder.build())
+            raise SuperiorTasksHaveImportanceError(
+                task=task, importance=importance, subsystem=builder.build()
+            )
 
         if any(
             self._attributes_register[inferior_task].importance is not None
@@ -788,7 +809,9 @@ class System:
             builder.add_hierarchy_connecting_subgraph(
                 [task], inferior_tasks_with_importance
             )
-            raise InferiorTasksHaveImportanceError(task=task, subsystem=builder.build())
+            raise InferiorTasksHaveImportanceError(
+                task=task, importance=importance, subsystem=builder.build()
+            )
 
         self._attributes_register.set_importance(task, importance)
 
@@ -1134,7 +1157,10 @@ class System:
         progress = self._attributes_register[task].progress
 
         if progress is None:
-            raise NotConcreteTaskError(task=task)
+            raise NotConcreteTaskError(
+                task=task,
+                subtasks=self.network_graph().hierarchy_graph().subtasks(task),
+            )
 
         return progress
 

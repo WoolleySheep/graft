@@ -4,7 +4,7 @@ import logging
 import tkinter as tk
 from collections.abc import Callable
 from tkinter import scrolledtext, ttk
-from typing import Any, Final, Literal, ParamSpec, Self
+from typing import Any, Final, Literal, Self
 
 from graft.architecture.logic import LogicLayer
 from graft.domain import tasks
@@ -18,18 +18,33 @@ from graft.layers.presentation.tkinter_gui.helpers import (
     importance_display,
     progress_display,
 )
+from graft.layers.presentation.tkinter_gui.helpers.update_task_progress_error_windows import (
+    convert_update_task_progress_exceptions_to_error_windows,
+)
+from graft.layers.presentation.tkinter_gui.tabs.delete_task_confirmation_window import (
+    TaskDeletionConfirmationWindow,
+)
 from graft.layers.presentation.tkinter_gui.tabs.dependency_panel.creation_deletion_panel.dependency_creation_window import (
     DependencyCreationWindow,
 )
+from graft.layers.presentation.tkinter_gui.tabs.dependency_panel.creation_deletion_panel.dependency_deletion_window import (
+    DependencyDeletionWindow,
+)
 from graft.layers.presentation.tkinter_gui.tabs.hierarchy_panel.creation_deletion_panel.hierarchy_creation_window import (
     HierarchyCreationWindow,
+)
+from graft.layers.presentation.tkinter_gui.tabs.hierarchy_panel.creation_deletion_panel.hierarchy_deletion_window import (
+    HierarchyDeletionWindow,
+)
+from graft.layers.presentation.tkinter_gui.tabs.task_panel.creation_deletion_panel.task_creation_window import (
+    TaskCreationWindow,
 )
 
 _NEIGHBOURING_TASK_TABLES_ID_COLUMN_WIDTH_PIXELS = 30
 _NEIGHBOURING_TASK_TABLES_NAME_COLUMN_WIDTH_PIXELS = 150
 _NEIGHBOURING_TASK_TABLES_NUMBER_OF_DISPLAYED_ROWS = 5
 
-P = ParamSpec("P")
+_NO_IMPORTANCE_IMPORTANCE_MENU_OPTION_TEXT: Final = " "
 
 logger: Final = logging.getLogger(__name__)
 
@@ -76,6 +91,22 @@ def make_return_true[**P](fn: Callable[P, Any]) -> Callable[P, Literal[True]]:
     return wrapper
 
 
+def _parse_importance_menu_option(text: str) -> tasks.Importance | None:
+    return (
+        importance_display.parse(text)
+        if text != _NO_IMPORTANCE_IMPORTANCE_MENU_OPTION_TEXT
+        else None
+    )
+
+
+def _format_as_importance_menu_option(importance: tasks.Importance | None) -> str:
+    return (
+        importance_display.format(importance)
+        if importance is not None
+        else _NO_IMPORTANCE_IMPORTANCE_MENU_OPTION_TEXT
+    )
+
+
 class TaskDetails(tk.Frame):
     def __init__(self, master: tk.Misc, logic_layer: LogicLayer) -> None:
         super().__init__(master)
@@ -83,7 +114,15 @@ class TaskDetails(tk.Frame):
 
         self._task: tasks.UID | None = None
 
-        self._identifier_section = ttk.Frame(self)
+        self._header_section = ttk.Frame(master=self)
+        self._create_task_button = ttk.Button(
+            master=self._header_section, text="+", command=self._create_new_task
+        )
+        self._delete_task_button = ttk.Button(
+            master=self._header_section, text="x", command=self._delete_task
+        )
+
+        self._identifier_section = ttk.Frame(master=self._header_section)
         self._task_id = ttk.Label(master=self._identifier_section)
         self._task_name = tk.StringVar(master=self._identifier_section)
         self._task_name_entry = ttk.Entry(
@@ -95,10 +134,11 @@ class TaskDetails(tk.Frame):
             ),
         )
 
-        self._imporance_section = ttk.Frame(master=self)
+        self._imporance_section = ttk.Frame(master=self._header_section)
         self._importance_label = ttk.Label(self._imporance_section, text="Importance:")
         self._inferred_task_importance = ttk.Label(master=self._imporance_section)
         self._selected_importance = tk.StringVar(master=self._imporance_section)
+        self._selected_importance_backup: tasks.Importance | None = None
 
         self._importance_menu_options_to_colour_map = dict(
             itertools.chain(
@@ -109,7 +149,7 @@ class TaskDetails(tk.Frame):
                     )
                     for importance in sorted(tasks.Importance, reverse=True)
                 ),
-                [(" ", "grey")],
+                [(_NO_IMPORTANCE_IMPORTANCE_MENU_OPTION_TEXT, "grey")],
             ),
         )
         # Tkinter OptionMenu command should be passed a StringVar, but it is
@@ -128,7 +168,7 @@ class TaskDetails(tk.Frame):
             index = menu.index(menu_option)
             menu.entryconfigure(index, background=colour)
 
-        self._progress_section = ttk.Frame(master=self)
+        self._progress_section = ttk.Frame(master=self._header_section)
         self._progress_label = ttk.Label(master=self._progress_section, text="Progress")
         self._decrement_progress_button = ttk.Button(
             master=self._progress_section,
@@ -162,7 +202,9 @@ class TaskDetails(tk.Frame):
             command=self._open_subtask_hierarchy_creation_window,
         )
         self._subtask_remove_button = ttk.Button(
-            master=self._subtasks_section, text="-"
+            master=self._subtasks_section,
+            text="-",
+            command=self._open_subtask_hierarchy_deletion_window,
         )
         self._subtasks_table = _create_nieghbouring_task_table(
             master=self._subtasks_section
@@ -178,7 +220,9 @@ class TaskDetails(tk.Frame):
             command=self._open_supertask_hierarchy_creation_window,
         )
         self._supertask_remove_button = ttk.Button(
-            master=self._supertasks_section, text="-"
+            master=self._supertasks_section,
+            text="-",
+            command=self._open_supertask_hierarchy_deletion_window,
         )
         self._supertasks_table = _create_nieghbouring_task_table(
             master=self._supertasks_section
@@ -194,7 +238,9 @@ class TaskDetails(tk.Frame):
             command=self._open_dependee_task_dependency_creation_window,
         )
         self._dependee_task_remove_button = ttk.Button(
-            master=self._dependee_tasks_section, text="-"
+            master=self._dependee_tasks_section,
+            text="-",
+            command=self._open_dependee_task_dependency_deletion_window,
         )
         self._dependee_tasks_table = _create_nieghbouring_task_table(
             master=self._dependee_tasks_section
@@ -210,17 +256,23 @@ class TaskDetails(tk.Frame):
             command=self._open_dependent_task_dependency_creation_window,
         )
         self._dependent_task_remove_button = ttk.Button(
-            master=self._dependent_tasks_section, text="-"
+            master=self._dependent_tasks_section,
+            text="-",
+            command=self._open_dependent_task_dependency_deletion_window,
         )
         self._dependent_tasks_table = _create_nieghbouring_task_table(
             master=self._dependent_tasks_section
         )
 
-        self._identifier_section.grid(row=0)
-        self._imporance_section.grid(row=1)
-        self._progress_section.grid(row=2)
-        self._description_section.grid(row=3)
-        self._neighbours_section.grid(row=4)
+        self._header_section.grid(row=0)
+        self._description_section.grid(row=1)
+        self._neighbours_section.grid(row=2)
+
+        self._create_task_button.grid(row=0, column=0, rowspan=3)
+        self._delete_task_button.grid(row=0, column=2, rowspan=3)
+        self._identifier_section.grid(row=0, column=1)
+        self._imporance_section.grid(row=1, column=1)
+        self._progress_section.grid(row=2, column=1)
 
         self._task_id.grid(row=0, column=0)
         self._task_name_entry.grid(row=0, column=1)
@@ -278,6 +330,8 @@ class TaskDetails(tk.Frame):
         register = self._logic_layer.get_task_system().attributes_register()
         attributes = register[self._task]
 
+        self._delete_task_button.config(state=tk.NORMAL)
+
         self._task_name.set(str(attributes.name))
         self._task_name_entry.config(state=tk.NORMAL)
 
@@ -297,7 +351,7 @@ class TaskDetails(tk.Frame):
         else:
             self._inferred_task_importance.grid_remove()
             formatted_importance = (
-                importance_display.format(importance) if importance else ""
+                importance_display.format(importance) if importance else " "
             )
             bg = (
                 str(get_task_colour_by_importance(importance))
@@ -308,6 +362,7 @@ class TaskDetails(tk.Frame):
             style.configure("Custom.TMenubutton", background=bg)
             self._task_importance_option_menu.configure(style="Custom.TMenubutton")
             self._selected_importance.set(formatted_importance)
+            self._selected_importance_backup = importance
             self._task_importance_option_menu.grid()
 
         progress = system.get_progress(self._task)
@@ -390,6 +445,7 @@ class TaskDetails(tk.Frame):
     def _update_with_no_task(self) -> None:
         assert self._task is None
 
+        self._delete_task_button.config(state=tk.DISABLED)
         self._task_id.config(text="ID-XXXX")
         self._task_name.set("")
         self._task_name_entry.config(state=tk.DISABLED)
@@ -466,20 +522,27 @@ class TaskDetails(tk.Frame):
     def _save_current_importance(self) -> None:
         assert self._task is not None
 
-        formatted_importance = self._selected_importance.get().replace(" ", "")
-        importance = (
-            importance_display.parse(formatted_importance)
-            if formatted_importance
-            else None
-        )
+        importance = _parse_importance_menu_option(self._selected_importance.get())
 
-        try:
-            self._logic_layer.update_task_importance(
-                task=self._task, importance=importance
+        if not convert_update_task_progress_exceptions_to_error_windows(
+            functools.partial(
+                self._logic_layer.update_task_importance,
+                task=self._task,
+                importance=importance,
+            ),
+            get_task_name=lambda task: self._logic_layer.get_task_system()
+            .attributes_register()[task]
+            .name,
+            master=self,
+        ):
+            # Reset the importance to what it was before the user tried to change it
+            self._selected_importance.set(
+                _format_as_importance_menu_option(self._selected_importance_backup)
             )
-        except Exception:
-            # TODO: Add error popup. For now, letting it propegate
-            raise
+            return
+
+        # Operation succeeded, so update the backup
+        self._selected_importance_backup = importance
 
         broker = event_broker.get_singleton()
         broker.publish(event=event_broker.SystemModified())
@@ -494,13 +557,18 @@ class TaskDetails(tk.Frame):
         current_progress = self._logic_layer.get_task_system().get_progress(self._task)
         incremented_progress = _get_progress_increment(current_progress)
 
-        try:
-            self._logic_layer.update_concrete_task_progress(
-                self._task, incremented_progress
-            )
-        except Exception:
-            # TODO: Add error popup. For now, letting it propegate
-            raise
+        if not convert_update_task_progress_exceptions_to_error_windows(
+            functools.partial(
+                self._logic_layer.update_concrete_task_progress,
+                self._task,
+                incremented_progress,
+            ),
+            get_task_name=lambda task: self._logic_layer.get_task_system()
+            .attributes_register()[task]
+            .name,
+            master=self,
+        ):
+            return
 
         broker = event_broker.get_singleton()
         broker.publish(event_broker.SystemModified())
@@ -515,13 +583,18 @@ class TaskDetails(tk.Frame):
         current_progress = self._logic_layer.get_task_system().get_progress(self._task)
         decremented_progress = _get_progress_decrement(current_progress)
 
-        try:
-            self._logic_layer.update_concrete_task_progress(
-                self._task, decremented_progress
-            )
-        except Exception:
-            # TODO: Add error popup. For now, letting it propegate
-            raise
+        if not convert_update_task_progress_exceptions_to_error_windows(
+            functools.partial(
+                self._logic_layer.update_concrete_task_progress,
+                self._task,
+                decremented_progress,
+            ),
+            get_task_name=lambda task: self._logic_layer.get_task_system()
+            .attributes_register()[task]
+            .name,
+            master=self,
+        ):
+            return
 
         broker = event_broker.get_singleton()
         broker.publish(event_broker.SystemModified())
@@ -552,4 +625,91 @@ class TaskDetails(tk.Frame):
 
         DependencyCreationWindow(
             master=self, logic_layer=self._logic_layer, dependee_task=self._task
+        )
+
+    def _open_supertask_hierarchy_deletion_window(self) -> None:
+        assert self._task is not None
+
+        HierarchyDeletionWindow(
+            master=self,
+            hierarchy_options=sorted(
+                (supertask, self._task)
+                for supertask in self._logic_layer.get_task_system()
+                .network_graph()
+                .hierarchy_graph()
+                .supertasks(self._task)
+            ),
+            delete_hierarchy=self._logic_layer.delete_task_hierarchy,
+            get_task_name=lambda task: self._logic_layer.get_task_system()
+            .attributes_register()[task]
+            .name,
+        )
+
+    def _open_subtask_hierarchy_deletion_window(self) -> None:
+        assert self._task is not None
+
+        HierarchyDeletionWindow(
+            master=self,
+            hierarchy_options=sorted(
+                (self._task, subtask)
+                for subtask in self._logic_layer.get_task_system()
+                .network_graph()
+                .hierarchy_graph()
+                .subtasks(self._task)
+            ),
+            delete_hierarchy=self._logic_layer.delete_task_hierarchy,
+            get_task_name=lambda task: self._logic_layer.get_task_system()
+            .attributes_register()[task]
+            .name,
+        )
+
+    def _open_dependee_task_dependency_deletion_window(self) -> None:
+        assert self._task is not None
+
+        DependencyDeletionWindow(
+            master=self,
+            dependency_options=sorted(
+                (dependee_task, self._task)
+                for dependee_task in self._logic_layer.get_task_system()
+                .network_graph()
+                .dependency_graph()
+                .dependee_tasks(self._task)
+            ),
+            delete_dependency=self._logic_layer.delete_task_dependency,
+            get_task_name=lambda task: self._logic_layer.get_task_system()
+            .attributes_register()[task]
+            .name,
+        )
+
+    def _open_dependent_task_dependency_deletion_window(self) -> None:
+        assert self._task is not None
+
+        DependencyDeletionWindow(
+            master=self,
+            dependency_options=sorted(
+                (self._task, subtask)
+                for subtask in self._logic_layer.get_task_system()
+                .network_graph()
+                .dependency_graph()
+                .dependent_tasks(self._task)
+            ),
+            delete_dependency=self._logic_layer.delete_task_dependency,
+            get_task_name=lambda task: self._logic_layer.get_task_system()
+            .attributes_register()[task]
+            .name,
+        )
+
+    def _create_new_task(self) -> None:
+        TaskCreationWindow(master=self, logic_layer=self._logic_layer)
+
+    def _delete_task(self) -> None:
+        assert self._task is not None
+
+        TaskDeletionConfirmationWindow(
+            master=self,
+            task=self._task,
+            delete_task=self._logic_layer.delete_task,
+            get_task_name=lambda task: self._logic_layer.get_task_system()
+            .attributes_register()[task]
+            .name,
         )

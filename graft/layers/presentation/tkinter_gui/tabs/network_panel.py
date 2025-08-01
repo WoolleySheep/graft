@@ -1,16 +1,12 @@
 import enum
 import tkinter as tk
-from collections.abc import Generator
+from collections.abc import Callable, Iterable
 from tkinter import ttk
 from typing import Final
 
 from graft import architecture
 from graft.domain import tasks
-from graft.domain.tasks.graph_processing import (
-    get_component_system,
-    get_inferior_subsystem,
-)
-from graft.domain.tasks.network_graph import NetworkGraphView
+from graft.domain.tasks.network_graph import NetworkGraph, NetworkGraphView
 from graft.layers.presentation.tkinter_gui import (
     domain_visual_language,
     event_broker,
@@ -40,7 +36,10 @@ from graft.layers.presentation.tkinter_gui.helpers.static_task_network_graph.rel
 )
 
 _FILTER_OPTION_COMPONENT: Final = "component"
-_FILTER_OPTION_SINGLE_TASK: Final = "single task"
+_FILTER_OPTION_SUBGRAPH: Final = "subgraph"
+_FILTER_OPTION_SUPERGRAPH: Final = "supergraph"
+_FILTER_OPTION_DOWNSTREAM: Final = "downstream"
+_FILTER_OPTION_UPSTREAM: Final = "upstream"
 _FILTER_OPTION_NONE = "none"
 
 _COLOURING_OPTION_STANDARD: Final = "standard"
@@ -175,6 +174,8 @@ _ACTIVE_SELECTED_DEPENDENCY_DRAWING_PROPERTIES: Final = (
     get_network_dependency_properties(alpha_level=_SELECTED_ALPHA_LEVEL)
 )
 
+_NO_TASK_FILTER_TASK_MENU_OPTION: Final = ""
+
 
 class ColouringOption(enum.Enum):
     STANDARD = enum.auto()
@@ -185,7 +186,10 @@ class ColouringOption(enum.Enum):
 
 class FilterOption(enum.Enum):
     COMPONENT = enum.auto()
-    SINGLE_TASK = enum.auto()
+    SUBGRAPH = enum.auto()
+    SUPERGRAPH = enum.auto()
+    DOWNSTREAM = enum.auto()
+    UPSTREAM = enum.auto()
     NONE = enum.auto()
 
 
@@ -209,21 +213,22 @@ def _parse_filter_option(text: str) -> FilterOption:
     if text == _FILTER_OPTION_COMPONENT:
         return FilterOption.COMPONENT
 
-    if text == _FILTER_OPTION_SINGLE_TASK:
-        return FilterOption.SINGLE_TASK
+    if text == _FILTER_OPTION_SUBGRAPH:
+        return FilterOption.SUBGRAPH
+
+    if text == _FILTER_OPTION_SUPERGRAPH:
+        return FilterOption.SUPERGRAPH
+
+    if text == _FILTER_OPTION_DOWNSTREAM:
+        return FilterOption.DOWNSTREAM
+
+    if text == _FILTER_OPTION_UPSTREAM:
+        return FilterOption.UPSTREAM
 
     if text == _FILTER_OPTION_NONE:
         return FilterOption.NONE
 
     raise ValueError
-
-
-def _get_task_uids_names(
-    attributes_register: tasks.IAttributesRegisterView,
-) -> Generator[tuple[tasks.UID, tasks.Name], None, None]:
-    """Yield pairs of task UIDs and task names."""
-    for uid, attributes in attributes_register.items():
-        yield uid, attributes.name
 
 
 def _format_task_uid_name_as_menu_option(
@@ -233,17 +238,20 @@ def _format_task_uid_name_as_menu_option(
 
 
 def _get_menu_options(
-    attributes_register: tasks.IAttributesRegisterView,
-) -> Generator[str, None, None]:
-    task_uids_names = sorted(
-        _get_task_uids_names(attributes_register=attributes_register),
-        key=lambda x: x[0],
-    )
-    for uid, name in task_uids_names:
-        yield _format_task_uid_name_as_menu_option(uid, name)
+    tasks_: Iterable[tasks.UID], get_task_name: Callable[[tasks.UID], tasks.Name]
+) -> list[str]:
+    return [
+        _NO_TASK_FILTER_TASK_MENU_OPTION,
+        *(
+            _format_task_uid_name_as_menu_option(task, get_task_name(task))
+            for task in sorted(tasks_)
+        ),
+    ]
 
 
-def _parse_task_uid_from_menu_option(menu_option: str) -> tasks.UID:
+def _parse_task_uid_from_menu_option(menu_option: str) -> tasks.UID | None:
+    if menu_option == _NO_TASK_FILTER_TASK_MENU_OPTION:
+        return None
     first_closing_square_bracket = menu_option.find("]")
     uid_number = int(menu_option[1:first_closing_square_bracket])
     return tasks.UID(uid_number)
@@ -299,7 +307,10 @@ class NetworkPanel(ttk.Frame):
             values=[
                 _FILTER_OPTION_NONE,
                 _FILTER_OPTION_COMPONENT,
-                _FILTER_OPTION_SINGLE_TASK,
+                _FILTER_OPTION_SUBGRAPH,
+                _FILTER_OPTION_SUPERGRAPH,
+                _FILTER_OPTION_DOWNSTREAM,
+                _FILTER_OPTION_UPSTREAM,
             ],
             state="readonly",
         )
@@ -307,27 +318,24 @@ class NetworkPanel(ttk.Frame):
             "<<ComboboxSelected>>", lambda _: self._on_filter_option_selected()
         )
         self._filter_task_selection = tk.StringVar()
-        self._filter_task_selection_dropdown = ttk.Combobox(
+        self._filter_task_options_menu = ttk.Combobox(
             self._filter_options_panel,
             textvariable=self._filter_task_selection,
             values=[
-                "",
-                *_get_menu_options(
-                    self._logic_layer.get_task_system().attributes_register()
-                ),
+                _NO_TASK_FILTER_TASK_MENU_OPTION,
+                _NO_TASK_FILTER_TASK_MENU_OPTION,
             ],
             state="disabled",
         )
-        self._filter_task_selection_dropdown.bind(
+        self._filter_task_options_menu.bind(
             "<<ComboboxSelected>>", lambda _: self._update_figure()
         )
-        self._update_task_to_filter_on_dropdown_options()
         self._show_completed_tasks = tk.BooleanVar()
         self._show_completed_tasks_checkbutton = ttk.Checkbutton(
             self._filter_panel,
             text="Show completed tasks",
             variable=self._show_completed_tasks,
-            command=self._update_figure,
+            command=self._on_show_completed_tasks_button_toggled,
         )
         self._show_completed_tasks.set(False)
 
@@ -351,11 +359,12 @@ class NetworkPanel(ttk.Frame):
         self._filter_panel_label.grid(row=0, column=0)
         self._filter_options_panel.grid(row=1, column=0)
         self._filter_options_dropdown.grid(row=0, column=0)
-        self._filter_task_selection_dropdown.grid(row=1, column=0)
+        self._filter_task_options_menu.grid(row=1, column=0)
         self._show_completed_tasks_checkbutton.grid(row=2, column=0)
 
         self._static_graph.grid(row=1, column=0)
 
+        self._update_filter_task_menu_options()
         self._update_figure()
 
         broker = event_broker.get_singleton()
@@ -363,31 +372,15 @@ class NetworkPanel(ttk.Frame):
         broker.subscribe(event_broker.TaskSelected, self._on_task_selected)
 
     def _on_filter_option_selected(self) -> None:
-        match self._get_selected_filter():
-            case FilterOption.COMPONENT:
-                self._filter_task_selection_dropdown["state"] = "readonly"
-            case FilterOption.SINGLE_TASK:
-                self._filter_task_selection_dropdown["state"] = "readonly"
-            case FilterOption.NONE:
-                self._filter_task_selection_dropdown["state"] = "disabled"
-            case _:
-                raise ValueError
+        self._filter_task_options_menu["state"] = (
+            "disabled"
+            if self._get_selected_filter() is FilterOption.NONE
+            else "readonly"
+        )
         self._update_figure()
 
     def _get_task_to_filter_on(self) -> tasks.UID | None:
-        text = self._filter_task_selection.get()
-        if not text:
-            return None
-
-        return _parse_task_uid_from_menu_option(text)
-
-    def _update_task_to_filter_on_dropdown_options(self) -> None:
-        self._filter_task_selection_dropdown["values"] = [
-            "",
-            *_get_menu_options(
-                self._logic_layer.get_task_system().attributes_register()
-            ),
-        ]
+        return _parse_task_uid_from_menu_option(self._filter_task_selection.get())
 
     def _on_system_modified(self, event: event_broker.Event) -> None:
         if not isinstance(event, event_broker.SystemModified):
@@ -406,7 +399,7 @@ class NetworkPanel(ttk.Frame):
         ):
             self._filter_task_selection.set("")
 
-        self._update_task_to_filter_on_dropdown_options()
+        self._update_filter_task_menu_options()
 
         self._update_figure()
 
@@ -655,26 +648,47 @@ class NetworkPanel(ttk.Frame):
         )
 
     def _get_filtered_graph(self) -> NetworkGraphView:
-        if (filter_task := self._get_task_to_filter_on()) is not None:
-            match self._get_selected_filter():
-                case FilterOption.COMPONENT:
-                    system = get_component_system(
-                        filter_task, self._logic_layer.get_task_system()
-                    )
-                case FilterOption.SINGLE_TASK:
-                    system = get_inferior_subsystem(
-                        filter_task, self._logic_layer.get_task_system()
-                    )
-                case FilterOption.NONE:
-                    system = self._logic_layer.get_task_system()
-        else:
-            system = self._logic_layer.get_task_system()
-
+        system = self._logic_layer.get_task_system()
         # Need to check the system isn't empty of this will break
         if system and not self._show_completed_tasks.get():
             system = tasks.get_incomplete_system(system)
 
-        return system.network_graph()
+        # Need to check the system isn't empty of this will break
+        if system and (filter_task := self._get_task_to_filter_on()) is not None:
+            if filter_task in system.tasks():
+                match self._get_selected_filter():
+                    case FilterOption.COMPONENT:
+                        subgraph = NetworkGraphView(
+                            system.network_graph().component_subgraph(filter_task)
+                        )
+                    case FilterOption.SUBGRAPH:
+                        subgraph = NetworkGraphView(
+                            tasks.get_inferior_subgraph(
+                                filter_task, system.network_graph()
+                            )
+                        )
+                    case FilterOption.SUPERGRAPH:
+                        subgraph = NetworkGraphView(
+                            tasks.get_superior_subgraph(
+                                filter_task, system.network_graph()
+                            )
+                        )
+                    case FilterOption.DOWNSTREAM:
+                        subgraph = NetworkGraphView(
+                            system.network_graph().downstream_subgraph([filter_task])
+                        )
+                    case FilterOption.UPSTREAM:
+                        subgraph = NetworkGraphView(
+                            system.network_graph().upstream_subgraph([filter_task])
+                        )
+                    case FilterOption.NONE:
+                        subgraph = system.network_graph()
+            else:
+                subgraph = NetworkGraphView(NetworkGraph.empty())
+        else:
+            subgraph = system.network_graph()
+
+        return subgraph
 
     def _get_selected_filter(self) -> FilterOption:
         return _parse_filter_option(self._filter_selection.get())
@@ -750,3 +764,23 @@ class NetworkPanel(ttk.Frame):
         self._static_graph.update_graph(
             self._get_filtered_graph(), legend_elements=self._get_legend_elements()
         )
+
+    def _update_filter_task_menu_options(self) -> None:
+        system = (
+            self._logic_layer.get_task_system()
+            if self._show_completed_tasks.get()
+            else tasks.get_incomplete_system(self._logic_layer.get_task_system())
+        )
+        menu_options = _get_menu_options(
+            system.tasks(),
+            get_task_name=lambda task: self._logic_layer.get_task_system()
+            .attributes_register()[task]
+            .name,
+        )
+        self._filter_task_options_menu["values"] = menu_options
+        if self._get_task_to_filter_on() not in system.tasks():
+            self._filter_task_selection.set(_NO_TASK_FILTER_TASK_MENU_OPTION)
+
+    def _on_show_completed_tasks_button_toggled(self) -> None:
+        self._update_filter_task_menu_options()
+        self._update_figure()

@@ -147,7 +147,9 @@ class DependencyCreationWindow(tk.Toplevel):
                 dependee_task=dependee_task,
                 dependent_task=dependent_task,
             ),
-            self._logic_layer.get_task_system(),
+            get_task_name=lambda task: self._logic_layer.get_task_system()
+            .attributes_register()[task]
+            .name,
             master=self,
         ):
             return

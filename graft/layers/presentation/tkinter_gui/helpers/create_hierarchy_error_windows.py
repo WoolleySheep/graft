@@ -24,7 +24,7 @@ from graft.layers.presentation.tkinter_gui.helpers.static_graph import (
 
 def convert_create_hierarchy_exceptions_to_error_windows(
     func: Callable[[], None],
-    system: tasks.ISystemView,
+    get_task_name: Callable[[tasks.UID], tasks.Name],
     master: Misc,
 ) -> bool:
     """Catch task hierarchy creation exceptions and display the matching error window.
@@ -54,7 +54,7 @@ def convert_create_hierarchy_exceptions_to_error_windows(
             get_hierarchy_properties=lambda _,
             __: domain_visual_language.get_graph_edge_properties(),
             get_task_annotation_text=lambda task: format_task_name_for_annotation(
-                system.attributes_register()[task].name
+                get_task_name(task)
             ),
             additional_hierarchy_groups=[
                 (
@@ -75,7 +75,7 @@ def convert_create_hierarchy_exceptions_to_error_windows(
             get_hierarchy_properties=lambda _,
             __: domain_visual_language.get_graph_edge_properties(),
             get_task_annotation_text=lambda task: format_task_name_for_annotation(
-                system.attributes_register()[task].name
+                get_task_name(task)
             ),
             highlighted_hierarchy_groups=[
                 (
@@ -95,7 +95,7 @@ def convert_create_hierarchy_exceptions_to_error_windows(
             get_hierarchy_properties=lambda _,
             __: domain_visual_language.get_graph_edge_properties(),
             get_task_annotation_text=lambda task: format_task_name_for_annotation(
-                system.attributes_register()[task].name
+                get_task_name(task)
             ),
             highlighted_task_groups=[
                 (
@@ -131,7 +131,7 @@ def convert_create_hierarchy_exceptions_to_error_windows(
             get_hierarchy_properties=lambda _,
             __: domain_visual_language.get_graph_edge_properties(),
             get_task_annotation_text=lambda task: format_task_name_for_annotation(
-                system.attributes_register()[task].name
+                get_task_name(task)
             ),
             highlighted_task_groups=[
                 (
@@ -175,7 +175,7 @@ def convert_create_hierarchy_exceptions_to_error_windows(
                 alpha_level=domain_visual_language.NetworkAlphaLevel.FADED
             ),
             get_task_annotation_text=lambda task: format_task_name_for_annotation(
-                system.attributes_register()[task].name
+                get_task_name(task)
             ),
             highlighted_task_groups=[
                 (
@@ -230,7 +230,7 @@ def convert_create_hierarchy_exceptions_to_error_windows(
                 alpha_level=domain_visual_language.NetworkAlphaLevel.FADED
             ),
             get_task_annotation_text=lambda task: format_task_name_for_annotation(
-                system.attributes_register()[task].name
+                get_task_name(task)
             ),
             highlighted_task_groups=[
                 (
@@ -285,7 +285,7 @@ def convert_create_hierarchy_exceptions_to_error_windows(
                 alpha_level=domain_visual_language.NetworkAlphaLevel.FADED
             ),
             get_task_annotation_text=lambda task: format_task_name_for_annotation(
-                system.attributes_register()[task].name
+                get_task_name(task)
             ),
             highlighted_task_groups=[
                 (
@@ -344,7 +344,7 @@ def convert_create_hierarchy_exceptions_to_error_windows(
                 alpha_level=domain_visual_language.GraphAlphaLevel.FADED
             ),
             get_task_annotation_text=lambda task: format_task_name_for_annotation(
-                system.attributes_register()[task].name
+                get_task_name(task)
             ),
             highlighted_task_groups=[
                 (
@@ -449,7 +449,7 @@ def convert_create_hierarchy_exceptions_to_error_windows(
                 alpha_level=domain_visual_language.NetworkAlphaLevel.FADED
             ),
             get_task_annotation_text=lambda task: format_task_name_for_annotation(
-                system.attributes_register()[task].name
+                get_task_name(task)
             ),
             highlighted_task_groups=[
                 (
@@ -555,7 +555,7 @@ def convert_create_hierarchy_exceptions_to_error_windows(
                 alpha_level=domain_visual_language.NetworkAlphaLevel.FADED
             ),
             get_task_annotation_text=lambda task: format_task_name_for_annotation(
-                system.attributes_register()[task].name
+                get_task_name(task)
             ),
             highlighted_task_groups=[
                 (
@@ -648,7 +648,7 @@ def convert_create_hierarchy_exceptions_to_error_windows(
                 connection_style=domain_visual_language.CURVED_ARROW_CONNECTION_STYLE,
             ),
             get_task_annotation_text=lambda task: format_task_name_for_annotation(
-                system.attributes_register()[task].name
+                get_task_name(task)
             ),
             highlighted_task_groups=[
                 (

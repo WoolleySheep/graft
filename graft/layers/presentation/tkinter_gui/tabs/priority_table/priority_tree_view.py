@@ -17,7 +17,14 @@ class PriorityTreeView(ttk.Treeview):
     def __init__(self, master: tk.Misc, logic_layer: architecture.LogicLayer) -> None:
         super().__init__(
             master,
-            columns=("rank", "id", "name", "highest_importance", "progress"),
+            columns=(
+                "rank",
+                "id",
+                "name",
+                "downstream_importance",
+                "importance",
+                "progress",
+            ),
             show="headings",
         )
         self._logic_layer = logic_layer
@@ -25,12 +32,14 @@ class PriorityTreeView(ttk.Treeview):
         self.heading("rank", text="Rank")
         self.heading("id", text="ID")
         self.heading("name", text="Name")
-        self.heading("highest_importance", text="Highest Importance")
+        self.heading("downstream_importance", text="Downstream Importance")
+        self.heading("importance", text="Importance")
         self.heading("progress", text="Progress")
 
         self.column("rank", width=40)
         self.column("id", width=40)
-        self.column("highest_importance", width=150)
+        self.column("downstream_importance", width=150)
+        self.column("importance", width=100)
         self.column("progress", width=100)
 
         self._update_tasks()
@@ -53,17 +62,21 @@ class PriorityTreeView(ttk.Treeview):
     def _update_tasks(self) -> None:
         self.delete(*self.get_children())
 
-        for rank, (uid, importance, _, _) in enumerate(
+        for rank, (uid, downstream_importance, importance, progress) in enumerate(
             get_active_concrete_tasks_in_descending_priority_order(
                 self._logic_layer.get_system()
             ),
             start=1,
         ):
             name = self._logic_layer.get_task_system().attributes_register()[uid].name
-            progress = self._logic_layer.get_task_system().get_progress(uid)
             formatted_rank = str(rank)
             formatted_uid = str(uid)
             formatted_name = str(name)
+            formatted_downstream_importance = (
+                importance_display.format(downstream_importance)
+                if downstream_importance is not None
+                else ""
+            )
             formatted_importance = (
                 importance_display.format(importance) if importance is not None else ""
             )
@@ -75,6 +88,7 @@ class PriorityTreeView(ttk.Treeview):
                     formatted_rank,
                     formatted_uid,
                     formatted_name,
+                    formatted_downstream_importance,
                     formatted_importance,
                     formatted_progress,
                 ],

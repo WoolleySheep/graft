@@ -1,3 +1,8 @@
+from graft.domain.tasks.network_graph import (
+    INetworkGraphView,
+    NetworkGraph,
+    NetworkSubgraphBuilder,
+)
 from graft.domain.tasks.progress import Progress
 from graft.domain.tasks.system import ISystemView, SubsystemBuilder, System
 from graft.domain.tasks.uid import UID
@@ -31,14 +36,25 @@ def get_incomplete_system(system: ISystemView) -> System:
     return builder.build()
 
 
-def get_inferior_subsystem(task: UID, system: ISystemView) -> System:
-    """Get a modified version of the system that only shows the inferior tasks.
+def get_inferior_subgraph(task: UID, graph: INetworkGraphView) -> NetworkGraph:
+    """Get a modified version of the graph that only shows the inferior tasks.
 
     This means that importance inherited from superior tasks will be lost, and tasks
     that had incomplete upstream tasks can now be started.
     """
-    builder = SubsystemBuilder(system)
+    builder = NetworkSubgraphBuilder(graph)
     builder.add_inferior_subgraph([task])
+    return builder.build()
+
+
+def get_superior_subgraph(task: UID, graph: INetworkGraphView) -> NetworkGraph:
+    """Get a modified version of the graph that only shows the superior tasks.
+
+    This means that progress inherited from inferior tasks will be lost, and tasks
+    that had incomplete upstream tasks can now be started.
+    """
+    builder = NetworkSubgraphBuilder(graph)
+    builder.add_superior_subgraph([task])
     return builder.build()
 
 

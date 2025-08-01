@@ -10,9 +10,19 @@ from graft.layers.presentation.tkinter_gui.tabs.dependency_panel.creation_deleti
 class DependencyDeletionButton(ttk.Button):
     def __init__(self, master: tk.Misc, logic_layer: architecture.LogicLayer) -> None:
         super().__init__(
-            master,
+            master=master,
             text="Delete Dependency",
             command=lambda: DependencyDeletionWindow(
-                master=self, logic_layer=logic_layer
+                master=self,
+                dependency_options=sorted(
+                    logic_layer.get_task_system()
+                    .network_graph()
+                    .dependency_graph()
+                    .dependencies()
+                ),
+                delete_dependency=logic_layer.delete_task_dependency,
+                get_task_name=lambda task: logic_layer.get_task_system()
+                .attributes_register()[task]
+                .name,
             ),
         )
