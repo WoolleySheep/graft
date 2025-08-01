@@ -137,7 +137,7 @@ class ProgressBoard(tk.Frame):
             },
         }
 
-        tasks_ = self._get_tasks()
+        tasks_ = self._get_tasks_matching_current_filter()
         for task, progress in zip(
             tasks_,
             self._logic_layer.get_task_system().get_progresses(tasks_),
@@ -160,7 +160,7 @@ class ProgressBoard(tk.Frame):
                 )
                 container.table.update_tasks(tasks_with_names)
 
-    def _get_tasks(self) -> tasks.TasksView:
+    def _get_tasks_matching_current_filter(self) -> tasks.TasksView:
         return (
             self._logic_layer.get_task_system().tasks()
             if self._show_completed_tasks.get()
