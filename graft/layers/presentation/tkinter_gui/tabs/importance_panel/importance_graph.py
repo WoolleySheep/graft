@@ -1,20 +1,19 @@
 import tkinter as tk
+from tkinter import ttk
 
 from graft import architecture
 from graft.domain import tasks
-from graft.layers.presentation.tkinter_gui import event_broker
+from graft.domain.tasks.hierarchy_graph import HierarchyGraphView
+from graft.layers.presentation.tkinter_gui import domain_visual_language, event_broker
 from graft.layers.presentation.tkinter_gui.domain_visual_language import (
-    DEFAULT_GRAPH_EDGE_COLOUR,
-    DEFAULT_NETWORK_TASK_COLOUR,
-    HIGH_IMPORTANCE_COLOUR,
-    LOW_IMPORTANCE_COLOUR,
-    MEDIUM_IMPORTANCE_COLOUR,
+    GraphAlphaLevel,
+    get_graph_node_properties,
+    get_task_colour_by_importance,
 )
 from graft.layers.presentation.tkinter_gui.helpers import (
     StaticHierarchyGraph,
     format_task_name_for_annotation,
 )
-from graft.layers.presentation.tkinter_gui.helpers.alpha import OPAQUE, Alpha
 from graft.layers.presentation.tkinter_gui.helpers.colour import BLACK, Colour
 from graft.layers.presentation.tkinter_gui.helpers.graph_edge_drawing_properties import (
     GraphEdgeDrawingProperties,
@@ -36,6 +35,15 @@ class ImportanceGraph(tk.Frame):
         self._logic_layer = logic_layer
         self._selected_task: tasks.UID | None = None
 
+        self._show_completed_tasks = tk.BooleanVar()
+        self._show_completed_tasks_checkbutton = ttk.Checkbutton(
+            self,
+            text="Show completed tasks",
+            variable=self._show_completed_tasks,
+            command=self._on_show_completed_tasks_button_toggled,
+        )
+        self._show_completed_tasks.set(False)
+
         self._static_graph = StaticHierarchyGraph(
             master=self,
             hierarchy_graph=tasks.HierarchyGraph(),
@@ -45,7 +53,8 @@ class ImportanceGraph(tk.Frame):
             on_task_left_click=_publish_task_as_selected,
         )
 
-        self._static_graph.grid(row=0, column=0)
+        self._show_completed_tasks_checkbutton.grid(row=0, column=0)
+        self._static_graph.grid(row=1, column=0)
 
         self._update_figure()
 
@@ -81,36 +90,41 @@ class ImportanceGraph(tk.Frame):
 
     def _get_task_colour(self, task: tasks.UID) -> Colour:
         # TODO: Can make this more efficient by getting all task importances at once
-        match self._logic_layer.get_task_system().get_importance(task):
-            case None:
-                return DEFAULT_NETWORK_TASK_COLOUR
-            case tasks.Importance.LOW:
-                return LOW_IMPORTANCE_COLOUR
-            case tasks.Importance.MEDIUM:
-                return MEDIUM_IMPORTANCE_COLOUR
-            case tasks.Importance.HIGH:
-                return HIGH_IMPORTANCE_COLOUR
+        return get_task_colour_by_importance(
+            self._logic_layer.get_task_system().get_importance(task)
+        )
 
     def _get_task_properties(self, task: tasks.UID) -> GraphNodeDrawingProperties:
-        if task == self._selected_task:
-            alpha = OPAQUE
-            edge_colour = BLACK
-        else:
-            alpha = Alpha(0.7)
-            edge_colour = None
-        return GraphNodeDrawingProperties(
-            colour=self._get_task_colour(task), alpha=alpha, edge_colour=edge_colour
+        return get_graph_node_properties(
+            colour=self._get_task_colour(task),
+            alpha_level=GraphAlphaLevel.DEFAULT
+            if task == self._selected_task
+            else GraphAlphaLevel.FADED,
+            edge_colour=BLACK if task == self._selected_task else None,
         )
 
     def _get_hierarchy_properties(
         self, supertask: tasks.UID, subtask: tasks.UID
     ) -> GraphEdgeDrawingProperties:
-        alpha = OPAQUE if self._selected_task in {supertask, subtask} else Alpha(0.7)
-        return GraphEdgeDrawingProperties(colour=DEFAULT_GRAPH_EDGE_COLOUR, alpha=alpha)
+        return domain_visual_language.get_graph_edge_properties(
+            alpha_level=GraphAlphaLevel.DEFAULT
+            if self._selected_task in {subtask, supertask}
+            else GraphAlphaLevel.FADED
+        )
 
     def _update_figure(self) -> None:
-        self._static_graph.update_graph(
-            hierarchy_graph=self._logic_layer.get_task_system()
+        self._static_graph.update_graph(self._get_tasks_matching_current_filter())
+
+    def _get_tasks_matching_current_filter(self) -> HierarchyGraphView:
+        return (
+            (
+                self._logic_layer.get_task_system()
+                if self._show_completed_tasks.get()
+                else tasks.get_incomplete_system(self._logic_layer.get_task_system())
+            )
             .network_graph()
             .hierarchy_graph()
         )
+
+    def _on_show_completed_tasks_button_toggled(self) -> None:
+        self._update_figure()
