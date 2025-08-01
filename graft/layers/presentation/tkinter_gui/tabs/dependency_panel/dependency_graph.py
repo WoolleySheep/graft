@@ -1,7 +1,9 @@
 import tkinter as tk
+from tkinter import ttk
 
 from graft import architecture
 from graft.domain import tasks
+from graft.domain.tasks.dependency_graph import DependencyGraphView
 from graft.layers.presentation.tkinter_gui import domain_visual_language, event_broker
 from graft.layers.presentation.tkinter_gui.helpers import (
     GraphNodeDrawingProperties,
@@ -20,6 +22,15 @@ class DependencyGraph(tk.Frame):
 
         self._logic_layer = logic_layer
         self._selected_task: tasks.UID | None = None
+
+        self._show_completed_tasks = tk.BooleanVar()
+        self._show_completed_tasks_checkbutton = ttk.Checkbutton(
+            self,
+            text="Show completed tasks",
+            variable=self._show_completed_tasks,
+            command=self._on_show_completed_tasks_button_toggled,
+        )
+        self._show_completed_tasks.set(False)
 
         self._static_graph = StaticDependencyGraph(
             master=self,
@@ -45,7 +56,8 @@ class DependencyGraph(tk.Frame):
             ],
         )
 
-        self._static_graph.grid(row=0, column=0)
+        self._show_completed_tasks_checkbutton.grid(row=0, column=0)
+        self._static_graph.grid(row=1, column=0)
 
         self._update_figure()
 
@@ -87,16 +99,14 @@ class DependencyGraph(tk.Frame):
         )
 
     def _get_task_properties(self, task: tasks.UID) -> GraphNodeDrawingProperties:
-        return GraphNodeDrawingProperties(
-            colour=self._get_task_colour(task),
+        return domain_visual_language.get_graph_node_properties(
+            colour=self._get_task_colour(task)
         )
 
     def _get_dependency_properties(
         self, dependee_task: tasks.UID, dependent_task: tasks.UID
     ) -> GraphEdgeDrawingProperties:
-        return GraphEdgeDrawingProperties(
-            colour=domain_visual_language.DEFAULT_GRAPH_EDGE_COLOUR
-        )
+        return domain_visual_language.get_graph_edge_properties()
 
     def _publish_task_as_selected(self, task: tasks.UID) -> None:
         broker = event_broker.get_singleton()
@@ -104,7 +114,19 @@ class DependencyGraph(tk.Frame):
 
     def _update_figure(self) -> None:
         self._static_graph.update_graph(
-            dependency_graph=self._logic_layer.get_task_system()
+            dependency_graph=self._get_graph_matching_current_filter()
+        )
+
+    def _get_graph_matching_current_filter(self) -> tasks.DependencyGraphView:
+        return (
+            (
+                self._logic_layer.get_task_system()
+                if self._show_completed_tasks.get()
+                else tasks.get_incomplete_system(self._logic_layer.get_task_system())
+            )
             .network_graph()
             .dependency_graph()
         )
+
+    def _on_show_completed_tasks_button_toggled(self) -> None:
+        self._update_figure()

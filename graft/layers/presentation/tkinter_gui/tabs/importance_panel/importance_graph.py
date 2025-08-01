@@ -113,9 +113,9 @@ class ImportanceGraph(tk.Frame):
         )
 
     def _update_figure(self) -> None:
-        self._static_graph.update_graph(self._get_tasks_matching_current_filter())
+        self._static_graph.update_graph(self._get_graph_matching_current_filter())
 
-    def _get_tasks_matching_current_filter(self) -> HierarchyGraphView:
+    def _get_graph_matching_current_filter(self) -> HierarchyGraphView:
         return (
             (
                 self._logic_layer.get_task_system()
