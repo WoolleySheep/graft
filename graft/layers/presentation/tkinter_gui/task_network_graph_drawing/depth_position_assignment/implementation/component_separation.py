@@ -34,7 +34,7 @@ class ComponentPositionLimits:
 
 
 def get_depth_positions_with_component_adjustment(
-    graph: tasks.NetworkGraph,
+    graph: tasks.INetworkGraphView,
     task_to_position_map: Mapping[tasks.UID, float],
     component_separation_distance: float,
 ) -> dict[tasks.UID, float]:

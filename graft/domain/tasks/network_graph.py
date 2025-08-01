@@ -2441,7 +2441,7 @@ class NetworkGraphView:
 
     def component_subgraphs(self) -> Generator[NetworkGraph, None, None]:
         """Return generator of connected components."""
-        return self.component_subgraphs()
+        return self._graph.component_subgraphs()
 
     def is_isolated(self, task: UID, /) -> bool:
         """Check if task has no dependencies, dependents, subtasks or supertasks."""

@@ -27,36 +27,49 @@ def get_depth_positions_unnamed_method(
     task_to_relation_layers_map: Mapping[tasks.UID, TaskRelationLayers],
     task_cylinder_radius: Radius,
 ) -> dict[tasks.UID, float]:
-    (
-        graph_with_dummies,
-        task_or_dummy_to_relation_layers_map,
-    ) = generate_graph_with_dummy_tasks(graph, task_to_relation_layers_map)
+    task_to_depth_position_map = dict[tasks.UID, float]()
 
-    task_or_dummy_to_depth_index_map = (
-        get_depth_indexes_neighbour_median_and_transpose_method(
-            graph_with_dummies, task_or_dummy_to_relation_layers_map
+    # Evaluating each component separately, as their just going to be separated
+    # depth-wise later. Avoids the issue where components would originally be located in
+    # the same space (leading to some long task relationship lines), and then they'd be
+    # separated, leaving things looking odd
+    for component in graph.component_subgraphs():
+        component_task_to_relation_layers_map = {
+            task: relation_layers
+            for task, relation_layers in task_to_relation_layers_map.items()
+            if task in component.tasks()
+        }
+        (
+            graph_with_dummies,
+            task_or_dummy_to_relation_layers_map,
+        ) = generate_graph_with_dummy_tasks(
+            component, component_task_to_relation_layers_map
         )
-    )
+        task_or_dummy_to_depth_index_map = (
+            get_depth_indexes_neighbour_median_and_transpose_method(
+                graph_with_dummies, task_or_dummy_to_relation_layers_map
+            )
+        )
+        tmp_task_to_depth_position_map = get_depth_positions_priority_method(
+            graph=graph_with_dummies,
+            task_to_relation_layers_map=task_or_dummy_to_relation_layers_map,
+            task_to_depth_index_map=task_or_dummy_to_depth_index_map,
+            # TODO: These separation values were pulled out of thin air - more investigation required
+            starting_separation_distance=20 * float(task_cylinder_radius),
+            min_separation_distance=4 * float(task_cylinder_radius),
+        )
+        tmp_task_to_depth_position_map_without_dummies = {
+            task: position
+            for task, position in tmp_task_to_depth_position_map.items()
+            if not isinstance(task, DummyUID)
+        }
+        task_to_depth_position_map.update(
+            tmp_task_to_depth_position_map_without_dummies
+        )
 
-    task_to_depth_position_map = get_depth_positions_priority_method(
-        graph=graph_with_dummies,
-        task_to_relation_layers_map=task_or_dummy_to_relation_layers_map,
-        task_to_depth_index_map=task_or_dummy_to_depth_index_map,
-        # TODO: These separation values were pulled out of thin air - more investigation required
-        starting_separation_distance=20 * float(task_cylinder_radius),
-        min_separation_distance=4 * float(task_cylinder_radius),
-    )
-
-    task_to_adjusted_depth_position_map = get_depth_positions_with_component_adjustment(
-        graph=graph_with_dummies,
+    return get_depth_positions_with_component_adjustment(
+        graph=graph,
         task_to_position_map=task_to_depth_position_map,
         # TODO: Another separation value pulled out of my ass
         component_separation_distance=6 * float(task_cylinder_radius),
     )
-
-    # Throw away the dummy tasks
-    return {
-        task: depth_position
-        for task, depth_position in task_to_adjusted_depth_position_map.items()
-        if not isinstance(task, DummyUID)
-    }
