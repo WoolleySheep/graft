@@ -186,10 +186,9 @@ class TaskDetails(tk.Frame):
         self._task_description_scrolled_text = scrolledtext.ScrolledText(
             master=self._description_section
         )
-        self._save_description_button = ttk.Button(
-            master=self._description_section,
-            text="Save Description",
-            command=self._on_save_description_button_clicked,
+        self._task_description_scrolled_text.bind(
+            "<FocusOut>",
+            lambda _: self._on_description_scrolled_text_goes_out_of_focus(),
         )
 
         self._neighbours_section = ttk.Frame(master=self)
@@ -287,7 +286,6 @@ class TaskDetails(tk.Frame):
         self._increment_progress_button.grid(row=0, column=3)
 
         self._task_description_scrolled_text.grid(row=0, column=0)
-        self._save_description_button.grid(row=1, column=0)
 
         self._supertasks_section.grid(row=0, column=1)
         self._subtasks_section.grid(row=2, column=1)
@@ -316,6 +314,8 @@ class TaskDetails(tk.Frame):
 
         self._update_with_no_task()
 
+        self.winfo_toplevel().protocol("WM_DELETE_WINDOW", self._on_closing)
+
         broker = event_broker.get_singleton()
         broker.subscribe(event_broker.TaskSelected, self._update)
         broker.subscribe(event_broker.SystemModified, self._update)
@@ -323,9 +323,7 @@ class TaskDetails(tk.Frame):
     def _update_with_task(self) -> None:
         assert self._task is not None
 
-        self._task_id.config(
-            text=f"ID-{self._task if self._task is not None else 'xxxx'}"
-        )
+        self._task_id.config(text=f"ID-{self._task}")
 
         register = self._logic_layer.get_task_system().attributes_register()
         attributes = register[self._task]
@@ -405,7 +403,6 @@ class TaskDetails(tk.Frame):
             str(attributes.description),
         )
         self._task_description_scrolled_text.config(state=tk.NORMAL)
-        self._save_description_button.config(state=tk.NORMAL)
 
         hierarchy_graph = system.network_graph().hierarchy_graph()
         dependency_graph = system.network_graph().dependency_graph()
@@ -457,7 +454,6 @@ class TaskDetails(tk.Frame):
         self._increment_progress_button.grid_remove()
         self._task_description_scrolled_text.delete(1.0, tk.END)
         self._task_description_scrolled_text.config(state=tk.DISABLED)
-        self._save_description_button.config(state=tk.DISABLED)
         self._subtasks_table.update_tasks([])
         self._subtask_add_button.config(state=tk.DISABLED)
         self._subtask_remove_button.config(state=tk.DISABLED)
@@ -499,10 +495,6 @@ class TaskDetails(tk.Frame):
 
         broker = event_broker.get_singleton()
         broker.publish(event=event_broker.SystemModified())
-
-    def _on_save_description_button_clicked(self) -> None:
-        logger.info("Save description button clicked")
-        self._save_current_description()
 
     def _save_current_description(self: Self) -> None:
         assert self._task
@@ -749,3 +741,21 @@ class TaskDetails(tk.Frame):
             .attributes_register()[task]
             .name,
         )
+
+    def _on_description_scrolled_text_goes_out_of_focus(self) -> None:
+        # It's possible to 'focus/unfocus' the description field even when no task is
+        # active, so ignore these
+        if self._task is None:
+            return
+
+        logger.info("Description field lost focus")
+        self._save_current_description()
+
+    def _on_closing(self) -> None:
+        logger.info("Closing task details window")
+
+        if self._task is not None:
+            self._save_current_name()
+            self._save_current_description()
+
+        self.winfo_toplevel().destroy()
