@@ -1,12 +1,14 @@
 import dataclasses
 import enum
 import tkinter as tk
+from tkinter import ttk
 
 from graft import architecture
 from graft.domain import tasks
 from graft.domain.tasks.progress import Progress
-from graft.layers.presentation.tkinter_gui import event_broker
+from graft.layers.presentation.tkinter_gui import domain_visual_language, event_broker
 from graft.layers.presentation.tkinter_gui.helpers import TaskTableWithName
+from graft.layers.presentation.tkinter_gui.helpers.colour import WHITE
 
 _TASK_TABLES_ID_COLUMN_WIDTH_PIXELS = 30
 _TASK_TABLES_NAME_COLUMN_WIDTH_PIXELS = 130
@@ -30,37 +32,62 @@ class ProgressType(enum.Enum):
 class ProgressBoard(tk.Frame):
     def __init__(self, master: tk.Misc, logic_layer: architecture.LogicLayer) -> None:
         super().__init__(master)
+        self._show_completed_tasks = tk.BooleanVar()
+        self._show_completed_tasks_checkbutton = ttk.Checkbutton(
+            self,
+            text="Show completed tasks",
+            variable=self._show_completed_tasks,
+            command=self._on_show_completed_tasks_button_toggled,
+        )
+        self._show_completed_tasks.set(False)
+
         self._logic_layer = logic_layer
 
         self._explicit_header = tk.Label(self, text="Explicit")
         self._inferred_header = tk.Label(self, text="Inferred")
 
-        self._not_started_header = tk.Label(self, text="Not Started")
+        self._not_started_header = tk.Label(
+            self,
+            text="Not Started",
+            background=str(domain_visual_language.NOT_STARTED_TASK_COLOUR),
+            foreground=str(WHITE),
+        )
         self._not_started_inferred_tasks = _create_task_table(self)
         self._not_started_explicit_tasks = _create_task_table(self)
 
-        self._in_progress_header = tk.Label(self, text="In Progress")
+        self._in_progress_header = tk.Label(
+            self,
+            text="In Progress",
+            background=str(domain_visual_language.IN_PROGRESS_TASK_COLOUR),
+        )
         self._in_progress_inferred_tasks = _create_task_table(self)
         self._in_progress_explicit_tasks = _create_task_table(self)
 
-        self._completed_header = tk.Label(self, text="Completed")
+        self._completed_header = tk.Label(
+            self,
+            text="Completed",
+            background=str(domain_visual_language.COMPLETED_TASK_COLOUR),
+            foreground=str(WHITE),
+        )
         self._completed_inferred_tasks = _create_task_table(self)
         self._completed_explicit_tasks = _create_task_table(self)
 
-        self._inferred_header.grid(row=1, column=0)
-        self._explicit_header.grid(row=2, column=0)
+        self._show_completed_tasks_checkbutton.grid(row=0, column=0, columnspan=4)
 
-        self._not_started_header.grid(row=0, column=1)
-        self._not_started_inferred_tasks.grid(row=1, column=1)
-        self._not_started_explicit_tasks.grid(row=2, column=1)
+        self._inferred_header.grid(row=2, column=0)
+        self._explicit_header.grid(row=3, column=0)
 
-        self._in_progress_header.grid(row=0, column=2)
-        self._in_progress_inferred_tasks.grid(row=1, column=2)
-        self._in_progress_explicit_tasks.grid(row=2, column=2)
+        self._not_started_header.grid(row=1, column=1)
+        self._not_started_inferred_tasks.grid(row=2, column=1)
+        self._not_started_explicit_tasks.grid(row=3, column=1)
 
-        self._completed_header.grid(row=0, column=3)
-        self._completed_inferred_tasks.grid(row=1, column=3)
-        self._completed_explicit_tasks.grid(row=2, column=3)
+        self._in_progress_header.grid(row=1, column=2)
+        self._in_progress_inferred_tasks.grid(row=2, column=2)
+        self._in_progress_explicit_tasks.grid(row=3, column=2)
+
+        self._completed_header.grid(row=1, column=3)
+        self._completed_inferred_tasks.grid(row=2, column=3)
+        self._completed_explicit_tasks.grid(row=3, column=3)
 
         broker = event_broker.get_singleton()
         broker.subscribe(event_broker.SystemModified, lambda _: self._update_tasks())
@@ -110,10 +137,15 @@ class ProgressBoard(tk.Frame):
             },
         }
 
-        for task in self._logic_layer.get_task_system().tasks():
-            progress_type_tasks_map[
-                self._logic_layer.get_task_system().get_progress(task)
-            ][self._get_progress_type(task)].tasks.append(task)
+        tasks_ = self._get_tasks()
+        for task, progress in zip(
+            tasks_,
+            self._logic_layer.get_task_system().get_progresses(tasks_),
+            strict=True,
+        ):
+            progress_type_tasks_map[progress][
+                self._get_progress_type(task)
+            ].tasks.append(task)
 
         for type_tasks_map in progress_type_tasks_map.values():
             for container in type_tasks_map.values():
@@ -127,3 +159,15 @@ class ProgressBoard(tk.Frame):
                     for task in container.tasks
                 )
                 container.table.update_tasks(tasks_with_names)
+
+    def _get_tasks(self) -> tasks.TasksView:
+        return (
+            self._logic_layer.get_task_system().tasks()
+            if self._show_completed_tasks.get()
+            else tasks.get_incomplete_system(
+                self._logic_layer.get_task_system()
+            ).tasks()
+        )
+
+    def _on_show_completed_tasks_button_toggled(self) -> None:
+        self._update_tasks()
