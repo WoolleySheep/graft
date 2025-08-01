@@ -3,7 +3,6 @@ from tkinter import ttk
 
 from graft import architecture
 from graft.domain import tasks
-from graft.domain.tasks.dependency_graph import DependencyGraphView
 from graft.layers.presentation.tkinter_gui import domain_visual_language, event_broker
 from graft.layers.presentation.tkinter_gui.helpers import (
     GraphNodeDrawingProperties,

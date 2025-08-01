@@ -30,8 +30,6 @@ def get_incomplete_system(system: ISystemView) -> System:
         for dependent_task in (
             system.network_graph().dependency_graph().dependent_tasks(task)
         ):
-            if dependent_task not in added_tasks:
-                continue
             builder.add_dependency(task, dependent_task)
     return builder.build()
 
