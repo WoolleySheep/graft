@@ -6,11 +6,29 @@ from graft.domain import tasks
 from graft.domain.priority_order import (
     get_active_concrete_tasks_in_descending_priority_order,
 )
-from graft.layers.presentation.tkinter_gui import event_broker
+from graft.layers.presentation.tkinter_gui import domain_visual_language, event_broker
 from graft.layers.presentation.tkinter_gui.helpers import (
     importance_display,
     progress_display,
 )
+from graft.layers.presentation.tkinter_gui.helpers.colour import GREY
+
+_HIGH_IMPORTANCE_TAG = "high_importance"
+_MEDIUM_IMPORTANCE_TAG = "medium_importance"
+_LOW_IMPORTANCE_TAG = "low_importance"
+_NO_IMPORTANCE_TAG = "no_importance"
+
+
+def _get_tag_by_importance(importance: tasks.Importance | None) -> str:
+    match importance:
+        case tasks.Importance.HIGH:
+            return _HIGH_IMPORTANCE_TAG
+        case tasks.Importance.MEDIUM:
+            return _MEDIUM_IMPORTANCE_TAG
+        case tasks.Importance.LOW:
+            return _LOW_IMPORTANCE_TAG
+        case None:
+            return _NO_IMPORTANCE_TAG
 
 
 class PriorityTreeView(ttk.Treeview):
@@ -41,6 +59,20 @@ class PriorityTreeView(ttk.Treeview):
         self.column("downstream_importance", width=150)
         self.column("importance", width=100)
         self.column("progress", width=100)
+
+        self.tag_configure(
+            _HIGH_IMPORTANCE_TAG,
+            background=str(domain_visual_language.HIGH_IMPORTANCE_COLOUR),
+        )
+        self.tag_configure(
+            _MEDIUM_IMPORTANCE_TAG,
+            background=str(domain_visual_language.MEDIUM_IMPORTANCE_COLOUR),
+        )
+        self.tag_configure(
+            _LOW_IMPORTANCE_TAG,
+            background=str(domain_visual_language.LOW_IMPORTANCE_COLOUR),
+        )
+        self.tag_configure(_NO_IMPORTANCE_TAG, background=str(GREY))
 
         self._update_tasks()
 
@@ -81,6 +113,7 @@ class PriorityTreeView(ttk.Treeview):
                 importance_display.format(importance) if importance is not None else ""
             )
             formatted_progress = progress_display.format(progress)
+            background_colour_tag = _get_tag_by_importance(downstream_importance)
             self.insert(
                 "",
                 tk.END,
@@ -92,4 +125,5 @@ class PriorityTreeView(ttk.Treeview):
                     formatted_importance,
                     formatted_progress,
                 ],
+                tags=(background_colour_tag,),
             )

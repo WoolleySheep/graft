@@ -13,8 +13,11 @@ def get_active_concrete_tasks_in_descending_priority_order(
 ]:
     """Return the active concrete tasks in order of descending priority.
 
-    Tasks are paired with 1. their importance and 2. the maximum importance of their
-    downstream tasks.
+    Tasks are prioritised by:
+    1. The maximum importance of their downstream tasks + themselves
+    2. Their own importance
+    3. Their progress
+    4. Their task ID (lower == better)
     """
 
     class PriorityScoreCard:
@@ -291,7 +294,7 @@ def get_active_concrete_tasks_in_descending_priority_order(
                     )
                 )
             ),
-            key=lambda x: x[1],
+            key=lambda x: (x[1], -int(x[0])),
             reverse=True,
         )
     ]
