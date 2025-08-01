@@ -14,12 +14,10 @@ class HierarchyDeletionButton(ttk.Button):
             text="Delete Hierarchy",
             command=lambda: HierarchyDeletionWindow(
                 master=self,
-                hierarchy_options=sorted(
-                    logic_layer.get_task_system()
-                    .network_graph()
-                    .hierarchy_graph()
-                    .hierarchies()
-                ),
+                hierarchy_options=logic_layer.get_task_system()
+                .network_graph()
+                .hierarchy_graph()
+                .hierarchies(),
                 delete_hierarchy=logic_layer.delete_task_hierarchy,
                 get_task_name=lambda task: logic_layer.get_task_system()
                 .attributes_register()[task]

@@ -14,12 +14,10 @@ class DependencyDeletionButton(ttk.Button):
             text="Delete Dependency",
             command=lambda: DependencyDeletionWindow(
                 master=self,
-                dependency_options=sorted(
-                    logic_layer.get_task_system()
-                    .network_graph()
-                    .dependency_graph()
-                    .dependencies()
-                ),
+                dependency_options=logic_layer.get_task_system()
+                .network_graph()
+                .dependency_graph()
+                .dependencies(),
                 delete_dependency=logic_layer.delete_task_dependency,
                 get_task_name=lambda task: logic_layer.get_task_system()
                 .attributes_register()[task]

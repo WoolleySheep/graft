@@ -603,28 +603,64 @@ class TaskDetails(tk.Frame):
         assert self._task is not None
 
         HierarchyCreationWindow(
-            master=self, logic_layer=self._logic_layer, subtask=self._task
+            master=self,
+            get_tasks=lambda: self._logic_layer.get_task_system().tasks(),
+            get_incomplete_tasks=lambda: tasks.get_incomplete_system(
+                self._logic_layer.get_task_system()
+            ).tasks(),
+            get_task_name=lambda task: self._logic_layer.get_task_system()
+            .attributes_register()[task]
+            .name,
+            create_hierarchy=self._logic_layer.create_task_hierarchy,
+            fixed_subtask=self._task,
         )
 
     def _open_subtask_hierarchy_creation_window(self) -> None:
         assert self._task is not None
 
         HierarchyCreationWindow(
-            master=self, logic_layer=self._logic_layer, supertask=self._task
+            master=self,
+            get_tasks=lambda: self._logic_layer.get_task_system().tasks(),
+            get_incomplete_tasks=lambda: tasks.get_incomplete_system(
+                self._logic_layer.get_task_system()
+            ).tasks(),
+            get_task_name=lambda task: self._logic_layer.get_task_system()
+            .attributes_register()[task]
+            .name,
+            create_hierarchy=self._logic_layer.create_task_hierarchy,
+            fixed_supertask=self._task,
         )
 
     def _open_dependee_task_dependency_creation_window(self) -> None:
         assert self._task is not None
 
         DependencyCreationWindow(
-            master=self, logic_layer=self._logic_layer, dependent_task=self._task
+            master=self,
+            get_tasks=lambda: self._logic_layer.get_task_system().tasks(),
+            get_incomplete_tasks=lambda: tasks.get_incomplete_system(
+                self._logic_layer.get_task_system()
+            ).tasks(),
+            get_task_name=lambda task: self._logic_layer.get_task_system()
+            .attributes_register()[task]
+            .name,
+            create_dependency=self._logic_layer.create_task_dependency,
+            fixed_dependent_task=self._task,
         )
 
     def _open_dependent_task_dependency_creation_window(self) -> None:
         assert self._task is not None
 
         DependencyCreationWindow(
-            master=self, logic_layer=self._logic_layer, dependee_task=self._task
+            master=self,
+            get_tasks=lambda: self._logic_layer.get_task_system().tasks(),
+            get_incomplete_tasks=lambda: tasks.get_incomplete_system(
+                self._logic_layer.get_task_system()
+            ).tasks(),
+            get_task_name=lambda task: self._logic_layer.get_task_system()
+            .attributes_register()[task]
+            .name,
+            create_dependency=self._logic_layer.create_task_dependency,
+            fixed_dependee_task=self._task,
         )
 
     def _open_supertask_hierarchy_deletion_window(self) -> None:
@@ -632,7 +668,7 @@ class TaskDetails(tk.Frame):
 
         HierarchyDeletionWindow(
             master=self,
-            hierarchy_options=sorted(
+            hierarchy_options=(
                 (supertask, self._task)
                 for supertask in self._logic_layer.get_task_system()
                 .network_graph()
@@ -650,7 +686,7 @@ class TaskDetails(tk.Frame):
 
         HierarchyDeletionWindow(
             master=self,
-            hierarchy_options=sorted(
+            hierarchy_options=(
                 (self._task, subtask)
                 for subtask in self._logic_layer.get_task_system()
                 .network_graph()
