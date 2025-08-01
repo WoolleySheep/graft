@@ -36,9 +36,6 @@ from graft.layers.presentation.tkinter_gui.tabs.hierarchy_panel.creation_deletio
 from graft.layers.presentation.tkinter_gui.tabs.hierarchy_panel.creation_deletion_panel.hierarchy_deletion_window import (
     HierarchyDeletionWindow,
 )
-from graft.layers.presentation.tkinter_gui.tabs.task_panel.creation_deletion_panel.task_creation_window import (
-    TaskCreationWindow,
-)
 
 _NEIGHBOURING_TASK_TABLES_ID_COLUMN_WIDTH_PIXELS = 30
 _NEIGHBOURING_TASK_TABLES_NAME_COLUMN_WIDTH_PIXELS = 150
@@ -115,9 +112,6 @@ class TaskDetails(tk.Frame):
         self._task: tasks.UID | None = None
 
         self._header_section = ttk.Frame(master=self)
-        self._create_task_button = ttk.Button(
-            master=self._header_section, text="+", command=self._create_new_task
-        )
         self._delete_task_button = ttk.Button(
             master=self._header_section, text="x", command=self._delete_task
         )
@@ -267,11 +261,10 @@ class TaskDetails(tk.Frame):
         self._description_section.grid(row=1)
         self._neighbours_section.grid(row=2)
 
-        self._create_task_button.grid(row=0, column=0, rowspan=3)
-        self._delete_task_button.grid(row=0, column=2, rowspan=3)
-        self._identifier_section.grid(row=0, column=1)
-        self._imporance_section.grid(row=1, column=1)
-        self._progress_section.grid(row=2, column=1)
+        self._delete_task_button.grid(row=0, column=1, rowspan=3, sticky="e")
+        self._identifier_section.grid(row=0, column=0)
+        self._imporance_section.grid(row=1, column=0)
+        self._progress_section.grid(row=2, column=0)
 
         self._task_id.grid(row=0, column=0)
         self._task_name_entry.grid(row=0, column=1)
@@ -726,9 +719,6 @@ class TaskDetails(tk.Frame):
             .attributes_register()[task]
             .name,
         )
-
-    def _create_new_task(self) -> None:
-        TaskCreationWindow(master=self, logic_layer=self._logic_layer)
 
     def _delete_task(self) -> None:
         assert self._task is not None
