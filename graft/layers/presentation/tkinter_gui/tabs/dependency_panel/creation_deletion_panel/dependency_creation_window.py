@@ -1,7 +1,7 @@
 import functools
 import logging
 import tkinter as tk
-from collections.abc import Generator, Sequence
+from collections.abc import Generator
 from tkinter import ttk
 
 from graft import architecture
@@ -22,6 +22,12 @@ def _get_task_uids_names(
     """Yield pairs of task UIDs and task names."""
     for uid, attributes in logic_layer.get_task_system().attributes_register().items():
         yield uid, attributes.name
+
+
+def _get_task_name(
+    logic_layer: architecture.LogicLayer, task_uid: tasks.UID
+) -> tasks.Name:
+    return logic_layer.get_task_system().attributes_register()[task_uid].name
 
 
 def _format_task_uid_name_as_menu_option(
@@ -46,59 +52,80 @@ def _parse_task_uid_from_menu_option(menu_option: str) -> tasks.UID:
     return tasks.UID(uid_number)
 
 
-class LabelledOptionMenu(tk.Frame):
+class DependencyCreationWindow(tk.Toplevel):
     def __init__(
         self,
         master: tk.Misc,
-        label_text: str,
-        variable: tk.StringVar,
-        menu_options: Sequence[str],
+        logic_layer: architecture.LogicLayer,
+        dependee_task: tasks.UID | None = None,
+        dependent_task: tasks.UID | None = None,
     ) -> None:
         super().__init__(master=master)
-
-        self._label = ttk.Label(self, text=label_text)
-        self._option_menu = ttk.OptionMenu(
-            self, variable, menu_options[0] if menu_options else None, *menu_options
-        )
-
-        self._label.grid(row=0, column=0)
-        self._option_menu.grid(row=0, column=1)
-
-
-class DependencyCreationWindow(tk.Toplevel):
-    def __init__(self, master: tk.Misc, logic_layer: architecture.LogicLayer) -> None:
         self._logic_layer = logic_layer
-        super().__init__(master=master)
+        self._dependee_task = dependee_task
+        self._dependent_task = dependent_task
 
         self.title("Create dependency")
 
         menu_options = list(_get_menu_options(logic_layer=logic_layer))
 
         self._selected_dependee_task = tk.StringVar(self)
-        self._dependee_task_option_menu = LabelledOptionMenu(
-            self,
-            label_text="Dependee-task: ",
-            variable=self._selected_dependee_task,
-            menu_options=menu_options,
+        dependee_task_section = tk.Frame(master=self)
+        dependee_task_label = ttk.Label(
+            master=dependee_task_section, text="Dependee-task: "
+        )
+        dependee_task_option_menu = ttk.OptionMenu(
+            dependee_task_section,
+            self._selected_dependee_task,
+            menu_options[0] if menu_options else None,
+            *menu_options,
         )
 
         self._selected_dependent_task = tk.StringVar(self)
-        self._dependent_task_option_menu = LabelledOptionMenu(
-            self,
-            label_text="Dependent-task: ",
-            variable=self._selected_dependent_task,
-            menu_options=menu_options,
+        dependent_task_section = tk.Frame(master=self)
+        dependent_task_label = ttk.Label(
+            master=dependent_task_section, text="Dependent-task: "
+        )
+        dependent_task_option_menu = ttk.OptionMenu(
+            dependent_task_section,
+            self._selected_dependent_task,
+            menu_options[0] if menu_options else None,
+            *menu_options,
         )
 
-        self._confirm_button = ttk.Button(
+        if self._dependee_task is not None:
+            self._selected_dependee_task.set(
+                _format_task_uid_name_as_menu_option(
+                    self._dependee_task,
+                    _get_task_name(logic_layer, self._dependee_task),
+                )
+            )
+            dependee_task_option_menu.config(state=tk.DISABLED)
+
+        if self._dependent_task is not None:
+            self._selected_dependent_task.set(
+                _format_task_uid_name_as_menu_option(
+                    self._dependent_task,
+                    _get_task_name(logic_layer, self._dependent_task),
+                )
+            )
+            dependent_task_option_menu.config(state=tk.DISABLED)
+
+        confirm_button = ttk.Button(
             self,
             text="Confirm",
             command=self._on_confirm_button_clicked,
         )
 
-        self._dependee_task_option_menu.grid(row=0, column=0)
-        self._dependent_task_option_menu.grid(row=1, column=0)
-        self._confirm_button.grid(row=2, column=0)
+        dependee_task_section.grid(row=0, column=0)
+        dependent_task_section.grid(row=1, column=0)
+        confirm_button.grid(row=2, column=0)
+
+        dependee_task_label.grid(row=0, column=0)
+        dependee_task_option_menu.grid(row=0, column=1)
+
+        dependent_task_label.grid(row=0, column=0)
+        dependent_task_option_menu.grid(row=0, column=1)
 
     def _on_confirm_button_clicked(self) -> None:
         logger.info("Confirm dependency creation button clicked")

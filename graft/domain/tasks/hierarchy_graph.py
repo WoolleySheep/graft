@@ -816,19 +816,11 @@ class HierarchyGraphView:
 
     def __str__(self) -> str:
         """Return string representation of graph."""
-        tasks_with_subtasks = (
-            f"{task}: {{{', '.join(str(subtask) for subtask in self.subtasks(task))}}}"
-            for task in self.tasks()
-        )
-        return f"{{{', '.join(tasks_with_subtasks)}}}"
+        return str(self._graph)
 
     def __repr__(self) -> str:
         """Return string representation of graph."""
-        tasks_with_subtasks = (
-            f"{task!r}: {{{', '.join(repr(subtask) for subtask in self.subtasks(task))}}}"
-            for task in self.tasks()
-        )
-        return f"{self.__class__.__name__}({{{', '.join(tasks_with_subtasks)}}})"
+        return f"{self.__class__.__name__}({self._graph!r})"
 
     def clone(self) -> HierarchyGraph:
         """Create a clone of the hierarchy graph."""

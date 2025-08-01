@@ -18,6 +18,12 @@ from graft.layers.presentation.tkinter_gui.helpers import (
     importance_display,
     progress_display,
 )
+from graft.layers.presentation.tkinter_gui.tabs.dependency_panel.creation_deletion_panel.dependency_creation_window import (
+    DependencyCreationWindow,
+)
+from graft.layers.presentation.tkinter_gui.tabs.hierarchy_panel.creation_deletion_panel.hierarchy_creation_window import (
+    HierarchyCreationWindow,
+)
 
 _NEIGHBOURING_TASK_TABLES_ID_COLUMN_WIDTH_PIXELS = 30
 _NEIGHBOURING_TASK_TABLES_NAME_COLUMN_WIDTH_PIXELS = 150
@@ -150,7 +156,11 @@ class TaskDetails(tk.Frame):
 
         self._subtasks_section = ttk.Frame(master=self._neighbours_section)
         self._subtasks_label = ttk.Label(master=self._subtasks_section, text="Subtasks")
-        self._subtask_add_button = ttk.Button(master=self._subtasks_section, text="+")
+        self._subtask_add_button = ttk.Button(
+            master=self._subtasks_section,
+            text="+",
+            command=self._open_subtask_hierarchy_creation_window,
+        )
         self._subtask_remove_button = ttk.Button(
             master=self._subtasks_section, text="-"
         )
@@ -163,7 +173,9 @@ class TaskDetails(tk.Frame):
             master=self._supertasks_section, text="Supertasks"
         )
         self._supertask_add_button = ttk.Button(
-            master=self._supertasks_section, text="+"
+            master=self._supertasks_section,
+            text="+",
+            command=self._open_supertask_hierarchy_creation_window,
         )
         self._supertask_remove_button = ttk.Button(
             master=self._supertasks_section, text="-"
@@ -177,7 +189,9 @@ class TaskDetails(tk.Frame):
             master=self._dependee_tasks_section, text="Dependee-tasks"
         )
         self._dependee_task_add_button = ttk.Button(
-            master=self._dependee_tasks_section, text="+"
+            master=self._dependee_tasks_section,
+            text="+",
+            command=self._open_dependee_task_dependency_creation_window,
         )
         self._dependee_task_remove_button = ttk.Button(
             master=self._dependee_tasks_section, text="-"
@@ -191,7 +205,9 @@ class TaskDetails(tk.Frame):
             master=self._dependent_tasks_section, text="Dependent-tasks"
         )
         self._dependent_task_add_button = ttk.Button(
-            master=self._dependent_tasks_section, text="+"
+            master=self._dependent_tasks_section,
+            text="+",
+            command=self._open_dependent_task_dependency_creation_window,
         )
         self._dependent_task_remove_button = ttk.Button(
             master=self._dependent_tasks_section, text="-"
@@ -311,7 +327,6 @@ class TaskDetails(tk.Frame):
             text=progress_text,
             background=progress_colour,
         )
-        self._task_progress_label.config
 
         if system.network_graph().hierarchy_graph().is_concrete(self._task):
             self._decrement_progress_button.grid()
@@ -335,6 +350,7 @@ class TaskDetails(tk.Frame):
             str(attributes.description),
         )
         self._task_description_scrolled_text.config(state=tk.NORMAL)
+        self._save_description_button.config(state=tk.NORMAL)
 
         hierarchy_graph = system.network_graph().hierarchy_graph()
         dependency_graph = system.network_graph().dependency_graph()
@@ -344,24 +360,32 @@ class TaskDetails(tk.Frame):
             for subtask in hierarchy_graph.subtasks(self._task)
         )
         self._subtasks_table.update_tasks(subtasks_with_names)
+        self._subtask_add_button.config(state=tk.NORMAL)
+        self._subtask_remove_button.config(state=tk.NORMAL)
 
         supertasks_with_names = (
             (supertask, register[supertask].name)
             for supertask in hierarchy_graph.supertasks(self._task)
         )
         self._supertasks_table.update_tasks(supertasks_with_names)
+        self._supertask_add_button.config(state=tk.NORMAL)
+        self._supertask_remove_button.config(state=tk.NORMAL)
 
         dependee_tasks_with_names = (
             (dependee_task, register[dependee_task].name)
             for dependee_task in dependency_graph.dependee_tasks(self._task)
         )
         self._dependee_tasks_table.update_tasks(dependee_tasks_with_names)
+        self._dependee_task_add_button.config(state=tk.NORMAL)
+        self._dependee_task_remove_button.config(state=tk.NORMAL)
 
         dependent_tasks_with_names = (
             (dependent_task, register[dependent_task].name)
             for dependent_task in dependency_graph.dependent_tasks(self._task)
         )
         self._dependent_tasks_table.update_tasks(dependent_tasks_with_names)
+        self._dependent_task_add_button.config(state=tk.NORMAL)
+        self._dependent_task_remove_button.config(state=tk.NORMAL)
 
     def _update_with_no_task(self) -> None:
         assert self._task is None
@@ -377,10 +401,19 @@ class TaskDetails(tk.Frame):
         self._increment_progress_button.grid_remove()
         self._task_description_scrolled_text.delete(1.0, tk.END)
         self._task_description_scrolled_text.config(state=tk.DISABLED)
+        self._save_description_button.config(state=tk.DISABLED)
         self._subtasks_table.update_tasks([])
+        self._subtask_add_button.config(state=tk.DISABLED)
+        self._subtask_remove_button.config(state=tk.DISABLED)
         self._supertasks_table.update_tasks([])
+        self._supertask_add_button.config(state=tk.DISABLED)
+        self._supertask_remove_button.config(state=tk.DISABLED)
         self._dependee_tasks_table.update_tasks([])
+        self._dependee_task_add_button.config(state=tk.DISABLED)
+        self._dependee_task_remove_button.config(state=tk.DISABLED)
         self._dependent_tasks_table.update_tasks([])
+        self._dependent_task_add_button.config(state=tk.DISABLED)
+        self._dependent_task_remove_button.config(state=tk.DISABLED)
 
     def _update(self, event: event_broker.Event) -> None:
         if isinstance(event, event_broker.TaskSelected):
@@ -492,3 +525,31 @@ class TaskDetails(tk.Frame):
 
         broker = event_broker.get_singleton()
         broker.publish(event_broker.SystemModified())
+
+    def _open_supertask_hierarchy_creation_window(self) -> None:
+        assert self._task is not None
+
+        HierarchyCreationWindow(
+            master=self, logic_layer=self._logic_layer, subtask=self._task
+        )
+
+    def _open_subtask_hierarchy_creation_window(self) -> None:
+        assert self._task is not None
+
+        HierarchyCreationWindow(
+            master=self, logic_layer=self._logic_layer, supertask=self._task
+        )
+
+    def _open_dependee_task_dependency_creation_window(self) -> None:
+        assert self._task is not None
+
+        DependencyCreationWindow(
+            master=self, logic_layer=self._logic_layer, dependent_task=self._task
+        )
+
+    def _open_dependent_task_dependency_creation_window(self) -> None:
+        assert self._task is not None
+
+        DependencyCreationWindow(
+            master=self, logic_layer=self._logic_layer, dependee_task=self._task
+        )

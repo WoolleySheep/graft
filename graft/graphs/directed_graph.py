@@ -419,7 +419,7 @@ class DirectedGraph[T: Hashable]:
 
     def __str__(self) -> str:
         """Return string representation of digraph."""
-        return str(self._bidict)
+        return f"{{{', '.join(f'{node}: {{{", ".join(str(successor) for successor in self.successors(node))}}}' if self.successors(node) else str(node) for node in self.nodes())}}}"
 
     def __repr__(self) -> str:
         """Return string representation of digraph."""

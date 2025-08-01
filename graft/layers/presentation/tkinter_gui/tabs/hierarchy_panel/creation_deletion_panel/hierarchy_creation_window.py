@@ -24,6 +24,12 @@ def _get_task_uids_names(
         yield uid, attributes.name
 
 
+def _get_task_name(
+    logic_layer: architecture.LogicLayer, task_uid: tasks.UID
+) -> tasks.Name:
+    return logic_layer.get_task_system().attributes_register()[task_uid].name
+
+
 def _format_task_uid_name_as_menu_option(
     task_uid: tasks.UID, task_name: tasks.Name
 ) -> str:
@@ -66,39 +72,73 @@ class LabelledOptionMenu(tk.Frame):
 
 
 class HierarchyCreationWindow(tk.Toplevel):
-    def __init__(self, master: tk.Misc, logic_layer: architecture.LogicLayer) -> None:
-        self._logic_layer = logic_layer
+    def __init__(
+        self,
+        master: tk.Misc,
+        logic_layer: architecture.LogicLayer,
+        supertask: tasks.UID | None = None,
+        subtask: tasks.UID | None = None,
+    ) -> None:
         super().__init__(master=master)
+        self._logic_layer = logic_layer
+        self._supertask = supertask
+        self._subtask = subtask
 
         self.title("Create hierarchy")
 
         menu_options = list(_get_menu_options(logic_layer=logic_layer))
 
         self._selected_supertask = tk.StringVar(self)
-        self._supertask_option_menu = LabelledOptionMenu(
-            self,
-            label_text="Super-task: ",
-            variable=self._selected_supertask,
-            menu_options=menu_options,
+        supertask_section = tk.Frame(master=self)
+        supertask_label = ttk.Label(master=supertask_section, text="Super-task: ")
+        supertask_option_menu = ttk.OptionMenu(
+            supertask_section,
+            self._selected_supertask,
+            menu_options[0] if menu_options else None,
+            *menu_options,
         )
 
         self._selected_subtask = tk.StringVar(self)
-        self._subtask_option_menu = LabelledOptionMenu(
-            self,
-            label_text="Sub-task: ",
-            variable=self._selected_subtask,
-            menu_options=menu_options,
+        subtask_section = tk.Frame(master=self)
+        subtask_label = ttk.Label(master=subtask_section, text="Sub-task: ")
+        subtask_option_menu = ttk.OptionMenu(
+            subtask_section,
+            self._selected_subtask,
+            menu_options[0] if menu_options else None,
+            *menu_options,
         )
 
-        self._confirm_button = ttk.Button(
+        if self._supertask is not None:
+            self._selected_supertask.set(
+                _format_task_uid_name_as_menu_option(
+                    self._supertask, _get_task_name(logic_layer, self._supertask)
+                )
+            )
+            supertask_option_menu.config(state=tk.DISABLED)
+
+        if self._subtask is not None:
+            self._selected_subtask.set(
+                _format_task_uid_name_as_menu_option(
+                    self._subtask, _get_task_name(logic_layer, self._subtask)
+                )
+            )
+            subtask_option_menu.config(state=tk.DISABLED)
+
+        confirm_button = ttk.Button(
             self,
             text="Confirm",
             command=self._on_confirm_button_clicked,
         )
 
-        self._supertask_option_menu.grid(row=0, column=0)
-        self._subtask_option_menu.grid(row=1, column=0)
-        self._confirm_button.grid(row=2, column=0)
+        supertask_section.grid(row=0, column=0)
+        subtask_section.grid(row=1, column=0)
+        confirm_button.grid(row=2, column=0)
+
+        supertask_label.grid(row=0, column=0)
+        supertask_option_menu.grid(row=0, column=1)
+
+        subtask_label.grid(row=0, column=0)
+        subtask_option_menu.grid(row=0, column=1)
 
     def _on_confirm_button_clicked(self) -> None:
         logger.info("Confirm hierarchy creation button clicked")

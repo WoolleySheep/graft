@@ -35,13 +35,6 @@ class DummyUID(tasks.UID):
         """
         return super().__hash__()
 
-    def __lt__(self, other: object) -> bool:
-        """Check if dummy UID is less than other."""
-        if not isinstance(other, DummyUID):
-            return NotImplemented
-
-        return int(self) < int(other)
-
     def __repr__(self) -> str:
         """Return string representation of dummy UID."""
         return f"dummy_uid({self._number!r})"

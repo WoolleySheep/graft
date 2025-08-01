@@ -760,11 +760,7 @@ class DependencyGraphView:
 
     def __repr__(self) -> str:
         """Return string representation of graph."""
-        tasks_with_dependents = (
-            f"{task!r}: {{{', '.join(repr(dependent) for dependent in self.dependent_tasks(task))}}}"
-            for task in self.tasks()
-        )
-        return f"{self.__class__.__name__}({{{', '.join(tasks_with_dependents)}}})"
+        return f"{self.__class__.__name__}({self._graph!r})"
 
     def clone(self) -> DependencyGraph:
         """Create a clone of the dependency graph."""
