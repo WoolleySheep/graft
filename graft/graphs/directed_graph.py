@@ -370,6 +370,7 @@ class DirectedSubgraphBuilder[T: Hashable]:
     def add_connecting_subgraph(
         self, sources: Iterable[T], targets: Iterable[T]
     ) -> set[T]:
+        """Add a connecting subgraph."""
         sources1, sources2 = itertools.tee(sources)
         targets1, targets2 = itertools.tee(targets)
 
@@ -383,12 +384,22 @@ class DirectedSubgraphBuilder[T: Hashable]:
         )
 
     def add_component_subgraph(self, node: T) -> set[T]:
-        """Add the component subgraph."""
+        """Add a component subgraph."""
         return self._graph_builder.add_component_subgraph(
             node,
             get_successors=self._graph.successors,
             get_predecessors=self._graph.predecessors,
         )
+
+    def add_all(self) -> set[T]:
+        """Add the whole graph."""
+        for node in self._graph.nodes():
+            self._graph_builder.add_node(node)
+
+        for source, target in self._graph.edges():
+            self._graph_builder.add_edge(source=source, target=target)
+
+        return set(self._graph.nodes())
 
     def build(self) -> DirectedGraph[T]:
         return DirectedGraph(self._graph_builder.build().items())

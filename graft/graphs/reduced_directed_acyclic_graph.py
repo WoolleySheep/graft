@@ -132,8 +132,8 @@ class ReducedDirectedAcyclicGraph[T: Hashable](
                 if predecessor in source_ancestors
             ]
             subgraph_builder = ReducedDirectedAcyclicSubgraphBuilder(self)
-            _ = subgraph_builder.add_descendants_subgraph(
-                target_predecessors_in_source_ancestors
+            _ = subgraph_builder.add_connecting_subgraph(
+                target_predecessors_in_source_ancestors, [source]
             )
             for target_predecessor in target_predecessors_in_source_ancestors:
                 subgraph_builder.add_edge(target_predecessor, target)
@@ -158,8 +158,8 @@ class ReducedDirectedAcyclicGraph[T: Hashable](
                 if successor in target_descendants
             ]
             subgraph_builder = ReducedDirectedAcyclicSubgraphBuilder(self)
-            _ = subgraph_builder.add_ancestors_subgraph(
-                source_successors_in_target_descendants
+            _ = subgraph_builder.add_connecting_subgraph(
+                [target], source_successors_in_target_descendants
             )
             for source_successor in source_successors_in_target_descendants:
                 subgraph_builder.add_edge(source, source_successor)
