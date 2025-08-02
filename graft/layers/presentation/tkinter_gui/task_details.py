@@ -41,6 +41,24 @@ _NEIGHBOURING_TASK_TABLES_ID_COLUMN_WIDTH_PIXELS = 30
 _NEIGHBOURING_TASK_TABLES_NAME_COLUMN_WIDTH_PIXELS = 150
 _NEIGHBOURING_TASK_TABLES_NUMBER_OF_DISPLAYED_ROWS = 5
 
+_TASK_ID_FONT_SIZE: Final = 20
+
+_IMPORTANCE_LABEL_SECTION_WIDTH_PIXELS: Final = 15
+_IMPORTANCE_VALUE_SECTION_WIDTH_PIXELS: Final = 15
+
+_RELATIONSHIP_TABLE_TITLE_FONT_SIZE: Final = 10
+
+_NAME_ENTRY_WIDTH_PIXELS: Final = 30
+_NAME_ENTRY_FONT_SIZE: Final = 14
+
+_EDIT_RELATIONSHIP_BUTTON_WIDTH_PIXELS: Final = 3
+_CHANGE_PROGRESS_BUTTON_WIDTH_PIXELS: Final = 5
+
+_DESCRIPTION_BLOCK_WIDTH_PIXELS: Final = 40
+_DESCRIPTION_BLOCK_HEIGHT_PIXELS: Final = 8
+
+_DELETE_TASK_BUTTON_WIDTH_PIXELS: Final = 5
+
 _NO_IMPORTANCE_IMPORTANCE_MENU_OPTION_TEXT: Final = " "
 
 logger: Final = logging.getLogger(__name__)
@@ -113,11 +131,16 @@ class TaskDetails(tk.Frame):
 
         self._header_section = ttk.Frame(master=self)
         self._delete_task_button = ttk.Button(
-            master=self._header_section, text="x", command=self._delete_task
+            master=self._header_section,
+            text="x",
+            command=self._delete_task,
+            width=_DELETE_TASK_BUTTON_WIDTH_PIXELS,
         )
 
         self._identifier_section = ttk.Frame(master=self._header_section)
-        self._task_id = ttk.Label(master=self._identifier_section)
+        self._task_id = ttk.Label(
+            master=self._identifier_section, font=("TkDefaultFont", _TASK_ID_FONT_SIZE)
+        )
         self._task_name = tk.StringVar(master=self._identifier_section)
         self._task_name_entry = ttk.Entry(
             master=self._identifier_section,
@@ -126,12 +149,18 @@ class TaskDetails(tk.Frame):
             validatecommand=make_return_true(
                 self._on_name_entry_field_goes_out_of_focus
             ),
+            width=_NAME_ENTRY_WIDTH_PIXELS,
+            font=("TkDefaultFont", _NAME_ENTRY_FONT_SIZE),
         )
 
-        self._imporance_section = ttk.Frame(master=self._header_section)
-        self._importance_label = ttk.Label(self._imporance_section, text="Importance:")
-        self._inferred_task_importance = ttk.Label(master=self._imporance_section)
-        self._selected_importance = tk.StringVar(master=self._imporance_section)
+        self._importance_section = ttk.Frame(
+            master=self._header_section,
+        )
+        self._importance_label = ttk.Label(
+            master=self._importance_section, text="Importance:"
+        )
+        self._inferred_task_importance = ttk.Label(master=self._importance_section)
+        self._selected_importance = tk.StringVar(master=self._importance_section)
         self._selected_importance_backup: tasks.Importance | None = None
 
         self._importance_menu_options_to_colour_map = dict(
@@ -149,7 +178,7 @@ class TaskDetails(tk.Frame):
         # Tkinter OptionMenu command should be passed a StringVar, but it is
         # instead passed a string. Hence the type ignore.
         self._task_importance_option_menu = ttk.OptionMenu(
-            self._imporance_section,
+            self._importance_section,
             self._selected_importance,
             None,
             *self._importance_menu_options_to_colour_map.keys(),
@@ -168,17 +197,21 @@ class TaskDetails(tk.Frame):
             master=self._progress_section,
             text="<",
             command=self._on_decrement_progress_button_clicked,
+            width=_CHANGE_PROGRESS_BUTTON_WIDTH_PIXELS,
         )
         self._task_progress_label = ttk.Label(master=self._progress_section, text="")
         self._increment_progress_button = ttk.Button(
             master=self._progress_section,
             text=">",
             command=self._on_increment_progress_button_clicked,
+            width=_CHANGE_PROGRESS_BUTTON_WIDTH_PIXELS,
         )
 
         self._description_section = ttk.Frame(master=self)
         self._task_description_scrolled_text = scrolledtext.ScrolledText(
-            master=self._description_section
+            master=self._description_section,
+            width=_DESCRIPTION_BLOCK_WIDTH_PIXELS,
+            height=_DESCRIPTION_BLOCK_HEIGHT_PIXELS,
         )
         self._task_description_scrolled_text.bind(
             "<FocusOut>",
@@ -188,16 +221,22 @@ class TaskDetails(tk.Frame):
         self._neighbours_section = ttk.Frame(master=self)
 
         self._subtasks_section = ttk.Frame(master=self._neighbours_section)
-        self._subtasks_label = ttk.Label(master=self._subtasks_section, text="Subtasks")
+        self._subtasks_label = ttk.Label(
+            master=self._subtasks_section,
+            text="Subtasks",
+            font=("TkDefaultFont", _RELATIONSHIP_TABLE_TITLE_FONT_SIZE),
+        )
         self._subtask_add_button = ttk.Button(
             master=self._subtasks_section,
             text="+",
             command=self._open_subtask_hierarchy_creation_window,
+            width=_EDIT_RELATIONSHIP_BUTTON_WIDTH_PIXELS,
         )
         self._subtask_remove_button = ttk.Button(
             master=self._subtasks_section,
             text="-",
             command=self._open_subtask_hierarchy_deletion_window,
+            width=_EDIT_RELATIONSHIP_BUTTON_WIDTH_PIXELS,
         )
         self._subtasks_table = _create_nieghbouring_task_table(
             master=self._subtasks_section
@@ -205,17 +244,21 @@ class TaskDetails(tk.Frame):
 
         self._supertasks_section = ttk.Frame(master=self._neighbours_section)
         self._supertasks_label = ttk.Label(
-            master=self._supertasks_section, text="Supertasks"
+            master=self._supertasks_section,
+            text="Supertasks",
+            font=("TkDefaultFont", _RELATIONSHIP_TABLE_TITLE_FONT_SIZE),
         )
         self._supertask_add_button = ttk.Button(
             master=self._supertasks_section,
             text="+",
             command=self._open_supertask_hierarchy_creation_window,
+            width=_EDIT_RELATIONSHIP_BUTTON_WIDTH_PIXELS,
         )
         self._supertask_remove_button = ttk.Button(
             master=self._supertasks_section,
             text="-",
             command=self._open_supertask_hierarchy_deletion_window,
+            width=_EDIT_RELATIONSHIP_BUTTON_WIDTH_PIXELS,
         )
         self._supertasks_table = _create_nieghbouring_task_table(
             master=self._supertasks_section
@@ -223,17 +266,21 @@ class TaskDetails(tk.Frame):
 
         self._dependee_tasks_section = ttk.Frame(master=self._neighbours_section)
         self._dependee_tasks_label = ttk.Label(
-            master=self._dependee_tasks_section, text="Dependee-tasks"
+            master=self._dependee_tasks_section,
+            text="Dependee-tasks",
+            font=("TkDefaultFont", _RELATIONSHIP_TABLE_TITLE_FONT_SIZE),
         )
         self._dependee_task_add_button = ttk.Button(
             master=self._dependee_tasks_section,
             text="+",
             command=self._open_dependee_task_dependency_creation_window,
+            width=_EDIT_RELATIONSHIP_BUTTON_WIDTH_PIXELS,
         )
         self._dependee_task_remove_button = ttk.Button(
             master=self._dependee_tasks_section,
             text="-",
             command=self._open_dependee_task_dependency_deletion_window,
+            width=_EDIT_RELATIONSHIP_BUTTON_WIDTH_PIXELS,
         )
         self._dependee_tasks_table = _create_nieghbouring_task_table(
             master=self._dependee_tasks_section
@@ -241,17 +288,21 @@ class TaskDetails(tk.Frame):
 
         self._dependent_tasks_section = ttk.Frame(master=self._neighbours_section)
         self._dependent_tasks_label = ttk.Label(
-            master=self._dependent_tasks_section, text="Dependent-tasks"
+            master=self._dependent_tasks_section,
+            text="Dependent-tasks",
+            font=("TkDefaultFont", _RELATIONSHIP_TABLE_TITLE_FONT_SIZE),
         )
         self._dependent_task_add_button = ttk.Button(
             master=self._dependent_tasks_section,
             text="+",
             command=self._open_dependent_task_dependency_creation_window,
+            width=_EDIT_RELATIONSHIP_BUTTON_WIDTH_PIXELS,
         )
         self._dependent_task_remove_button = ttk.Button(
             master=self._dependent_tasks_section,
             text="-",
             command=self._open_dependent_task_dependency_deletion_window,
+            width=_EDIT_RELATIONSHIP_BUTTON_WIDTH_PIXELS,
         )
         self._dependent_tasks_table = _create_nieghbouring_task_table(
             master=self._dependent_tasks_section
@@ -261,9 +312,9 @@ class TaskDetails(tk.Frame):
         self._description_section.grid(row=1)
         self._neighbours_section.grid(row=2)
 
-        self._delete_task_button.grid(row=0, column=1, rowspan=3, sticky="e")
+        self._delete_task_button.grid(row=0, column=1, rowspan=3)
         self._identifier_section.grid(row=0, column=0)
-        self._imporance_section.grid(row=1, column=0)
+        self._importance_section.grid(row=1, column=0)
         self._progress_section.grid(row=2, column=0)
 
         self._task_id.grid(row=0, column=0)
@@ -280,10 +331,10 @@ class TaskDetails(tk.Frame):
 
         self._task_description_scrolled_text.grid(row=0, column=0)
 
-        self._supertasks_section.grid(row=0, column=1)
-        self._subtasks_section.grid(row=2, column=1)
-        self._dependee_tasks_section.grid(row=1, column=0)
-        self._dependent_tasks_section.grid(row=1, column=2)
+        self._supertasks_section.grid(row=0, column=1, columnspan=2)
+        self._subtasks_section.grid(row=2, column=1, columnspan=2)
+        self._dependee_tasks_section.grid(row=1, column=0, columnspan=2)
+        self._dependent_tasks_section.grid(row=1, column=2, columnspan=2)
 
         self._supertasks_label.grid(row=0, column=0)
         self._supertask_add_button.grid(row=0, column=1)
