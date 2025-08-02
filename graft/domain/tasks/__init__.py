@@ -1,10 +1,12 @@
 """Task-specific classes and exceptions."""
 
-from graft.domain.tasks.attributes import Attributes, AttributesView, IAttributesView
 from graft.domain.tasks.attributes_register import (
+    Attributes,
     AttributesRegister,
     AttributesRegisterView,
+    AttributesView,
     IAttributesRegisterView,
+    IAttributesView,
 )
 from graft.domain.tasks.dependency_graph import (
     DependenciesView,
@@ -22,6 +24,7 @@ from graft.domain.tasks.graph_processing import (
     get_incomplete_system,
     get_inferior_subgraph,
     get_superior_subgraph,
+    get_unconstrained_graph,
 )
 from graft.domain.tasks.helpers import (
     TaskAlreadyExistsError,
@@ -44,13 +47,19 @@ from graft.domain.tasks.network_graph import (
     DependencyIntroducesDependencyCrossoverError,
     DependencyIntroducesDependencyDuplicationError,
     DependencyIntroducesNetworkCycleError,
+    DependencyIntroducesUnconstrainedNetworkCycleError,
     HasNeighboursError,
     HierarchyIntroducesDependencyCrossoverError,
     HierarchyIntroducesDependencyDuplicationError,
     HierarchyIntroducesNetworkCycleError,
+    HierarchyIntroducesUnconstrainedNetworkCycleError,
     INetworkGraphView,
+    IUnconstrainedNetworkGraphView,
     NetworkGraph,
     NetworkGraphView,
+    NoConnectingSubgraphError,
+    UnconstrainedNetworkGraph,
+    UnconstrainedNetworkGraphView,
 )
 from graft.domain.tasks.progress import Progress
 from graft.domain.tasks.system import (

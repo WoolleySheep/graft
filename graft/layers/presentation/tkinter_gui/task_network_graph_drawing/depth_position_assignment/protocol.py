@@ -13,7 +13,7 @@ from graft.layers.presentation.tkinter_gui.task_network_graph_drawing.radius imp
 class GetDepthPositions(Protocol):
     def __call__(
         self,
-        graph: tasks.INetworkGraphView,
+        graph: tasks.IUnconstrainedNetworkGraphView,
         task_to_relation_layers_map: Mapping[tasks.UID, TaskRelationLayers],
         task_cylinder_radius: Radius,
     ) -> Mapping[tasks.UID, float]: ...

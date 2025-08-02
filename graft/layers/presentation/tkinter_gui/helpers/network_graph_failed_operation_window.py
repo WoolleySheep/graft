@@ -23,7 +23,7 @@ class NetworkGraphOperationFailedWindow(OperationFailedWindow):
         self,
         master: tk.Misc,
         description_text: str,
-        task_network: tasks.INetworkGraphView,
+        task_network: tasks.IUnconstrainedNetworkGraphView,
         get_task_properties: Callable[[tasks.UID], NetworkTaskDrawingProperties],
         get_hierarchy_properties: Callable[
             [tasks.UID, tasks.UID], NetworkRelationshipDrawingProperties

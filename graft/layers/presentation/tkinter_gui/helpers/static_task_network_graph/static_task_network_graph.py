@@ -104,7 +104,7 @@ class StaticTaskNetworkGraph(tk.Frame):
     def __init__(
         self,
         master: tk.Misc,
-        graph: tasks.INetworkGraphView,
+        graph: tasks.IUnconstrainedNetworkGraphView,
         get_task_annotation_text: Callable[[tasks.UID], str | None],
         get_task_properties: Callable[[tasks.UID], NetworkTaskDrawingProperties],
         get_hierarchy_properties: Callable[
@@ -179,7 +179,7 @@ class StaticTaskNetworkGraph(tk.Frame):
 
     def update_graph(
         self,
-        graph: tasks.INetworkGraphView | None = None,
+        graph: tasks.IUnconstrainedNetworkGraphView | None = None,
         get_task_annotation_text: Callable[[tasks.UID], str | None] | None = None,
         get_task_properties: Callable[[tasks.UID], NetworkTaskDrawingProperties]
         | None = None,

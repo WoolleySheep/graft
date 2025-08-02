@@ -9,7 +9,6 @@ from collections.abc import (
 )
 
 from graft.domain import tasks
-from graft.domain.tasks.network_graph import NetworkGraph
 from graft.layers.presentation.tkinter_gui.task_network_graph_drawing.dependency_position_assignment import (
     DependencyLayers,
 )
@@ -164,7 +163,7 @@ def _get_tasks_scaled_on_dependency_axis(
 
 def _replace_multilevel_hierarchies_with_single_level_dummies(
     get_unique_dummy_task: Callable[[], DummyUID],
-    graph: NetworkGraph,
+    graph: tasks.UnconstrainedNetworkGraph,
     task_to_relation_layers_map: MutableMapping[tasks.UID, TaskRelationLayers],
 ) -> None:
     # These two data structures are used to allow very quick computations of the
@@ -234,7 +233,7 @@ def _replace_multilevel_hierarchies_with_single_level_dummies(
 
 def _replace_multilevel_dependencies_with_single_level_dummies(
     get_unique_dummy_task: Callable[[], DummyUID],
-    graph: NetworkGraph,
+    graph: tasks.UnconstrainedNetworkGraph,
     task_to_relation_layers_map: MutableMapping[tasks.UID, TaskRelationLayers],
 ) -> None:
     # These two data structures are used to allow very quick computations of the
@@ -314,9 +313,11 @@ def _replace_multilevel_dependencies_with_single_level_dummies(
 
 
 def generate_graph_with_dummy_tasks(
-    graph: tasks.INetworkGraphView,
+    graph: tasks.IUnconstrainedNetworkGraphView,
     task_to_relation_layers_map: Mapping[tasks.UID, TaskRelationLayers],
-) -> tuple[tasks.NetworkGraph, dict[tasks.UID | DummyUID, TaskRelationLayers]]:
+) -> tuple[
+    tasks.UnconstrainedNetworkGraph, dict[tasks.UID | DummyUID, TaskRelationLayers]
+]:
     """Create a clone of the graph with dummy tasks.
 
     Dummy tasks are added to ensure that a hierarchy only stretches across one

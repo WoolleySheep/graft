@@ -214,10 +214,12 @@ def convert_create_hierarchy_exceptions_to_error_windows(
         return False
 
     except tasks.HierarchyIntroducesDependencyDuplicationError as e:
+        unconstrained_subgraph = tasks.get_unconstrained_graph(e.connecting_subgraph)
+        unconstrained_subgraph.add_hierarchy(supertask=e.supertask, subtask=e.subtask)
         NetworkGraphOperationFailedWindow(
             master=master,
             description_text="Cannot create a hierarchy that introduces a dependency duplication",
-            task_network=e.connecting_subgraph,
+            task_network=unconstrained_subgraph,
             get_task_properties=lambda _: domain_visual_language.get_network_task_properties(
                 alpha_level=domain_visual_language.NetworkAlphaLevel.FADED
             ),
@@ -227,7 +229,7 @@ def convert_create_hierarchy_exceptions_to_error_windows(
             ),
             get_dependency_properties=lambda _,
             __: domain_visual_language.get_network_dependency_properties(
-                alpha_level=domain_visual_language.NetworkAlphaLevel.FADED
+                alpha_level=domain_visual_language.NetworkAlphaLevel.DEFAULT
             ),
             get_task_annotation_text=lambda task: format_task_name_for_annotation(
                 get_task_name(task)
@@ -244,7 +246,7 @@ def convert_create_hierarchy_exceptions_to_error_windows(
                     {e.subtask},
                 ),
             ],
-            additional_hierarchy_groups=[
+            highlighted_hierarchy_groups=[
                 (
                     "proposed hierarchy",
                     domain_visual_language.get_network_hierarchy_properties(
@@ -269,10 +271,12 @@ def convert_create_hierarchy_exceptions_to_error_windows(
         return False
 
     except tasks.HierarchyIntroducesDependencyCrossoverError as e:
+        unconstrained_subgraph = tasks.get_unconstrained_graph(e.connecting_subgraph)
+        unconstrained_subgraph.add_hierarchy(supertask=e.supertask, subtask=e.subtask)
         NetworkGraphOperationFailedWindow(
             master=master,
             description_text="Cannot create a hierarchy that introduces a dependency crossover",
-            task_network=e.connecting_subgraph,
+            task_network=unconstrained_subgraph,
             get_task_properties=lambda _: domain_visual_language.get_network_task_properties(
                 alpha_level=domain_visual_language.NetworkAlphaLevel.FADED
             ),
@@ -282,7 +286,7 @@ def convert_create_hierarchy_exceptions_to_error_windows(
             ),
             get_dependency_properties=lambda _,
             __: domain_visual_language.get_network_dependency_properties(
-                alpha_level=domain_visual_language.NetworkAlphaLevel.FADED
+                alpha_level=domain_visual_language.NetworkAlphaLevel.DEFAULT
             ),
             get_task_annotation_text=lambda task: format_task_name_for_annotation(
                 get_task_name(task)
@@ -299,7 +303,7 @@ def convert_create_hierarchy_exceptions_to_error_windows(
                     {e.subtask},
                 ),
             ],
-            additional_hierarchy_groups=[
+            highlighted_hierarchy_groups=[
                 (
                     "proposed hierarchy",
                     domain_visual_language.get_network_hierarchy_properties(

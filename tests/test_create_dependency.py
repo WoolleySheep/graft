@@ -7,7 +7,6 @@ import pytest
 
 from graft import domain
 from graft.domain import tasks
-from graft.domain.tasks.network_graph import NetworkGraph
 from graft.layers import logic
 
 
@@ -452,7 +451,7 @@ def test_create_dependency_failure_introduces_network_cycle(
     system.add_task_dependency(task0, task1)
     system.add_task_hierarchy(task1, task2)
 
-    expected_subgraph = NetworkGraph.empty()
+    expected_subgraph = tasks.NetworkGraph.empty()
     expected_subgraph.add_task(task0)
     expected_subgraph.add_task(task1)
     expected_subgraph.add_task(task2)
@@ -495,7 +494,7 @@ def test_create_dependency_failure_path_from_inferior_task_of_dependent_task_to_
     system.add_task_dependency(task2, task3)
     system.add_task_hierarchy(task3, task4)
 
-    expected_subgraph = NetworkGraph.empty()
+    expected_subgraph = tasks.NetworkGraph.empty()
     expected_subgraph.add_task(task0)
     expected_subgraph.add_task(task1)
     expected_subgraph.add_task(task2)
@@ -542,7 +541,7 @@ def test_create_dependency_failure_path_from_dependent_task_to_inferior_task_of_
     system.add_task_dependency(task2, task3)
     system.add_task_hierarchy(task4, task3)
 
-    expected_subgraph = NetworkGraph.empty()
+    expected_subgraph = tasks.NetworkGraph.empty()
     expected_subgraph.add_task(task0)
     expected_subgraph.add_task(task1)
     expected_subgraph.add_task(task2)
@@ -592,7 +591,7 @@ def test_create_dependency_failure_path_from_inferior_task_of_dependent_task_to_
     system.add_task_dependency(task3, task4)
     system.add_task_hierarchy(task5, task4)
 
-    expected_subgraph = NetworkGraph.empty()
+    expected_subgraph = tasks.NetworkGraph.empty()
     expected_subgraph.add_task(task0)
     expected_subgraph.add_task(task1)
     expected_subgraph.add_task(task2)
@@ -638,7 +637,7 @@ def test_create_dependency_failure_dependency_duplication_with_dependee_task_sup
     system.add_task_hierarchy(task1, task2)
     system.add_task_dependency(task0, task3)
 
-    expected_subgraph = NetworkGraph.empty()
+    expected_subgraph = tasks.NetworkGraph.empty()
     expected_subgraph.add_task(task0)
     expected_subgraph.add_task(task1)
     expected_subgraph.add_task(task2)
@@ -682,7 +681,7 @@ def test_create_dependency_failure_dependency_duplication_with_dependent_task_su
     system.add_task_hierarchy(task2, task3)
     system.add_task_dependency(task0, task1)
 
-    expected_subgraph = NetworkGraph.empty()
+    expected_subgraph = tasks.NetworkGraph.empty()
     expected_subgraph.add_task(task0)
     expected_subgraph.add_task(task1)
     expected_subgraph.add_task(task2)
@@ -732,7 +731,7 @@ def test_create_dependency_failure_dependency_duplication_with_superior_tasks_of
     system.add_task_hierarchy(task4, task5)
     system.add_task_dependency(task0, task3)
 
-    expected_subgraph = NetworkGraph.empty()
+    expected_subgraph = tasks.NetworkGraph.empty()
     expected_subgraph.add_task(task0)
     expected_subgraph.add_task(task1)
     expected_subgraph.add_task(task2)
@@ -786,7 +785,7 @@ def test_create_dependency_failure_dependency_duplication_with_superior_tasks_of
     system.add_task_hierarchy(task4, task5)
     system.add_task_dependency(task1, task4)
 
-    expected_subgraph = NetworkGraph.empty()
+    expected_subgraph = tasks.NetworkGraph.empty()
     expected_subgraph.add_task(task1)
     expected_subgraph.add_task(task2)
     expected_subgraph.add_task(task4)
@@ -830,7 +829,7 @@ def test_create_dependency_failure_dependency_duplication_with_dependee_task_inf
     system.add_task_hierarchy(task1, task2)
     system.add_task_dependency(task2, task3)
 
-    expected_subgraph = NetworkGraph.empty()
+    expected_subgraph = tasks.NetworkGraph.empty()
     expected_subgraph.add_task(task0)
     expected_subgraph.add_task(task1)
     expected_subgraph.add_task(task2)
@@ -874,7 +873,7 @@ def test_create_dependency_failure_dependency_duplication_with_dependent_task_in
     system.add_task_hierarchy(task2, task3)
     system.add_task_dependency(task0, task3)
 
-    expected_subgraph = NetworkGraph.empty()
+    expected_subgraph = tasks.NetworkGraph.empty()
     expected_subgraph.add_task(task0)
     expected_subgraph.add_task(task1)
     expected_subgraph.add_task(task2)
@@ -924,7 +923,7 @@ def test_create_dependency_failure_dependency_duplication_with_inferior_tasks_of
     system.add_task_hierarchy(task4, task5)
     system.add_task_dependency(task2, task5)
 
-    expected_subgraph = NetworkGraph.empty()
+    expected_subgraph = tasks.NetworkGraph.empty()
     expected_subgraph.add_task(task0)
     expected_subgraph.add_task(task1)
     expected_subgraph.add_task(task2)
@@ -978,7 +977,7 @@ def test_create_dependency_failure_dependency_duplication_with_inferior_tasks_of
     system.add_task_hierarchy(task4, task5)
     system.add_task_dependency(task1, task4)
 
-    expected_subgraph = NetworkGraph.empty()
+    expected_subgraph = tasks.NetworkGraph.empty()
     expected_subgraph.add_task(task0)
     expected_subgraph.add_task(task1)
     expected_subgraph.add_task(task3)
@@ -1028,7 +1027,7 @@ def test_create_dependency_failure_dependency_crossover_with_dependee_task_super
     system.add_task_hierarchy(task4, task5)
     system.add_task_dependency(task0, task5)
 
-    expected_subgraph = NetworkGraph.empty()
+    expected_subgraph = tasks.NetworkGraph.empty()
     expected_subgraph.add_task(task0)
     expected_subgraph.add_task(task1)
     expected_subgraph.add_task(task2)
@@ -1080,7 +1079,7 @@ def test_create_dependency_failure_dependency_crossover_with_dependee_task_super
     system.add_task_hierarchy(task4, task5)
     system.add_task_dependency(task1, task4)
 
-    expected_subgraph = NetworkGraph.empty()
+    expected_subgraph = tasks.NetworkGraph.empty()
     expected_subgraph.add_task(task1)
     expected_subgraph.add_task(task2)
     expected_subgraph.add_task(task3)
@@ -1128,7 +1127,7 @@ def test_create_dependency_failure_dependency_crossover_with_dependee_task_infer
     system.add_task_hierarchy(task4, task5)
     system.add_task_dependency(task2, task3)
 
-    expected_subgraph = NetworkGraph.empty()
+    expected_subgraph = tasks.NetworkGraph.empty()
     expected_subgraph.add_task(task0)
     expected_subgraph.add_task(task1)
     expected_subgraph.add_task(task2)
@@ -1180,7 +1179,7 @@ def test_create_dependency_failure_dependency_crossover_with_dependee_task_infer
     system.add_task_hierarchy(task4, task5)
     system.add_task_dependency(task1, task4)
 
-    expected_subgraph = NetworkGraph.empty()
+    expected_subgraph = tasks.NetworkGraph.empty()
     expected_subgraph.add_task(task0)
     expected_subgraph.add_task(task1)
     expected_subgraph.add_task(task4)

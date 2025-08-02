@@ -27,7 +27,7 @@ _TASK_CYLINDER_LENGTH_OFFSET: Final = 0.25
 
 
 def calculate_task_positions(
-    graph: tasks.INetworkGraphView,
+    graph: tasks.IUnconstrainedNetworkGraphView,
     task_cylinder_radius: Radius,
     get_hierarchy_layers: GetHierarchyLayers,
     get_hierarchy_positions: GetHierarchyPositions,

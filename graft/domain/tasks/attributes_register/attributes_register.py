@@ -3,7 +3,7 @@
 from collections.abc import ItemsView, Iterable, Iterator, Mapping
 from typing import Protocol
 
-from graft.domain.tasks.attributes import Attributes, AttributesView
+from graft.domain.tasks.attributes_register.attributes import Attributes, AttributesView
 from graft.domain.tasks.description import Description
 from graft.domain.tasks.helpers import TaskAlreadyExistsError, TaskDoesNotExistError
 from graft.domain.tasks.importance import Importance

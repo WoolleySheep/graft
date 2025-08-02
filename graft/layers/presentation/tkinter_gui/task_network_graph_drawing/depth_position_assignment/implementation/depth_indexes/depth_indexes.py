@@ -130,7 +130,7 @@ class DependencyLayer:
 
 
 def get_depth_indexes_neighbour_median_and_transpose_method(
-    graph: tasks.NetworkGraph,
+    graph: tasks.IUnconstrainedNetworkGraphView,
     relation_positions: Mapping[tasks.UID, TaskRelationLayers],
 ) -> dict[tasks.UID, int]:
     if not graph:
@@ -231,7 +231,7 @@ def get_depth_indexes_neighbour_median_and_transpose_method(
                 task: tasks.UID,
                 layer: DependencyLayer,
                 previous_layer: DependencyLayer,
-                graph: tasks.NetworkGraph,
+                graph: tasks.IUnconstrainedNetworkGraphView,
             ) -> float:
                 if (
                     task in previous_layer.tasks
@@ -264,7 +264,7 @@ def get_depth_indexes_neighbour_median_and_transpose_method(
                 task: tasks.UID,
                 layer: DependencyLayer,
                 previous_layer: DependencyLayer,
-                graph: tasks.NetworkGraph,
+                graph: tasks.IUnconstrainedNetworkGraphView,
             ) -> float:
                 if (
                     task in previous_layer.tasks

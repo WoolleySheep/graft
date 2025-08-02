@@ -7,7 +7,7 @@ from graft.layers.presentation.tkinter_gui.task_network_graph_drawing.dependency
 
 
 def get_dependency_positions_unnamed_method(
-    graph: tasks.INetworkGraphView,
+    graph: tasks.IUnconstrainedNetworkGraphView,
 ) -> dict[tasks.UID, DependencyLayers]:
     """Get the dependency positions of tasks.
 

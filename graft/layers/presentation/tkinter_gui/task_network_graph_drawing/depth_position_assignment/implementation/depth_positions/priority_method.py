@@ -59,7 +59,7 @@ class Priority:
 
 def _get_weighted_average_depth_position_of_supertasks_and_dependency_linked_tasks(
     task: tasks.UID,
-    graph: tasks.INetworkGraphView,
+    graph: tasks.IUnconstrainedNetworkGraphView,
     supertask_to_depth_position_map: Mapping[tasks.UID, float],
     dependency_linked_task_to_depth_position_map: Mapping[tasks.UID, float],
 ) -> float:
@@ -87,7 +87,7 @@ def _get_weighted_average_depth_position_of_supertasks_and_dependency_linked_tas
 
 def _get_weighted_average_depth_position_of_subtasks_and_dependency_linked_tasks(
     task: tasks.UID,
-    graph: tasks.INetworkGraphView,
+    graph: tasks.IUnconstrainedNetworkGraphView,
     subtask_to_depth_position_map: Mapping[tasks.UID, float],
     dependency_linked_task_to_depth_position_map: Mapping[tasks.UID, float],
 ) -> float:
@@ -306,7 +306,7 @@ class HierarchyLayer:
 
 
 def get_depth_positions_priority_method(
-    graph: tasks.INetworkGraphView,
+    graph: tasks.IUnconstrainedNetworkGraphView,
     task_to_relation_layers_map: Mapping[tasks.UID, TaskRelationLayers],
     task_to_depth_index_map: Mapping[tasks.UID, int],
     starting_separation_distance: float,

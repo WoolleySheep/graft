@@ -21,7 +21,7 @@ from graft.layers.presentation.tkinter_gui.task_network_graph_drawing.template i
 
 
 def calculate_task_positions_unnamed_method(
-    graph: tasks.INetworkGraphView, task_cylinder_radius: Radius
+    graph: tasks.IUnconstrainedNetworkGraphView, task_cylinder_radius: Radius
 ) -> dict[tasks.UID, TaskCylinderPosition]:
     return calculate_task_positions(
         graph=graph,

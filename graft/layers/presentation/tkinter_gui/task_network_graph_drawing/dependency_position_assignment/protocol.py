@@ -9,5 +9,5 @@ from graft.layers.presentation.tkinter_gui.task_network_graph_drawing.dependency
 
 class GetDependencyPositions(Protocol):
     def __call__(
-        self, graph: tasks.INetworkGraphView
+        self, graph: tasks.IUnconstrainedNetworkGraphView
     ) -> Mapping[tasks.UID, DependencyLayers]: ...

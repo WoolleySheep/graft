@@ -3,6 +3,10 @@ from graft.domain.tasks.network_graph import (
     NetworkGraph,
     NetworkSubgraphBuilder,
 )
+from graft.domain.tasks.network_graph.unconstrained_network_graph import (
+    UnconstrainedNetworkGraph,
+    UnconstrainedNetworkSubgraphBuilder,
+)
 from graft.domain.tasks.progress import Progress
 from graft.domain.tasks.system import ISystemView, SubsystemBuilder, System
 from graft.domain.tasks.uid import UID
@@ -60,4 +64,10 @@ def get_component_system(task: UID, system: ISystemView) -> System:
     """Get a modified version of the sytem that only shows the task's component."""
     builder = SubsystemBuilder(system)
     builder.add_component_subgraph(task)
+    return builder.build()
+
+
+def get_unconstrained_graph(graph: INetworkGraphView) -> UnconstrainedNetworkGraph:
+    builder = UnconstrainedNetworkSubgraphBuilder(graph)
+    builder.add_all()
     return builder.build()

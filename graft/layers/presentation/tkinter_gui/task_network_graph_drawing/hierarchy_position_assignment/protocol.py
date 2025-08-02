@@ -8,7 +8,9 @@ from graft.layers.presentation.tkinter_gui.task_network_graph_drawing.radius imp
 
 
 class GetHierarchyLayers(Protocol):
-    def __call__(self, graph: tasks.INetworkGraphView) -> dict[tasks.UID, int]: ...
+    def __call__(
+        self, graph: tasks.IUnconstrainedNetworkGraphView
+    ) -> dict[tasks.UID, int]: ...
 
 
 class GetHierarchyPositions(Protocol):

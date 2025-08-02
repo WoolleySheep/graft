@@ -8,7 +8,7 @@ from graft.layers.presentation.tkinter_gui.task_network_graph_drawing.radius imp
 
 
 def get_hierarchy_layers_topologically_sorted_groups_method(
-    graph: tasks.INetworkGraphView,
+    graph: tasks.IUnconstrainedNetworkGraphView,
 ) -> dict[tasks.UID, int]:
     topologically_sorted_task_groups = (
         graph_conversion.convert_hierarchy_to_reduced_dag(

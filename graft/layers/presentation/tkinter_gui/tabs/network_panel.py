@@ -6,7 +6,6 @@ from typing import Final
 
 from graft import architecture
 from graft.domain import tasks
-from graft.domain.tasks.network_graph import NetworkGraph, NetworkGraphView
 from graft.layers.presentation.tkinter_gui import (
     domain_visual_language,
     event_broker,
@@ -647,7 +646,7 @@ class NetworkPanel(ttk.Frame):
             else _ACTIVE_DEPENDENCY_DRAWING_PROPERTIES
         )
 
-    def _get_filtered_graph(self) -> NetworkGraphView:
+    def _get_filtered_graph(self) -> tasks.NetworkGraphView:
         system = self._logic_layer.get_task_system()
         # Need to check the system isn't empty of this will break
         if system and not self._show_completed_tasks.get():
@@ -658,33 +657,33 @@ class NetworkPanel(ttk.Frame):
             if filter_task in system.tasks():
                 match self._get_selected_filter():
                     case FilterOption.COMPONENT:
-                        subgraph = NetworkGraphView(
+                        subgraph = tasks.NetworkGraphView(
                             system.network_graph().component_subgraph(filter_task)
                         )
                     case FilterOption.SUBGRAPH:
-                        subgraph = NetworkGraphView(
+                        subgraph = tasks.NetworkGraphView(
                             tasks.get_inferior_subgraph(
                                 filter_task, system.network_graph()
                             )
                         )
                     case FilterOption.SUPERGRAPH:
-                        subgraph = NetworkGraphView(
+                        subgraph = tasks.NetworkGraphView(
                             tasks.get_superior_subgraph(
                                 filter_task, system.network_graph()
                             )
                         )
                     case FilterOption.DOWNSTREAM:
-                        subgraph = NetworkGraphView(
+                        subgraph = tasks.NetworkGraphView(
                             system.network_graph().downstream_subgraph([filter_task])
                         )
                     case FilterOption.UPSTREAM:
-                        subgraph = NetworkGraphView(
+                        subgraph = tasks.NetworkGraphView(
                             system.network_graph().upstream_subgraph([filter_task])
                         )
                     case FilterOption.NONE:
                         subgraph = system.network_graph()
             else:
-                subgraph = NetworkGraphView(NetworkGraph.empty())
+                subgraph = tasks.NetworkGraphView(tasks.NetworkGraph.empty())
         else:
             subgraph = system.network_graph()
 
