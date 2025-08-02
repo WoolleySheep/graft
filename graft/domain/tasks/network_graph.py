@@ -192,27 +192,6 @@ class DependencyIntroducesDependencyCrossoverError(Exception):
         )
 
 
-class DependencyBetweenHierarchyLevelsError(Exception):
-    """Raised when there a dependency is added between levels of a hierarchy."""
-
-    def __init__(
-        self,
-        dependee_task: UID,
-        dependent_task: UID,
-        connecting_subgraph: HierarchyGraph,
-        *args: tuple[Any, ...],
-        **kwargs: dict[str, Any],
-    ) -> None:
-        self.dependee_task = dependee_task
-        self.dependent_task = dependent_task
-        self.connecting_subgraph = connecting_subgraph
-        super().__init__(
-            f"Hierarchy path already exists from dependee-task [{dependee_task}] to dependent-task [{dependent_task}].",
-            *args,
-            **kwargs,
-        )
-
-
 class NoConnectingSubgraphError(Exception):
     """Raised when there is no connecting subsystem between two tasks."""
 
@@ -1776,24 +1755,28 @@ class NetworkGraph:
             dependee_task, dependent_task
         )
 
+        # TODO: Work out how to merge these two network cycle checks into the later one.
+        # I've tried without success, it's just hard.
         if dependent_task in self._hierarchy_graph.inferior_tasks([dependee_task]):
-            connecting_subgraph = self._hierarchy_graph.connecting_subgraph(
+            builder = NetworkSubgraphBuilder(self)
+            _ = builder.add_hierarchy_connecting_subgraph(
                 [dependee_task], [dependent_task]
             )
-            raise DependencyBetweenHierarchyLevelsError(
+            raise DependencyIntroducesNetworkCycleError(
                 dependee_task=dependee_task,
                 dependent_task=dependent_task,
-                connecting_subgraph=connecting_subgraph,
+                connecting_subgraph=builder.build(),
             )
 
         if dependee_task in self._hierarchy_graph.inferior_tasks([dependent_task]):
-            connecting_subgraph = self._hierarchy_graph.connecting_subgraph(
+            builder = NetworkSubgraphBuilder(self)
+            _ = builder.add_hierarchy_connecting_subgraph(
                 [dependent_task], [dependee_task]
             )
-            raise DependencyBetweenHierarchyLevelsError(
+            raise DependencyIntroducesNetworkCycleError(
                 dependee_task=dependee_task,
                 dependent_task=dependent_task,
-                connecting_subgraph=connecting_subgraph,
+                connecting_subgraph=builder.build(),
             )
 
         if self._has_stream_path_from_source_or_inferior_task_of_source_to_target_or_inferior_task_of_target(
@@ -1807,11 +1790,13 @@ class NetworkGraph:
             dependent_task_and_its_inferior_tasks_downstream_subgraph = (
                 self.downstream_subgraph(dependent_task_and_its_inferior_tasks)
             )
-            dependent_task_and_its_inferior_tasks_and_their_downstream_tasks = itertools.chain(
-                dependent_task_and_its_inferior_tasks,
-                dependent_task_and_its_inferior_tasks_downstream_subgraph.downstream_tasks(
-                    dependent_task_and_its_inferior_tasks
-                ),
+            dependent_task_and_its_inferior_tasks_and_their_downstream_tasks = unique(
+                itertools.chain(
+                    dependent_task_and_its_inferior_tasks,
+                    dependent_task_and_its_inferior_tasks_downstream_subgraph.downstream_tasks(
+                        dependent_task_and_its_inferior_tasks
+                    ),
+                )
             )
 
             dependee_task_and_its_inferior_tasks = LazyFrozenSet(
@@ -1841,11 +1826,13 @@ class NetworkGraph:
             intersecting_dependee_tasks_and_its_inferiors_upstream_subgraph = dependent_task_and_its_inferior_tasks_downstream_subgraph.upstream_subgraph(
                 intersecting_dependee_task_and_its_inferior_tasks
             )
-            intersecting_dependee_tasks_and_its_inferiors_and_their_upstream_tasks = itertools.chain(
-                intersecting_dependee_task_and_its_inferior_tasks,
-                intersecting_dependee_tasks_and_its_inferiors_upstream_subgraph.upstream_tasks(
-                    intersecting_dependee_task_and_its_inferior_tasks
-                ),
+            intersecting_dependee_tasks_and_its_inferiors_and_their_upstream_tasks = unique(
+                itertools.chain(
+                    intersecting_dependee_task_and_its_inferior_tasks,
+                    intersecting_dependee_tasks_and_its_inferiors_upstream_subgraph.upstream_tasks(
+                        intersecting_dependee_task_and_its_inferior_tasks
+                    ),
+                )
             )
 
             intersecting_dependent_task_and_its_inferior_tasks = [

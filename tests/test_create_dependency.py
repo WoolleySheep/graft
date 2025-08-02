@@ -307,7 +307,7 @@ def test_create_dependency_failure_hierarchy_from_dependee_task_to_dependent_tas
     system.add_task(dependent_task)
     system.add_task_hierarchy(supertask=dependee_task, subtask=dependent_task)
 
-    expected_subgraph = tasks.HierarchyGraph()
+    expected_subgraph = tasks.NetworkGraph.empty()
     expected_subgraph.add_task(dependee_task)
     expected_subgraph.add_task(dependent_task)
     expected_subgraph.add_hierarchy(dependee_task, dependent_task)
@@ -316,7 +316,7 @@ def test_create_dependency_failure_hierarchy_from_dependee_task_to_dependent_tas
 
     logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
-    with pytest.raises(tasks.DependencyBetweenHierarchyLevelsError) as exc_info:
+    with pytest.raises(tasks.DependencyIntroducesNetworkCycleError) as exc_info:
         logic_layer.create_task_dependency(
             dependee_task=dependee_task, dependent_task=dependent_task
         )
@@ -344,7 +344,7 @@ def test_create_dependency_failure_hierarchy_path_from_dependee_task_to_dependen
     system.add_task_hierarchy(supertask=task0, subtask=task1)
     system.add_task_hierarchy(supertask=task1, subtask=task2)
 
-    expected_subgraph = tasks.HierarchyGraph()
+    expected_subgraph = tasks.NetworkGraph.empty()
     expected_subgraph.add_task(task0)
     expected_subgraph.add_task(task1)
     expected_subgraph.add_task(task2)
@@ -355,7 +355,7 @@ def test_create_dependency_failure_hierarchy_path_from_dependee_task_to_dependen
 
     logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
-    with pytest.raises(tasks.DependencyBetweenHierarchyLevelsError) as exc_info:
+    with pytest.raises(tasks.DependencyIntroducesNetworkCycleError) as exc_info:
         logic_layer.create_task_dependency(dependee_task=task0, dependent_task=task2)
     assert exc_info.value.dependee_task == task0
     assert exc_info.value.dependent_task == task2
@@ -378,7 +378,7 @@ def test_create_dependency_failure_hierarchy_from_dependent_task_to_dependee_tas
     system.add_task(dependent_task)
     system.add_task_hierarchy(supertask=dependent_task, subtask=dependee_task)
 
-    expected_subgraph = tasks.HierarchyGraph()
+    expected_subgraph = tasks.NetworkGraph.empty()
     expected_subgraph.add_task(dependee_task)
     expected_subgraph.add_task(dependent_task)
     expected_subgraph.add_hierarchy(dependent_task, dependee_task)
@@ -387,7 +387,7 @@ def test_create_dependency_failure_hierarchy_from_dependent_task_to_dependee_tas
 
     logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
-    with pytest.raises(tasks.DependencyBetweenHierarchyLevelsError) as exc_info:
+    with pytest.raises(tasks.DependencyIntroducesNetworkCycleError) as exc_info:
         logic_layer.create_task_dependency(
             dependee_task=dependee_task, dependent_task=dependent_task
         )
@@ -415,7 +415,7 @@ def test_create_dependency_failure_hierarchy_path_from_dependent_task_to_depende
     system.add_task_hierarchy(supertask=task0, subtask=task1)
     system.add_task_hierarchy(supertask=task1, subtask=task2)
 
-    expected_subgraph = tasks.HierarchyGraph()
+    expected_subgraph = tasks.NetworkGraph.empty()
     expected_subgraph.add_task(task0)
     expected_subgraph.add_task(task1)
     expected_subgraph.add_task(task2)
@@ -426,7 +426,7 @@ def test_create_dependency_failure_hierarchy_path_from_dependent_task_to_depende
 
     logic_layer = logic.StandardLogicLayer(data_layer=data_layer_mock)
 
-    with pytest.raises(tasks.DependencyBetweenHierarchyLevelsError) as exc_info:
+    with pytest.raises(tasks.DependencyIntroducesNetworkCycleError) as exc_info:
         logic_layer.create_task_dependency(dependee_task=task2, dependent_task=task0)
     assert exc_info.value.dependee_task == task2
     assert exc_info.value.dependent_task == task0

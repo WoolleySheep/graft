@@ -41,7 +41,6 @@ from graft.domain.tasks.hierarchy_graph import (
 from graft.domain.tasks.importance import Importance
 from graft.domain.tasks.name import Name
 from graft.domain.tasks.network_graph import (
-    DependencyBetweenHierarchyLevelsError,
     DependencyIntroducesDependencyCrossoverError,
     DependencyIntroducesDependencyDuplicationError,
     DependencyIntroducesNetworkCycleError,
