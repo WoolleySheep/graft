@@ -3,6 +3,9 @@ import tkinter as tk
 from types import TracebackType
 
 from graft import app_name, architecture, version
+from graft.layers.presentation.tkinter_gui.erase_all_confirmation_window import (
+    EraseAllConfirmationWindow,
+)
 from graft.layers.presentation.tkinter_gui.tabs.tabs import Tabs
 from graft.layers.presentation.tkinter_gui.tabs.task_panel.creation_deletion_panel.task_creation_window import (
     TaskCreationWindow,
@@ -24,12 +27,16 @@ class GUI(tk.Tk):
         )
         self.report_callback_exception = self._log_exception_and_show_error_window
 
+        self._burger_button = tk.Button(
+            master=self, text="☰", command=self._burger_menu_clicked
+        )
         self._create_new_task_button = tk.Button(
             master=self, text="New Task", command=self._open_new_task_window
         )
         self._tabs = Tabs(self, logic_layer)
         self._task_details = TaskDetails(self, logic_layer)
 
+        self._burger_button.grid(row=0, column=0, sticky="w")
         self._create_new_task_button.grid(row=0, column=0)
         self._tabs.grid(row=1, column=0)
         self._task_details.grid(row=0, column=1, rowspan=2)
@@ -50,6 +57,14 @@ class GUI(tk.Tk):
         # I don't feel like making this class take base exception, so I'm just
         # going to live with the type mismatch and suppress the error
         UnknownExceptionOperationFailedWindow(master=self, exception=exception)
+
+    def _burger_menu_clicked(self) -> None:
+        menu = tk.Menu(self, tearoff=0)
+        menu.add_command(label="Erase All", command=self._erase_all)
+        menu.post(self.winfo_rootx(), self.winfo_rooty() + 30)
+
+    def _erase_all(self) -> None:
+        EraseAllConfirmationWindow(master=self, logic_layer=self._logic_layer)
 
     def _open_new_task_window(self) -> None:
         TaskCreationWindow(master=self, logic_layer=self._logic_layer)

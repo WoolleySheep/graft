@@ -20,7 +20,7 @@ class LoggingDecoratorLogicLayer(architecture.LogicLayer):
     def erase(self) -> None:
         logger.info("Erasing all data")
         try:
-            self._data_layer.erase()
+            self._handler.erase()
         except Exception as e:
             logger.warning("Failed to erase all data, exception [%s]", e)
             raise

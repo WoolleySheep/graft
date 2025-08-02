@@ -51,6 +51,40 @@ class ImportanceGraph(tk.Frame):
             get_hierarchy_properties=self._get_hierarchy_properties,
             get_task_annotation_text=self._get_formatted_task_name,
             on_task_left_click=_publish_task_as_selected,
+            legend_elements=[
+                (
+                    "high importance",
+                    domain_visual_language.get_graph_node_properties(
+                        colour=domain_visual_language.get_task_colour_by_importance(
+                            tasks.Importance.HIGH
+                        )
+                    ),
+                ),
+                (
+                    "medium importance",
+                    domain_visual_language.get_graph_node_properties(
+                        colour=domain_visual_language.get_task_colour_by_importance(
+                            tasks.Importance.MEDIUM
+                        )
+                    ),
+                ),
+                (
+                    "low importance",
+                    domain_visual_language.get_graph_node_properties(
+                        colour=domain_visual_language.get_task_colour_by_importance(
+                            tasks.Importance.LOW
+                        )
+                    ),
+                ),
+                (
+                    "no importance",
+                    domain_visual_language.get_graph_node_properties(
+                        colour=domain_visual_language.get_task_colour_by_importance(
+                            None
+                        )
+                    ),
+                ),
+            ],
         )
 
         self._show_completed_tasks_checkbutton.grid(row=0, column=0)
